@@ -1,4 +1,4 @@
-use cc_types::Conversation;
+use claude_rust_types::Conversation;
 
 pub enum SlashCommand {
     Help,

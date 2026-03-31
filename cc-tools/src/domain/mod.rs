@@ -1,1 +1,1 @@
-pub use cc_types::Tool;
+pub use claude_rust_types::Tool;

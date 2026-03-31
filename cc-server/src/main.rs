@@ -2,10 +2,10 @@ mod infrastructure;
 
 use std::sync::Arc;
 
-use cc_engine::QueryEngine;
-use cc_provider::AnthropicProvider;
-use cc_tools::{BashTool, ReadTool, ToolRegistry};
-use cc_types::AllowAll;
+use claude_rust_engine::QueryEngine;
+use claude_rust_provider::AnthropicProvider;
+use claude_rust_tools::{BashTool, ReadTool, ToolRegistry};
+use claude_rust_types::AllowAll;
 
 use infrastructure::http::handlers::AppState;
 use infrastructure::http::routes::build_router;
@@ -15,11 +15,11 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,cc_provider=debug".into()),
+                .unwrap_or_else(|_| "info,claude_rust_provider=debug".into()),
         )
         .init();
 
-    let credential = cc_auth::resolve_credential().expect("no credentials found");
+    let credential = claude_rust_auth::resolve_credential().expect("no credentials found");
     let provider = Arc::new(AnthropicProvider::new(credential));
 
     let mut registry = ToolRegistry::new();

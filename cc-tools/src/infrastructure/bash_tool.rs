@@ -1,5 +1,5 @@
-use cc_errors::{AppError, AppResult};
-use cc_types::{PermissionLevel, Tool};
+use claude_rust_errors::{AppError, AppResult};
+use claude_rust_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 use tokio::process::Command;
 

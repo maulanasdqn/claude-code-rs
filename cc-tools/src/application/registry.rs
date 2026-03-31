@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use cc_types::Tool;
+use claude_rust_types::Tool;
 use serde_json::{Value, json};
 
 pub struct ToolRegistry {

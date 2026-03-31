@@ -1,6 +1,6 @@
-use cc_auth::Credential;
-use cc_errors::{AppError, AppResult};
-use cc_types::{Conversation, Provider, StreamEvent};
+use claude_rust_auth::Credential;
+use claude_rust_errors::{AppError, AppResult};
+use claude_rust_types::{Conversation, Provider, StreamEvent};
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use reqwest::Client;

@@ -1,4 +1,4 @@
-use cc_errors::{AppError, AppResult};
+use claude_rust_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
 use crate::infrastructure::resolve_keychain_oauth;

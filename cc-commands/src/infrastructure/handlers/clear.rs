@@ -1,4 +1,4 @@
-use cc_types::Conversation;
+use claude_rust_types::Conversation;
 use crate::domain::CommandResult;
 
 pub fn handle_clear() -> CommandResult {
