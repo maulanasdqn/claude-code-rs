@@ -1,12 +1,12 @@
 [workspace]
 members = [
-    "crates/cc-errors",
-    "crates/cc-types",
-    "crates/cc-tools",
-    "crates/cc-provider",
-    "crates/cc-engine",
-    "crates/cc-server",
-    "crates/cc-cli",
+    "cc-errors",
+    "cc-types",
+    "cc-tools",
+    "cc-provider",
+    "cc-engine",
+    "cc-server",
+    "cc-cli",
 ]
 resolver = "3"
 
@@ -23,10 +23,10 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-cc-errors = { path = "crates/cc-errors" }
-cc-types = { path = "crates/cc-types" }
-cc-tools = { path = "crates/cc-tools" }
-cc-provider = { path = "crates/cc-provider" }
-cc-engine = { path = "crates/cc-engine" }
-cc-server = { path = "crates/cc-server" }
-cc-cli = { path = "crates/cc-cli" }
+cc-errors = { path = "cc-errors" }
+cc-types = { path = "cc-types" }
+cc-tools = { path = "cc-tools" }
+cc-provider = { path = "cc-provider" }
+cc-engine = { path = "cc-engine" }
+cc-server = { path = "cc-server" }
+cc-cli = { path = "cc-cli" }
