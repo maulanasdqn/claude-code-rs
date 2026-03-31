@@ -2,7 +2,7 @@ use claude_rust_auth::Credential;
 use claude_rust_types::{ContentBlock, Conversation};
 use serde_json::{Value, json};
 
-use super::anthropic_provider::{BILLING_HEADER, MAX_TOKENS};
+use super::anthropic_provider::{BILLING_HEADER_LINE, MAX_TOKENS};
 
 pub fn build_request_body(
     credential: &Credential,
@@ -17,17 +17,17 @@ pub fn build_request_body(
             let content: Vec<Value> = msg
                 .content
                 .iter()
-                .map(|block| match block {
-                    ContentBlock::Text { text } => json!({
+                .filter_map(|block| match block {
+                    ContentBlock::Text { text } => Some(json!({
                         "type": "text",
                         "text": text,
-                    }),
-                    ContentBlock::ToolUse { id, name, input } => json!({
+                    })),
+                    ContentBlock::ToolUse { id, name, input } => Some(json!({
                         "type": "tool_use",
                         "id": id,
                         "name": name,
                         "input": input,
-                    }),
+                    })),
                     ContentBlock::ToolResult {
                         tool_use_id,
                         content,
@@ -41,8 +41,10 @@ pub fn build_request_body(
                         if let Some(true) = is_error {
                             v["is_error"] = json!(true);
                         }
-                        v
+                        Some(v)
                     }
+                    // Skip thinking blocks — the API rejects them if sent back
+                    ContentBlock::Thinking { .. } => None,
                 })
                 .collect();
 
@@ -61,17 +63,16 @@ pub fn build_request_body(
     });
 
     if credential.is_oauth() {
-        let mut system_blocks = vec![json!({
-            "type": "text",
-            "text": BILLING_HEADER,
-        })];
+        // OAuth: system prompt as array of text blocks, with billing header as first block
+        let mut system_blocks: Vec<Value> = vec![
+            json!({"type": "text", "text": BILLING_HEADER_LINE}),
+        ];
         if let Some(system) = &conversation.system {
-            system_blocks.push(json!({
-                "type": "text",
-                "text": system,
-            }));
+            system_blocks.push(json!({"type": "text", "text": system}));
         }
         body["system"] = json!(system_blocks);
+
+        // Enable adaptive thinking for OAuth models
         body["thinking"] = json!({"type": "adaptive"});
     } else if let Some(system) = &conversation.system {
         body["system"] = json!(system);

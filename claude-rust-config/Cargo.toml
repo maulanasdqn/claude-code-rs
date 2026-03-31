@@ -1,13 +1,11 @@
 [package]
-name = "claude-rust-auth"
+name = "claude-rust-config"
 version = "0.3.0"
 edition = "2024"
-description = "Authentication with API keys and macOS Keychain OAuth"
+description = "Configuration loading and settings management"
 license = "MIT"
 repository = "https://github.com/maulanasdqn/claude-code-rs"
 
 [dependencies]
-claude-rust-errors = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tracing = { workspace = true }

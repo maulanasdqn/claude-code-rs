@@ -13,8 +13,10 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
 pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 pub(crate) const MAX_TOKENS: u32 = 8192;
 
-pub(crate) const OAUTH_BETA: &str = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14";
-pub(crate) const BILLING_HEADER: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli; cch=cbde1;";
+pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219";
+/// Attribution header — must be in the system prompt (first text block), NOT as an HTTP header.
+pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
+
 
 pub struct AnthropicProvider {
     client: Client,
@@ -73,7 +75,7 @@ impl Provider for AnthropicProvider {
                     .post(&url)
                     .header("Authorization", format!("Bearer {access_token}"))
                     .header("anthropic-version", "2023-06-01")
-                    .header("anthropic-beta", OAUTH_BETA)
+                    .header("anthropic-beta", OAUTH_BETA_HEADER)
                     .header("anthropic-dangerous-direct-browser-access", "true")
                     .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
                     .header("x-app", "cli")
@@ -92,18 +94,22 @@ impl Provider for AnthropicProvider {
             }
         };
 
+        // Log full request body for debugging
+        tracing::debug!(body = %serde_json::to_string_pretty(&body).unwrap_or_default(), "request body");
+
         let response = request
             .json(&body)
             .send()
             .await
             .map_err(|e| AppError::Provider(format!("request failed: {e}")))?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let status = response.status();
+        if !status.is_success() {
             let body = response
                 .text()
                 .await
                 .unwrap_or_else(|_| "failed to read body".into());
+            // Include status code in error for retry logic to detect 529/overloaded
             return Err(AppError::Provider(format!(
                 "API returned {status}: {body}"
             )));
@@ -127,7 +133,7 @@ impl Provider for AnthropicProvider {
 
                 sse_events
                     .into_iter()
-                    .filter_map(|(event_type, data)| parse_sse_event(&event_type, &data))
+                    .flat_map(|(event_type, data)| parse_sse_event(&event_type, &data))
                     .collect::<Vec<_>>()
             })
             .flat_map(futures::stream::iter);

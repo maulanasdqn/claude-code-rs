@@ -1,9 +1,21 @@
 pub mod clear;
 pub mod compact;
+pub mod config_cmd;
+pub mod diff;
+pub mod doctor;
 pub mod help;
 pub mod model;
+pub mod permissions;
+pub mod session;
+pub mod status;
 
 pub use clear::handle_clear;
 pub use compact::handle_compact;
+pub use config_cmd::handle_config;
+pub use diff::handle_diff;
+pub use doctor::handle_doctor;
 pub use help::handle_help;
 pub use model::handle_model;
+pub use permissions::handle_permissions;
+pub use session::handle_session;
+pub use status::handle_status;

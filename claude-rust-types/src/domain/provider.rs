@@ -12,11 +12,19 @@ pub enum StopReason {
 }
 
 #[derive(Debug, Clone)]
+pub struct UsageStats {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+}
+
+#[derive(Debug, Clone)]
 pub enum StreamEvent {
     ContentDelta { text: String },
+    ThinkingDelta { text: String },
     ToolUseStart { id: String, name: String },
     ToolUseDelta { json_chunk: String },
     Stop { reason: StopReason },
+    Usage { stats: UsageStats },
     Error { message: String },
 }
 

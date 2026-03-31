@@ -1,5 +1,21 @@
+mod ask_user_tool;
 mod bash_tool;
+mod file_edit_tool;
+mod file_write_tool;
+mod glob_tool;
+mod grep_tool;
+mod plan_mode_tool;
 mod read_tool;
+mod web_fetch_tool;
+mod web_search_tool;
 
+pub use ask_user_tool::AskUserTool;
 pub use bash_tool::BashTool;
+pub use file_edit_tool::FileEditTool;
+pub use file_write_tool::FileWriteTool;
+pub use glob_tool::GlobTool;
+pub use grep_tool::GrepTool;
+pub use plan_mode_tool::{EnterPlanModeTool, ExitPlanModeTool};
 pub use read_tool::ReadTool;
+pub use web_fetch_tool::WebFetchTool;
+pub use web_search_tool::WebSearchTool;
