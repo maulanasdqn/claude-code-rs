@@ -121,9 +121,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-auth"
+version = "0.1.0"
+dependencies = [
+ "cc-errors",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "cc-cli"
 version = "0.1.0"
 dependencies = [
+ "cc-auth",
  "cc-engine",
  "cc-errors",
  "cc-provider",
@@ -164,6 +175,7 @@ name = "cc-provider"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "cc-auth",
  "cc-errors",
  "cc-types",
  "futures",
@@ -178,6 +190,7 @@ name = "cc-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "cc-auth",
  "cc-engine",
  "cc-errors",
  "cc-provider",

@@ -94,9 +94,8 @@ async fn main() {
         )
         .init();
 
-    let api_key = std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY must be set");
-
-    let provider = Arc::new(AnthropicProvider::new(api_key));
+    let credential = cc_auth::resolve_credential().expect("no credentials found");
+    let provider = Arc::new(AnthropicProvider::new(credential));
 
     let mut registry = ToolRegistry::new();
     registry.register(Arc::new(BashTool));

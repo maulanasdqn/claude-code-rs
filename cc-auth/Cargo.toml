@@ -1,15 +1,10 @@
 [package]
-name = "cc-provider"
+name = "cc-auth"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cc-auth = { workspace = true }
 cc-errors = { workspace = true }
-cc-types = { workspace = true }
-async-trait = { workspace = true }
-futures = { workspace = true }
-reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

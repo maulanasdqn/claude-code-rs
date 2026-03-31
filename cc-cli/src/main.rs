@@ -1,4 +1,4 @@
-use std::io::{self, Write, BufRead};
+use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
 use cc_engine::{EngineEvent, QueryEngine};
@@ -29,7 +29,7 @@ fn read_user_input() -> Option<String> {
     let stdin = io::stdin();
     let mut line = String::new();
     match stdin.lock().read_line(&mut line) {
-        Ok(0) => None, // EOF
+        Ok(0) => None,
         Ok(_) => {
             let trimmed = line.trim().to_string();
             if trimmed.is_empty() {
@@ -52,15 +52,15 @@ async fn main() {
         .with_writer(io::stderr)
         .init();
 
-    let api_key = match std::env::var("ANTHROPIC_API_KEY") {
-        Ok(key) => key,
-        Err(_) => {
-            eprintln!("{RED}error:{RESET} ANTHROPIC_API_KEY environment variable not set");
+    let credential = match cc_auth::resolve_credential() {
+        Ok(cred) => cred,
+        Err(e) => {
+            eprintln!("{RED}error:{RESET} {e}");
             std::process::exit(1);
         }
     };
 
-    let provider = Arc::new(AnthropicProvider::new(api_key));
+    let provider = Arc::new(AnthropicProvider::new(credential));
 
     let mut registry = ToolRegistry::new();
     registry.register(Arc::new(BashTool));
@@ -97,7 +97,6 @@ async fn main() {
 
         conversation.push(Message::user(&input));
 
-        // Track whether we're mid-text-stream for newline management
         let mut in_text = false;
 
         let result = engine
@@ -123,12 +122,15 @@ async fn main() {
                         print!("{DIM}{json_chunk}{RESET}");
                         io::stdout().flush().ok();
                     }
-                    EngineEvent::ToolResult { name, output, is_error } => {
+                    EngineEvent::ToolResult {
+                        name,
+                        output,
+                        is_error,
+                    } => {
                         println!();
                         if is_error {
                             println!("  {RED}[{name} error]: {output}{RESET}");
                         } else {
-                            // Show truncated output
                             let preview = if output.len() > 500 {
                                 format!("{}...", &output[..500])
                             } else {
