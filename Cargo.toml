@@ -1,16 +1,16 @@
 [workspace]
 members = [
-    "cc-errors",
-    "cc-types",
-    "cc-tools",
-    "cc-provider",
-    "cc-engine",
-    "cc-server",
-    "cc-cli",
-    "cc-auth",
-    "cc-permission",
-    "cc-commands",
-    "cc-memory",
+    "claude-rust-errors",
+    "claude-rust-types",
+    "claude-rust-tools",
+    "claude-rust-provider",
+    "claude-rust-engine",
+    "claude-rust-server",
+    "claude-rust",
+    "claude-rust-auth",
+    "claude-rust-permission",
+    "claude-rust-commands",
+    "claude-rust-memory",
 ]
 resolver = "3"
 
@@ -28,14 +28,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 regex = "1"
 
-claude-rust-errors = { version = "0.2.0", path = "cc-errors" }
-claude-rust-types = { version = "0.2.0", path = "cc-types" }
-claude-rust-tools = { version = "0.2.0", path = "cc-tools" }
-claude-rust-provider = { version = "0.2.0", path = "cc-provider" }
-claude-rust-engine = { version = "0.2.0", path = "cc-engine" }
-claude-rust-server = { version = "0.2.0", path = "cc-server" }
-claude-rust = { version = "0.2.0", path = "cc-cli" }
-claude-rust-auth = { version = "0.2.0", path = "cc-auth" }
-claude-rust-permission = { version = "0.2.0", path = "cc-permission" }
-claude-rust-commands = { version = "0.2.0", path = "cc-commands" }
-claude-rust-memory = { version = "0.2.0", path = "cc-memory" }
+claude-rust-errors = { version = "0.2.0", path = "claude-rust-errors" }
+claude-rust-types = { version = "0.2.0", path = "claude-rust-types" }
+claude-rust-tools = { version = "0.2.0", path = "claude-rust-tools" }
+claude-rust-provider = { version = "0.2.0", path = "claude-rust-provider" }
+claude-rust-engine = { version = "0.2.0", path = "claude-rust-engine" }
+claude-rust-server = { version = "0.2.0", path = "claude-rust-server" }
+claude-rust = { version = "0.2.0", path = "claude-rust" }
+claude-rust-auth = { version = "0.2.0", path = "claude-rust-auth" }
+claude-rust-permission = { version = "0.2.0", path = "claude-rust-permission" }
+claude-rust-commands = { version = "0.2.0", path = "claude-rust-commands" }
+claude-rust-memory = { version = "0.2.0", path = "claude-rust-memory" }
