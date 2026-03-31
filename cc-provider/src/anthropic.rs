@@ -8,8 +8,12 @@ use serde_json::{Value, json};
 
 use crate::stream::{parse_sse_event, parse_sse_lines};
 
-const DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
+const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
+const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 const MAX_TOKENS: u32 = 8192;
+
+const OAUTH_BETA: &str = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14";
+const BILLING_HEADER: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli; cch=cbde1;";
 
 pub struct AnthropicProvider {
     client: Client,
@@ -19,11 +23,16 @@ pub struct AnthropicProvider {
 
 impl AnthropicProvider {
     pub fn new(credential: Credential) -> Self {
+        let default_model = if credential.is_oauth() {
+            OAUTH_DEFAULT_MODEL
+        } else {
+            DEFAULT_MODEL
+        };
+
         Self {
             client: Client::new(),
+            model: std::env::var("MODEL").unwrap_or_else(|_| default_model.to_string()),
             credential,
-            model: std::env::var("ANTHROPIC_MODEL")
-                .unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
         }
     }
 
@@ -78,7 +87,20 @@ impl AnthropicProvider {
             "stream": true,
         });
 
-        if let Some(system) = &conversation.system {
+        if self.credential.is_oauth() {
+            let mut system_blocks = vec![json!({
+                "type": "text",
+                "text": BILLING_HEADER,
+            })];
+            if let Some(system) = &conversation.system {
+                system_blocks.push(json!({
+                    "type": "text",
+                    "text": system,
+                }));
+            }
+            body["system"] = json!(system_blocks);
+            body["thinking"] = json!({"type": "adaptive"});
+        } else if let Some(system) = &conversation.system {
             body["system"] = json!(system);
         }
 
@@ -97,30 +119,38 @@ impl Provider for AnthropicProvider {
         conversation: &Conversation,
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
-        let base_url = std::env::var("ANTHROPIC_BASE_URL")
-            .unwrap_or_else(|_| self.credential.base_url().to_string());
-        let url = format!("{base_url}/v1/messages");
+        let base_url = self.credential.base_url();
         let body = self.build_request_body(conversation, tools);
 
-        tracing::debug!(model = %self.model, url = %url, "sending request");
+        let request = match &self.credential {
+            Credential::ClaudeCodeOAuth { access_token, .. } => {
+                let url = format!("{base_url}/v1/messages?beta=true");
+                tracing::debug!(model = %self.model, url = %url, "sending OAuth request");
 
-        let mut req = self
-            .client
-            .post(&url)
-            .header("anthropic-version", "2023-06-01")
-            .header("content-type", "application/json");
+                self.client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {access_token}"))
+                    .header("anthropic-version", "2023-06-01")
+                    .header("anthropic-beta", OAUTH_BETA)
+                    .header("anthropic-dangerous-direct-browser-access", "true")
+                    .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
+                    .header("x-app", "cli")
+                    .header("content-type", "application/json")
+            }
+            Credential::ApiKey { api_key, .. } => {
+                let url = format!("{base_url}/v1/messages");
+                tracing::debug!(model = %self.model, url = %url, "sending API key request");
 
-        // OAuth uses Authorization: Bearer, API key uses x-api-key
-        if self.credential.is_oauth() {
-            req = req.header(
-                "Authorization",
-                format!("Bearer {}", self.credential.auth_header_value()),
-            );
-        } else {
-            req = req.header("x-api-key", self.credential.auth_header_value());
-        }
+                self.client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {api_key}"))
+                    .header("x-api-key", api_key)
+                    .header("anthropic-version", "2023-06-01")
+                    .header("content-type", "application/json")
+            }
+        };
 
-        let response = req
+        let response = request
             .json(&body)
             .send()
             .await

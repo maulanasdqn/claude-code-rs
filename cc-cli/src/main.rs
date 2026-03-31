@@ -1,5 +1,6 @@
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use cc_engine::{EngineEvent, QueryEngine};
 use cc_provider::AnthropicProvider;
@@ -97,10 +98,30 @@ async fn main() {
 
         conversation.push(Message::user(&input));
 
+        let spinning = Arc::new(AtomicBool::new(true));
+        let spinning_clone = spinning.clone();
+        let spinner_handle = tokio::spawn(async move {
+            const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let mut i = 0;
+            while spinning_clone.load(Ordering::Relaxed) {
+                eprint!("\r  {DIM}{}{RESET} thinking...", FRAMES[i % FRAMES.len()]);
+                io::stderr().flush().ok();
+                i += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+            }
+            eprint!("\r\x1b[2K");
+            io::stderr().flush().ok();
+        });
+
         let mut in_text = false;
+        let spinning_ref = spinning.clone();
 
         let result = engine
-            .run(conversation.clone(), |event| {
+            .run(conversation.clone(), move |event| {
+                if spinning_ref.load(Ordering::Relaxed) {
+                    spinning_ref.store(false, Ordering::Relaxed);
+                }
+
                 match event {
                     EngineEvent::TextDelta(text) => {
                         if !in_text {
@@ -161,6 +182,9 @@ async fn main() {
                 }
             })
             .await;
+
+        spinning.store(false, Ordering::Relaxed);
+        let _ = spinner_handle.await;
 
         match result {
             Ok(updated) => {

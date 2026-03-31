@@ -1,90 +1,110 @@
 use cc_errors::{AppError, AppResult};
-use std::process::Command;
-
-const KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
-const OAUTH_BASE_URL: &str = "https://api.claude.ai";
 
 #[derive(Debug, Clone)]
 pub enum Credential {
-    /// Raw API key (sk-ant-api...) against api.anthropic.com
-    ApiKey(String),
-    /// OAuth access token (sk-ant-oat...) against api.claude.ai
-    OAuthToken {
-        access_token: String,
+    ApiKey {
+        api_key: String,
         base_url: String,
+    },
+    ClaudeCodeOAuth {
+        access_token: String,
+        expires_at: u64,
     },
 }
 
 impl Credential {
-    pub fn auth_header_value(&self) -> String {
-        match self {
-            Credential::ApiKey(key) => key.clone(),
-            Credential::OAuthToken { access_token, .. } => access_token.clone(),
-        }
-    }
-
     pub fn base_url(&self) -> &str {
         match self {
-            Credential::ApiKey(_) => "https://api.anthropic.com",
-            Credential::OAuthToken { base_url, .. } => base_url,
+            Credential::ApiKey { base_url, .. } => base_url,
+            Credential::ClaudeCodeOAuth { .. } => "https://api.anthropic.com",
         }
     }
 
     pub fn is_oauth(&self) -> bool {
-        matches!(self, Credential::OAuthToken { .. })
+        matches!(self, Credential::ClaudeCodeOAuth { .. })
     }
 }
 
-/// Resolve credentials in priority order:
-/// 1. ANTHROPIC_API_KEY env var
-/// 2. macOS Keychain (Claude Code OAuth token)
 pub fn resolve_credential() -> AppResult<Credential> {
-    // 1. Check env var
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-        tracing::info!("using ANTHROPIC_API_KEY from environment");
-        return Ok(Credential::ApiKey(key));
+        tracing::info!("using Anthropic API key");
+        return Ok(Credential::ApiKey {
+            api_key: key,
+            base_url: "https://api.anthropic.com".to_string(),
+        });
     }
 
-    // 2. Try macOS Keychain
-    tracing::info!("no ANTHROPIC_API_KEY set, trying macOS Keychain");
-    match read_keychain_credential() {
+    match resolve_keychain_oauth() {
         Ok(cred) => {
-            tracing::info!("using OAuth token from macOS Keychain");
-            Ok(cred)
+            tracing::info!("using Claude Code OAuth from macOS Keychain");
+            return Ok(cred);
         }
-        Err(e) => Err(AppError::Provider(format!(
-            "no credentials found. Set ANTHROPIC_API_KEY or log in with Claude Code first. \
-             Keychain error: {e}"
-        ))),
+        Err(e) => {
+            tracing::debug!("keychain OAuth not available: {e}");
+        }
     }
+
+    if let Ok(key) = std::env::var("OPENROUTER_API_KEY") {
+        tracing::info!("using OpenRouter");
+        return Ok(Credential::ApiKey {
+            api_key: key,
+            base_url: "https://openrouter.ai/api".to_string(),
+        });
+    }
+
+    Err(AppError::Provider(
+        "no credentials found. Set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or log in with `claude`"
+            .to_string(),
+    ))
 }
 
-fn read_keychain_credential() -> AppResult<Credential> {
-    let output = Command::new("security")
-        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"])
+fn resolve_keychain_oauth() -> AppResult<Credential> {
+    let output = std::process::Command::new("security")
+        .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
         .output()
         .map_err(|e| AppError::Provider(format!("failed to run `security`: {e}")))?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(AppError::Provider(format!(
-            "keychain lookup failed: {stderr}"
-        )));
+        return Err(AppError::Provider(
+            "no Claude Code credentials in Keychain".to_string(),
+        ));
     }
 
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let json: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|e| AppError::Provider(format!("failed to parse keychain JSON: {e}")))?;
+    let json_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| AppError::Provider(format!("failed to parse Keychain JSON: {e}")))?;
 
-    let access_token = json
+    let oauth = parsed
         .get("claudeAiOauth")
-        .and_then(|v| v.get("accessToken"))
+        .ok_or_else(|| AppError::Provider("no claudeAiOauth in Keychain data".to_string()))?;
+
+    let access_token = oauth
+        .get("accessToken")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::Provider("no accessToken in keychain data".into()))?
+        .ok_or_else(|| AppError::Provider("no accessToken in OAuth data".to_string()))?
         .to_string();
 
-    Ok(Credential::OAuthToken {
+    let expires_at = oauth
+        .get("expiresAt")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+
+    if expires_at > 0 {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+
+        if now_ms > expires_at {
+            return Err(AppError::Provider(
+                "Claude Code OAuth token expired. Run `claude` to refresh your session."
+                    .to_string(),
+            ));
+        }
+    }
+
+    Ok(Credential::ClaudeCodeOAuth {
         access_token,
-        base_url: OAUTH_BASE_URL.to_string(),
+        expires_at,
     })
 }

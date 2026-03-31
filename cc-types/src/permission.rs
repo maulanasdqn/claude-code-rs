@@ -12,7 +12,6 @@ pub trait PermissionChecker: Send + Sync {
     async fn check(&self, tool_name: &str, input: &Value) -> AppResult<PermissionDecision>;
 }
 
-/// A checker that allows every tool call unconditionally.
 pub struct AllowAll;
 
 #[async_trait::async_trait]

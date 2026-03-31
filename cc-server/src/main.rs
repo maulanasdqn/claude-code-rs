@@ -59,7 +59,6 @@ async fn chat(
 
     let result = state.engine.run(conversation, |_| {}).await?;
 
-    // Extract the final assistant text
     let response_text = result
         .messages
         .iter()

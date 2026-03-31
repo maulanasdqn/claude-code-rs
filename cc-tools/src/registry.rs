@@ -23,7 +23,6 @@ impl ToolRegistry {
         self.tools.get(name)
     }
 
-    /// Generate the tool definitions array for the Anthropic API.
     pub fn tool_definitions(&self) -> Vec<Value> {
         self.tools
             .values()

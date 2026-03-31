@@ -8,7 +8,6 @@ use cc_types::{
 use cc_tools::ToolRegistry;
 use futures::StreamExt;
 
-/// Events emitted by the engine to callers for live display.
 #[derive(Debug, Clone)]
 pub enum EngineEvent {
     TextDelta(String),
@@ -40,8 +39,6 @@ impl QueryEngine {
         }
     }
 
-    /// Run the agentic loop. Calls `on_event` for each streaming event so callers
-    /// can display progress in real time.
     pub async fn run<F>(
         &self,
         mut conversation: Conversation,
@@ -100,12 +97,10 @@ impl QueryEngine {
                 }
             }
 
-            // Flush remaining text
             if !text_buf.is_empty() {
                 assistant_blocks.push(ContentBlock::Text { text: text_buf });
             }
 
-            // Flush any pending tool use
             if !current_tool_id.is_empty() {
                 let input: serde_json::Value = serde_json::from_str(&current_tool_json)
                     .unwrap_or(serde_json::Value::Object(Default::default()));
@@ -123,7 +118,6 @@ impl QueryEngine {
                 return Ok(conversation);
             }
 
-            // Execute tool calls
             let tool_uses: Vec<_> = assistant_blocks
                 .iter()
                 .filter_map(|b| match b {
