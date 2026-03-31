@@ -28,14 +28,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 regex = "1"
 
-claude-rust-errors = { path = "cc-errors" }
-claude-rust-types = { path = "cc-types" }
-claude-rust-tools = { path = "cc-tools" }
-claude-rust-provider = { path = "cc-provider" }
-claude-rust-engine = { path = "cc-engine" }
-claude-rust-server = { path = "cc-server" }
-claude-rust = { path = "cc-cli" }
-claude-rust-auth = { path = "cc-auth" }
-claude-rust-permission = { path = "cc-permission" }
-claude-rust-commands = { path = "cc-commands" }
-claude-rust-memory = { path = "cc-memory" }
+claude-rust-errors = { version = "0.2.0", path = "cc-errors" }
+claude-rust-types = { version = "0.2.0", path = "cc-types" }
+claude-rust-tools = { version = "0.2.0", path = "cc-tools" }
+claude-rust-provider = { version = "0.2.0", path = "cc-provider" }
+claude-rust-engine = { version = "0.2.0", path = "cc-engine" }
+claude-rust-server = { version = "0.2.0", path = "cc-server" }
+claude-rust = { version = "0.2.0", path = "cc-cli" }
+claude-rust-auth = { version = "0.2.0", path = "cc-auth" }
+claude-rust-permission = { version = "0.2.0", path = "cc-permission" }
+claude-rust-commands = { version = "0.2.0", path = "cc-commands" }
+claude-rust-memory = { version = "0.2.0", path = "cc-memory" }
