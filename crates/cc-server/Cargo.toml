@@ -1,0 +1,17 @@
+[package]
+name = "cc-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cc-errors = { workspace = true }
+cc-types = { workspace = true }
+cc-tools = { workspace = true }
+cc-provider = { workspace = true }
+cc-engine = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

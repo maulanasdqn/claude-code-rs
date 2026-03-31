@@ -1,0 +1,32 @@
+[workspace]
+members = [
+    "crates/cc-errors",
+    "crates/cc-types",
+    "crates/cc-tools",
+    "crates/cc-provider",
+    "crates/cc-engine",
+    "crates/cc-server",
+    "crates/cc-cli",
+]
+resolver = "3"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+reqwest = { version = "0.12", features = ["stream", "json"] }
+futures = "0.3"
+async-trait = "0.1"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+cc-errors = { path = "crates/cc-errors" }
+cc-types = { path = "crates/cc-types" }
+cc-tools = { path = "crates/cc-tools" }
+cc-provider = { path = "crates/cc-provider" }
+cc-engine = { path = "crates/cc-engine" }
+cc-server = { path = "crates/cc-server" }
+cc-cli = { path = "crates/cc-cli" }
