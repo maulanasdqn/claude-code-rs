@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use axum::Json;
 use axum::extract::State;
-use cc_engine::QueryEngine;
-use cc_errors::AppResult;
-use cc_types::{ContentBlock, Conversation, Message};
+use claude_rust_engine::QueryEngine;
+use claude_rust_errors::AppResult;
+use claude_rust_types::{ContentBlock, Conversation, Message};
 
 use super::dto::{ChatRequest, ChatResponse};
 
@@ -28,7 +28,7 @@ pub async fn chat(
         let message = match msg.role.as_str() {
             "user" => Message::user(&msg.content),
             _ => {
-                return Err(cc_errors::AppError::BadRequest(
+                return Err(claude_rust_errors::AppError::BadRequest(
                     "only 'user' role is supported in request".into(),
                 ));
             }
@@ -42,7 +42,7 @@ pub async fn chat(
         .messages
         .iter()
         .rev()
-        .find(|m| matches!(m.role, cc_types::Role::Assistant))
+        .find(|m| matches!(m.role, claude_rust_types::Role::Assistant))
         .map(|m| {
             m.content
                 .iter()

@@ -1,5 +1,5 @@
-use cc_auth::Credential;
-use cc_types::{ContentBlock, Conversation};
+use claude_rust_auth::Credential;
+use claude_rust_types::{ContentBlock, Conversation};
 use serde_json::{Value, json};
 
 use super::anthropic_provider::{BILLING_HEADER, MAX_TOKENS};

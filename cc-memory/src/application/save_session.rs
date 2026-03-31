@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use cc_errors::AppResult;
-use cc_types::Conversation;
+use claude_rust_errors::AppResult;
+use claude_rust_types::Conversation;
 
 use crate::domain::SessionRepository;
 

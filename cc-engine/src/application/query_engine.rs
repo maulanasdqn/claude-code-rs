@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use cc_errors::{AppError, AppResult};
-use cc_types::{
+use claude_rust_errors::{AppError, AppResult};
+use claude_rust_types::{
     ContentBlock, Conversation, Message, PermissionChecker, PermissionDecision, Provider,
     StopReason, StreamEvent,
 };
-use cc_tools::ToolRegistry;
+use claude_rust_tools::ToolRegistry;
 use futures::StreamExt;
 
 use crate::domain::EngineEvent;
@@ -151,7 +151,7 @@ impl QueryEngine {
             }
 
             conversation.push(Message {
-                role: cc_types::Role::User,
+                role: claude_rust_types::Role::User,
                 content: tool_results,
             });
         }
@@ -165,7 +165,7 @@ impl QueryEngine {
             .get(name)
             .ok_or_else(|| AppError::Tool(format!("unknown tool: {name}")))?;
 
-        if tool.permission_level() == cc_types::PermissionLevel::Dangerous {
+        if tool.permission_level() == claude_rust_types::PermissionLevel::Dangerous {
             let decision = self.permission.check(name, input).await?;
             if let PermissionDecision::Deny(reason) = decision {
                 return Err(AppError::PermissionDenied(reason));

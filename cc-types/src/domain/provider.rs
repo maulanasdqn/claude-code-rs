@@ -1,4 +1,4 @@
-use cc_errors::AppResult;
+use claude_rust_errors::AppResult;
 use futures::stream::BoxStream;
 use serde_json::Value;
 

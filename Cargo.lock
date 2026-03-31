@@ -121,28 +121,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-auth"
-version = "0.2.0"
-dependencies = [
- "cc-errors",
- "serde",
- "serde_json",
- "tracing",
-]
+name = "cfg-if"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "cc-cli"
+name = "claude-rust"
 version = "0.2.0"
 dependencies = [
- "cc-auth",
- "cc-commands",
- "cc-engine",
- "cc-errors",
- "cc-memory",
- "cc-permission",
- "cc-provider",
- "cc-tools",
- "cc-types",
+ "claude-rust-auth",
+ "claude-rust-commands",
+ "claude-rust-engine",
+ "claude-rust-errors",
+ "claude-rust-memory",
+ "claude-rust-permission",
+ "claude-rust-provider",
+ "claude-rust-tools",
+ "claude-rust-types",
  "serde_json",
  "tokio",
  "tracing",
@@ -150,29 +146,39 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-commands"
+name = "claude-rust-auth"
 version = "0.2.0"
 dependencies = [
- "cc-errors",
- "cc-types",
+ "claude-rust-errors",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "claude-rust-commands"
+version = "0.2.0"
+dependencies = [
+ "claude-rust-errors",
+ "claude-rust-types",
  "regex",
  "tokio",
 ]
 
 [[package]]
-name = "cc-engine"
+name = "claude-rust-engine"
 version = "0.2.0"
 dependencies = [
- "cc-errors",
- "cc-tools",
- "cc-types",
+ "claude-rust-errors",
+ "claude-rust-tools",
+ "claude-rust-types",
  "futures",
  "serde_json",
  "tracing",
 ]
 
 [[package]]
-name = "cc-errors"
+name = "claude-rust-errors"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -184,37 +190,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-memory"
+name = "claude-rust-memory"
 version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "cc-errors",
- "cc-types",
+ "claude-rust-errors",
+ "claude-rust-types",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "cc-permission"
+name = "claude-rust-permission"
 version = "0.2.0"
 dependencies = [
  "async-trait",
- "cc-errors",
- "cc-types",
+ "claude-rust-errors",
+ "claude-rust-types",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "cc-provider"
+name = "claude-rust-provider"
 version = "0.2.0"
 dependencies = [
  "async-trait",
- "cc-auth",
- "cc-errors",
- "cc-types",
+ "claude-rust-auth",
+ "claude-rust-errors",
+ "claude-rust-types",
  "futures",
  "reqwest",
  "serde",
@@ -223,16 +229,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-server"
+name = "claude-rust-server"
 version = "0.2.0"
 dependencies = [
  "axum",
- "cc-auth",
- "cc-engine",
- "cc-errors",
- "cc-provider",
- "cc-tools",
- "cc-types",
+ "claude-rust-auth",
+ "claude-rust-engine",
+ "claude-rust-errors",
+ "claude-rust-provider",
+ "claude-rust-tools",
+ "claude-rust-types",
  "serde",
  "serde_json",
  "tokio",
@@ -241,12 +247,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-tools"
+name = "claude-rust-tools"
 version = "0.2.0"
 dependencies = [
  "async-trait",
- "cc-errors",
- "cc-types",
+ "claude-rust-errors",
+ "claude-rust-types",
  "serde",
  "serde_json",
  "tokio",
@@ -254,21 +260,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-types"
+name = "claude-rust-types"
 version = "0.2.0"
 dependencies = [
  "async-trait",
- "cc-errors",
+ "claude-rust-errors",
  "futures",
  "serde",
  "serde_json",
 ]
-
-[[package]]
-name = "cfg-if"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "core-foundation"

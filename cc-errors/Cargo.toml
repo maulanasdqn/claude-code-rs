@@ -1,7 +1,10 @@
 [package]
-name = "cc-errors"
+name = "claude-rust-errors"
 version = "0.2.0"
 edition = "2024"
+description = "Centralized error types for the claude-rust workspace"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-code-rs"
 
 [dependencies]
 anyhow = { workspace = true }

@@ -1,10 +1,13 @@
 [package]
-name = "cc-types"
+name = "claude-rust-types"
 version = "0.2.0"
 edition = "2024"
+description = "Shared domain types for messages, providers, tools, and permissions"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-code-rs"
 
 [dependencies]
-cc-errors = { workspace = true }
+claude-rust-errors = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }

@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-use cc_errors::{AppError, AppResult};
-use cc_types::Conversation;
+use claude_rust_errors::{AppError, AppResult};
+use claude_rust_types::Conversation;
 use tokio::fs;
 
 use crate::domain::SessionRepository;

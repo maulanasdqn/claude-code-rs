@@ -1,12 +1,15 @@
 [package]
-name = "cc-provider"
+name = "claude-rust-provider"
 version = "0.2.0"
 edition = "2024"
+description = "Anthropic API provider with SSE streaming"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-code-rs"
 
 [dependencies]
-cc-auth = { workspace = true }
-cc-errors = { workspace = true }
-cc-types = { workspace = true }
+claude-rust-auth = { workspace = true }
+claude-rust-errors = { workspace = true }
+claude-rust-types = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 reqwest = { workspace = true }

@@ -1,7 +1,7 @@
 use std::io::Write;
 
-use cc_errors::{AppError, AppResult};
-use cc_types::{PermissionChecker, PermissionDecision};
+use claude_rust_errors::{AppError, AppResult};
+use claude_rust_types::{PermissionChecker, PermissionDecision};
 use serde_json::Value;
 
 use crate::application::format_permission_prompt;

@@ -1,4 +1,4 @@
-use cc_errors::AppResult;
+use claude_rust_errors::AppResult;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

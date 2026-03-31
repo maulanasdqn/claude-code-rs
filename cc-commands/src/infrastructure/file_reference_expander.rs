@@ -1,4 +1,4 @@
-use cc_errors::AppResult;
+use claude_rust_errors::AppResult;
 use crate::application::expand_file_references;
 use crate::domain::InputPreprocessor;
 

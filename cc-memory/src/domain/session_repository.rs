@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use cc_errors::AppResult;
-use cc_types::Conversation;
+use claude_rust_errors::AppResult;
+use claude_rust_types::Conversation;
 
 #[async_trait]
 pub trait SessionRepository: Send + Sync {

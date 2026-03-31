@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use cc_engine::EngineEvent;
+use claude_rust_engine::EngineEvent;
 
 use super::terminal::{BOLD, DIM, RED, RESET, YELLOW};
 

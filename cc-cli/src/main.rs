@@ -4,13 +4,13 @@ use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cc_commands::{CommandResult, execute_command, expand_file_references, parse_command};
-use cc_engine::QueryEngine;
-use cc_memory::FileSessionRepository;
-use cc_permission::InteractivePermissionChecker;
-use cc_provider::AnthropicProvider;
-use cc_tools::{BashTool, ReadTool, ToolRegistry};
-use cc_types::{Conversation, Message};
+use claude_rust_commands::{CommandResult, execute_command, expand_file_references, parse_command};
+use claude_rust_engine::QueryEngine;
+use claude_rust_memory::FileSessionRepository;
+use claude_rust_permission::InteractivePermissionChecker;
+use claude_rust_provider::AnthropicProvider;
+use claude_rust_tools::{BashTool, ReadTool, ToolRegistry};
+use claude_rust_types::{Conversation, Message};
 
 use infrastructure::event_renderer::render_event;
 use infrastructure::terminal::{
@@ -27,7 +27,7 @@ async fn main() {
         .with_writer(io::stderr)
         .init();
 
-    let credential = match cc_auth::resolve_credential() {
+    let credential = match claude_rust_auth::resolve_credential() {
         Ok(cred) => cred,
         Err(e) => {
             eprintln!("{RED}error:{RESET} {e}");
@@ -45,7 +45,7 @@ async fn main() {
     let permission = Arc::new(InteractivePermissionChecker);
     let engine = Arc::new(QueryEngine::new(provider.clone(), registry, permission));
 
-    let session_repo: Arc<dyn cc_memory::SessionRepository> = match FileSessionRepository::new() {
+    let session_repo: Arc<dyn claude_rust_memory::SessionRepository> = match FileSessionRepository::new() {
         Ok(repo) => Arc::new(repo),
         Err(e) => {
             tracing::warn!("failed to init session repository: {e}");
@@ -63,7 +63,7 @@ async fn main() {
 
     let system_prompt = make_system_prompt(&cwd);
 
-    let mut conversation = match cc_memory::load_session(&session_repo).await {
+    let mut conversation = match claude_rust_memory::load_session(&session_repo).await {
         Ok(Some(prev)) if !prev.messages.is_empty() => {
             if prompt_resume() {
                 let mut c = prev;
@@ -144,7 +144,7 @@ async fn main() {
         match result {
             Ok(updated) => {
                 conversation = updated;
-                if let Err(e) = cc_memory::save_session(&session_repo, &conversation).await {
+                if let Err(e) = claude_rust_memory::save_session(&session_repo, &conversation).await {
                     tracing::warn!("failed to save session: {e}");
                 }
             }
@@ -154,7 +154,7 @@ async fn main() {
         }
     }
 
-    if let Err(e) = cc_memory::save_session(&session_repo, &conversation).await {
+    if let Err(e) = claude_rust_memory::save_session(&session_repo, &conversation).await {
         tracing::warn!("failed to save final session: {e}");
     }
 

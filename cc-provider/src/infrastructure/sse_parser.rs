@@ -1,4 +1,4 @@
-use cc_types::{StopReason, StreamEvent};
+use claude_rust_types::{StopReason, StreamEvent};
 use serde_json::Value;
 
 pub fn parse_sse_event(event_type: &str, data: &str) -> Option<StreamEvent> {
