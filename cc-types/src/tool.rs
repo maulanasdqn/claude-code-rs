@@ -3,9 +3,7 @@ use serde_json::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PermissionLevel {
-    /// Always allowed without user confirmation.
     ReadOnly,
-    /// Requires explicit permission check.
     Dangerous,
 }
 

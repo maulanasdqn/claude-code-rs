@@ -1,7 +1,6 @@
 use cc_types::{StopReason, StreamEvent};
 use serde_json::Value;
 
-/// Parse a single SSE `data:` payload from the Anthropic streaming API into a `StreamEvent`.
 pub fn parse_sse_event(event_type: &str, data: &str) -> Option<StreamEvent> {
     let v: Value = serde_json::from_str(data).ok()?;
 
@@ -23,6 +22,7 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Option<StreamEvent> {
                         })
                     }
                 }
+                "thinking" => None,
                 _ => None,
             }
         }
@@ -36,9 +36,12 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Option<StreamEvent> {
                 "input_json_delta" => Some(StreamEvent::ToolUseDelta {
                     json_chunk: delta.get("partial_json")?.as_str()?.to_string(),
                 }),
+                "thinking_delta" => None,
                 _ => None,
             }
         }
+
+        "content_block_stop" => None,
 
         "message_delta" => {
             let delta = v.get("delta")?;
@@ -66,7 +69,6 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Option<StreamEvent> {
     }
 }
 
-/// Parse raw SSE bytes into (event_type, data) pairs.
 pub fn parse_sse_lines(text: &str) -> Vec<(String, String)> {
     let mut events = Vec::new();
     let mut current_event = String::new();
@@ -88,7 +90,6 @@ pub fn parse_sse_lines(text: &str) -> Vec<(String, String)> {
         }
     }
 
-    // Handle trailing event without final blank line
     if !current_data.is_empty() {
         events.push((current_event, current_data));
     }

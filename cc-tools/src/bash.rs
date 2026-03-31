@@ -65,7 +65,6 @@ impl Tool for BashTool {
             result.push_str("(no output)");
         }
 
-        // Truncate very large outputs
         if result.len() > 100_000 {
             result.truncate(100_000);
             result.push_str("\n... (truncated)");
