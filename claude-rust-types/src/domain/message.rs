@@ -25,6 +25,9 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         is_error: Option<bool>,
     },
+    Thinking {
+        thinking: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -35,6 +35,24 @@ impl ToolRegistry {
             })
             .collect()
     }
+
+    /// Return tool definitions filtered by a predicate on the tool trait.
+    pub fn tool_definitions_filtered<F>(&self, predicate: F) -> Vec<Value>
+    where
+        F: Fn(&dyn Tool) -> bool,
+    {
+        self.tools
+            .values()
+            .filter(|t| predicate(t.as_ref()))
+            .map(|t| {
+                json!({
+                    "name": t.name(),
+                    "description": t.description(),
+                    "input_schema": t.input_schema(),
+                })
+            })
+            .collect()
+    }
 }
 
 impl Default for ToolRegistry {

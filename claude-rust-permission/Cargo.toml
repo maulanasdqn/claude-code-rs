@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-permission"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Interactive terminal permission checker"
 license = "MIT"
@@ -9,6 +9,7 @@ repository = "https://github.com/maulanasdqn/claude-code-rs"
 [dependencies]
 claude-rust-errors = { workspace = true }
 claude-rust-types = { workspace = true }
+claude-rust-config = { workspace = true }
 async-trait = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

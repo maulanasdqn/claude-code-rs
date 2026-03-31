@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-tools"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Tool implementations for bash and file operations"
 license = "MIT"
@@ -14,3 +14,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+glob = { workspace = true }
+reqwest = { workspace = true }
+regex = { workspace = true }

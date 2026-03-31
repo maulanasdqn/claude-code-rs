@@ -11,6 +11,7 @@ members = [
     "claude-rust-permission",
     "claude-rust-commands",
     "claude-rust-memory",
+    "claude-rust-config",
 ]
 resolver = "3"
 
@@ -27,15 +28,17 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 regex = "1"
+glob = "0.3"
 
-claude-rust-errors = { version = "0.2.0", path = "claude-rust-errors" }
-claude-rust-types = { version = "0.2.0", path = "claude-rust-types" }
-claude-rust-tools = { version = "0.2.0", path = "claude-rust-tools" }
-claude-rust-provider = { version = "0.2.0", path = "claude-rust-provider" }
-claude-rust-engine = { version = "0.2.0", path = "claude-rust-engine" }
-claude-rust-server = { version = "0.2.0", path = "claude-rust-server" }
-claude-rust = { version = "0.2.0", path = "claude-rust" }
-claude-rust-auth = { version = "0.2.0", path = "claude-rust-auth" }
-claude-rust-permission = { version = "0.2.0", path = "claude-rust-permission" }
-claude-rust-commands = { version = "0.2.0", path = "claude-rust-commands" }
-claude-rust-memory = { version = "0.2.0", path = "claude-rust-memory" }
+claude-rust-errors = { version = "0.3.0", path = "claude-rust-errors" }
+claude-rust-types = { version = "0.3.0", path = "claude-rust-types" }
+claude-rust-tools = { version = "0.3.0", path = "claude-rust-tools" }
+claude-rust-provider = { version = "0.3.0", path = "claude-rust-provider" }
+claude-rust-engine = { version = "0.3.0", path = "claude-rust-engine" }
+claude-rust-server = { version = "0.3.0", path = "claude-rust-server" }
+claude-rust = { version = "0.3.0", path = "claude-rust" }
+claude-rust-auth = { version = "0.3.0", path = "claude-rust-auth" }
+claude-rust-permission = { version = "0.3.0", path = "claude-rust-permission" }
+claude-rust-commands = { version = "0.3.0", path = "claude-rust-commands" }
+claude-rust-memory = { version = "0.3.0", path = "claude-rust-memory" }
+claude-rust-config = { version = "0.3.0", path = "claude-rust-config" }
