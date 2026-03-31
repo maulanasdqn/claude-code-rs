@@ -44,7 +44,24 @@ impl QueryEngine {
         for turn in 0..self.max_turns {
             tracing::info!(turn, "starting provider turn");
 
-            let mut stream = self.provider.stream(&conversation, &tools).await?;
+            let mut stream = {
+                let mut attempts = 0;
+                loop {
+                    match self.provider.stream(&conversation, &tools).await {
+                        Ok(s) => break s,
+                        Err(e) if attempts < 3 && e.to_string().contains("verloaded") => {
+                            attempts += 1;
+                            let delay = std::time::Duration::from_secs(2u64.pow(attempts));
+                            on_event(EngineEvent::Error(format!(
+                                "API overloaded, retrying in {}s...",
+                                delay.as_secs()
+                            )));
+                            tokio::time::sleep(delay).await;
+                        }
+                        Err(e) => return Err(e),
+                    }
+                }
+            };
 
             let mut assistant_blocks: Vec<ContentBlock> = Vec::new();
             let mut current_tool_id = String::new();

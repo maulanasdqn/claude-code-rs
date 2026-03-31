@@ -93,6 +93,15 @@ async fn main() {
         };
 
         if let Some(cmd) = parse_command(&input) {
+            if let claude_rust_commands::SlashCommand::Model(ref name) = cmd {
+                if name.is_empty() {
+                    println!("\nCurrent model: {}\n", provider.model_name());
+                } else {
+                    provider.set_model(name);
+                    println!("\nModel set to: {name}\n");
+                }
+                continue;
+            }
             match execute_command(cmd) {
                 CommandResult::Output(text) => {
                     println!("\n{text}\n");

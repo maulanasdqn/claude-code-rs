@@ -19,6 +19,10 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
         return Some(SlashCommand::Quit);
     }
 
+    if trimmed == "/model" {
+        return Some(SlashCommand::Model(String::new()));
+    }
+
     if let Some(rest) = trimmed.strip_prefix("/model ") {
         let name = rest.trim();
         if !name.is_empty() {
