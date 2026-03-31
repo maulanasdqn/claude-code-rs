@@ -10,7 +10,7 @@ pub const YELLOW: &str = "\x1b[33m";
 
 pub fn print_banner() {
     println!("{BOLD}{BLUE}╭─────────────────────────────────╮{RESET}");
-    println!("{BOLD}{BLUE}│  Claude Code (Rust)  v0.1.0     │{RESET}");
+    println!("{BOLD}{BLUE}│  Claude Code (Rust)  v0.2.0     │{RESET}");
     println!("{BOLD}{BLUE}╰─────────────────────────────────╯{RESET}");
     println!("{DIM}Type a message to chat. /help for commands. Ctrl+C to exit.{RESET}");
     println!();
