@@ -1,47 +1,21 @@
-use std::io::{self, BufRead, Write};
+mod infrastructure;
+
+use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cc_engine::{EngineEvent, QueryEngine};
+use cc_commands::{CommandResult, execute_command, expand_file_references, parse_command};
+use cc_engine::QueryEngine;
+use cc_memory::FileSessionRepository;
+use cc_permission::InteractivePermissionChecker;
 use cc_provider::AnthropicProvider;
 use cc_tools::{BashTool, ReadTool, ToolRegistry};
-use cc_types::{AllowAll, Conversation, Message};
+use cc_types::{Conversation, Message};
 
-const BLUE: &str = "\x1b[34m";
-const DIM: &str = "\x1b[2m";
-const BOLD: &str = "\x1b[1m";
-const RESET: &str = "\x1b[0m";
-const GREEN: &str = "\x1b[32m";
-const RED: &str = "\x1b[31m";
-const YELLOW: &str = "\x1b[33m";
-
-fn print_banner() {
-    println!("{BOLD}{BLUE}╭─────────────────────────────────╮{RESET}");
-    println!("{BOLD}{BLUE}│  Claude Code (Rust)  v0.1.0     │{RESET}");
-    println!("{BOLD}{BLUE}╰─────────────────────────────────╯{RESET}");
-    println!("{DIM}Type a message to chat. Ctrl+C to exit.{RESET}");
-    println!();
-}
-
-fn read_user_input() -> Option<String> {
-    print!("{BOLD}{GREEN}> {RESET}");
-    io::stdout().flush().ok()?;
-
-    let stdin = io::stdin();
-    let mut line = String::new();
-    match stdin.lock().read_line(&mut line) {
-        Ok(0) => None,
-        Ok(_) => {
-            let trimmed = line.trim().to_string();
-            if trimmed.is_empty() {
-                Some(String::new())
-            } else {
-                Some(trimmed)
-            }
-        }
-        Err(_) => None,
-    }
-}
+use infrastructure::event_renderer::render_event;
+use infrastructure::terminal::{
+    DIM, RED, RESET, make_system_prompt, print_banner, prompt_resume, read_user_input,
+};
 
 #[tokio::main]
 async fn main() {
@@ -68,8 +42,18 @@ async fn main() {
     registry.register(Arc::new(ReadTool));
     let registry = Arc::new(registry);
 
-    let permission = Arc::new(AllowAll);
-    let engine = Arc::new(QueryEngine::new(provider, registry, permission));
+    let permission = Arc::new(InteractivePermissionChecker);
+    let engine = Arc::new(QueryEngine::new(provider.clone(), registry, permission));
+
+    let session_repo: Arc<dyn cc_memory::SessionRepository> = match FileSessionRepository::new() {
+        Ok(repo) => Arc::new(repo),
+        Err(e) => {
+            tracing::warn!("failed to init session repository: {e}");
+            Arc::new(FileSessionRepository::with_dir(
+                std::path::PathBuf::from(".claude-code-rs/sessions"),
+            ))
+        }
+    };
 
     print_banner();
 
@@ -77,13 +61,29 @@ async fn main() {
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| ".".into());
 
-    let mut conversation = Conversation::default();
-    conversation.system = Some(format!(
-        "You are Claude Code, an interactive CLI assistant. \
-         The user's working directory is: {cwd}. \
-         You have access to `bash` and `read` tools. \
-         Be concise and helpful. Use tools when needed to answer questions."
-    ));
+    let system_prompt = make_system_prompt(&cwd);
+
+    let mut conversation = match cc_memory::load_session(&session_repo).await {
+        Ok(Some(prev)) if !prev.messages.is_empty() => {
+            if prompt_resume() {
+                let mut c = prev;
+                if c.system.is_none() {
+                    c.system = Some(system_prompt.clone());
+                }
+                println!("{DIM}Session resumed ({} messages).{RESET}\n", c.messages.len());
+                c
+            } else {
+                let mut c = Conversation::default();
+                c.system = Some(system_prompt.clone());
+                c
+            }
+        }
+        _ => {
+            let mut c = Conversation::default();
+            c.system = Some(system_prompt.clone());
+            c
+        }
+    };
 
     loop {
         let input = match read_user_input() {
@@ -92,11 +92,24 @@ async fn main() {
             None => break,
         };
 
-        if input == "/quit" || input == "/exit" {
-            break;
+        if let Some(cmd) = parse_command(&input) {
+            match execute_command(cmd) {
+                CommandResult::Output(text) => {
+                    println!("\n{text}\n");
+                    continue;
+                }
+                CommandResult::ReplaceConversation(mut c) => {
+                    c.system = Some(system_prompt.clone());
+                    conversation = c;
+                    println!("\n{DIM}Conversation cleared.{RESET}\n");
+                    continue;
+                }
+                CommandResult::Quit => break,
+            }
         }
 
-        conversation.push(Message::user(&input));
+        let expanded = expand_file_references(&input);
+        conversation.push(Message::user(&expanded));
 
         let spinning = Arc::new(AtomicBool::new(true));
         let spinning_clone = spinning.clone();
@@ -121,65 +134,7 @@ async fn main() {
                 if spinning_ref.load(Ordering::Relaxed) {
                     spinning_ref.store(false, Ordering::Relaxed);
                 }
-
-                match event {
-                    EngineEvent::TextDelta(text) => {
-                        if !in_text {
-                            print!("\n{BOLD}");
-                            in_text = true;
-                        }
-                        print!("{text}");
-                        io::stdout().flush().ok();
-                    }
-                    EngineEvent::ToolStart { name, .. } => {
-                        if in_text {
-                            println!("{RESET}");
-                            in_text = false;
-                        }
-                        print!("\n  {DIM}{YELLOW}[tool: {name}]{RESET} ");
-                        io::stdout().flush().ok();
-                    }
-                    EngineEvent::ToolInput { json_chunk } => {
-                        print!("{DIM}{json_chunk}{RESET}");
-                        io::stdout().flush().ok();
-                    }
-                    EngineEvent::ToolResult {
-                        name,
-                        output,
-                        is_error,
-                    } => {
-                        println!();
-                        if is_error {
-                            println!("  {RED}[{name} error]: {output}{RESET}");
-                        } else {
-                            let preview = if output.len() > 500 {
-                                format!("{}...", &output[..500])
-                            } else {
-                                output
-                            };
-                            for line in preview.lines().take(15) {
-                                println!("  {DIM}| {line}{RESET}");
-                            }
-                            if preview.lines().count() > 15 {
-                                println!("  {DIM}| ...{RESET}");
-                            }
-                        }
-                    }
-                    EngineEvent::TurnComplete => {
-                        if in_text {
-                            print!("{RESET}");
-                            in_text = false;
-                        }
-                        println!("\n");
-                    }
-                    EngineEvent::Error(msg) => {
-                        if in_text {
-                            print!("{RESET}");
-                            in_text = false;
-                        }
-                        eprintln!("\n{RED}error: {msg}{RESET}\n");
-                    }
-                }
+                render_event(event, &mut in_text);
             })
             .await;
 
@@ -189,11 +144,18 @@ async fn main() {
         match result {
             Ok(updated) => {
                 conversation = updated;
+                if let Err(e) = cc_memory::save_session(&session_repo, &conversation).await {
+                    tracing::warn!("failed to save session: {e}");
+                }
             }
             Err(e) => {
                 eprintln!("{RED}error: {e}{RESET}\n");
             }
         }
+    }
+
+    if let Err(e) = cc_memory::save_session(&session_repo, &conversation).await {
+        tracing::warn!("failed to save final session: {e}");
     }
 
     println!("{DIM}Goodbye!{RESET}");

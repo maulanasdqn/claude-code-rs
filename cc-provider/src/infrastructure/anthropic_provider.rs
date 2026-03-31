@@ -1,24 +1,25 @@
 use cc_auth::Credential;
 use cc_errors::{AppError, AppResult};
-use cc_types::{ContentBlock, Conversation, Provider, StreamEvent};
+use cc_types::{Conversation, Provider, StreamEvent};
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use reqwest::Client;
-use serde_json::{Value, json};
+use serde_json::Value;
 
-use crate::stream::{parse_sse_event, parse_sse_lines};
+use super::sse_parser::{parse_sse_event, parse_sse_lines};
+use super::request_builder::build_request_body;
 
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
-const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
-const MAX_TOKENS: u32 = 8192;
+pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
+pub(crate) const MAX_TOKENS: u32 = 8192;
 
-const OAUTH_BETA: &str = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14";
-const BILLING_HEADER: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli; cch=cbde1;";
+pub(crate) const OAUTH_BETA: &str = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14";
+pub(crate) const BILLING_HEADER: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli; cch=cbde1;";
 
 pub struct AnthropicProvider {
     client: Client,
     credential: Credential,
-    model: String,
+    model: std::sync::Mutex<String>,
 }
 
 impl AnthropicProvider {
@@ -31,84 +32,24 @@ impl AnthropicProvider {
 
         Self {
             client: Client::new(),
-            model: std::env::var("MODEL").unwrap_or_else(|_| default_model.to_string()),
+            model: std::sync::Mutex::new(
+                std::env::var("MODEL").unwrap_or_else(|_| default_model.to_string()),
+            ),
             credential,
         }
     }
 
-    fn build_request_body(&self, conversation: &Conversation, tools: &[Value]) -> Value {
-        let messages: Vec<Value> = conversation
-            .messages
-            .iter()
-            .map(|msg| {
-                let content: Vec<Value> = msg
-                    .content
-                    .iter()
-                    .map(|block| match block {
-                        ContentBlock::Text { text } => json!({
-                            "type": "text",
-                            "text": text,
-                        }),
-                        ContentBlock::ToolUse { id, name, input } => json!({
-                            "type": "tool_use",
-                            "id": id,
-                            "name": name,
-                            "input": input,
-                        }),
-                        ContentBlock::ToolResult {
-                            tool_use_id,
-                            content,
-                            is_error,
-                        } => {
-                            let mut v = json!({
-                                "type": "tool_result",
-                                "tool_use_id": tool_use_id,
-                                "content": content,
-                            });
-                            if let Some(true) = is_error {
-                                v["is_error"] = json!(true);
-                            }
-                            v
-                        }
-                    })
-                    .collect();
-
-                json!({
-                    "role": serde_json::to_value(&msg.role).unwrap_or(json!("user")),
-                    "content": content,
-                })
-            })
-            .collect();
-
-        let mut body = json!({
-            "model": self.model,
-            "max_tokens": MAX_TOKENS,
-            "messages": messages,
-            "stream": true,
-        });
-
-        if self.credential.is_oauth() {
-            let mut system_blocks = vec![json!({
-                "type": "text",
-                "text": BILLING_HEADER,
-            })];
-            if let Some(system) = &conversation.system {
-                system_blocks.push(json!({
-                    "type": "text",
-                    "text": system,
-                }));
-            }
-            body["system"] = json!(system_blocks);
-            body["thinking"] = json!({"type": "adaptive"});
-        } else if let Some(system) = &conversation.system {
-            body["system"] = json!(system);
+    pub fn set_model(&self, model: &str) {
+        if let Ok(mut m) = self.model.lock() {
+            *m = model.to_string();
         }
+    }
 
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-        }
-
-        body
+    pub fn model_name(&self) -> String {
+        self.model
+            .lock()
+            .map(|m| m.clone())
+            .unwrap_or_default()
     }
 }
 
@@ -120,12 +61,13 @@ impl Provider for AnthropicProvider {
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
         let base_url = self.credential.base_url();
-        let body = self.build_request_body(conversation, tools);
+        let model_display = self.model_name();
+        let body = build_request_body(&self.credential, &model_display, conversation, tools);
 
         let request = match &self.credential {
             Credential::ClaudeCodeOAuth { access_token, .. } => {
                 let url = format!("{base_url}/v1/messages?beta=true");
-                tracing::debug!(model = %self.model, url = %url, "sending OAuth request");
+                tracing::debug!(model = %model_display, url = %url, "sending OAuth request");
 
                 self.client
                     .post(&url)
@@ -139,7 +81,7 @@ impl Provider for AnthropicProvider {
             }
             Credential::ApiKey { api_key, .. } => {
                 let url = format!("{base_url}/v1/messages");
-                tracing::debug!(model = %self.model, url = %url, "sending API key request");
+                tracing::debug!(model = %model_display, url = %url, "sending API key request");
 
                 self.client
                     .post(&url)

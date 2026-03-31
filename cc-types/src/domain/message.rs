@@ -49,7 +49,7 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Conversation {
     pub system: Option<String>,
     pub messages: Vec<Message>,

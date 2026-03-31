@@ -1,88 +1,14 @@
+mod infrastructure;
+
 use std::sync::Arc;
 
-use axum::routing::{get, post};
-use axum::{Json, Router};
 use cc_engine::QueryEngine;
-use cc_errors::AppResult;
 use cc_provider::AnthropicProvider;
 use cc_tools::{BashTool, ReadTool, ToolRegistry};
-use cc_types::{AllowAll, ContentBlock, Conversation, Message};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use cc_types::AllowAll;
 
-#[derive(Clone)]
-struct AppState {
-    engine: Arc<QueryEngine>,
-}
-
-#[derive(Deserialize)]
-struct ChatRequest {
-    messages: Vec<ChatMessage>,
-    #[serde(default)]
-    system: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct ChatMessage {
-    role: String,
-    content: String,
-}
-
-#[derive(Serialize)]
-struct ChatResponse {
-    response: String,
-    messages: Value,
-}
-
-async fn health() -> &'static str {
-    "ok"
-}
-
-async fn chat(
-    axum::extract::State(state): axum::extract::State<AppState>,
-    Json(req): Json<ChatRequest>,
-) -> AppResult<Json<ChatResponse>> {
-    let mut conversation = Conversation::default();
-    conversation.system = req.system;
-
-    for msg in &req.messages {
-        let message = match msg.role.as_str() {
-            "user" => Message::user(&msg.content),
-            _ => {
-                return Err(cc_errors::AppError::BadRequest(
-                    "only 'user' role is supported in request".into(),
-                ));
-            }
-        };
-        conversation.push(message);
-    }
-
-    let result = state.engine.run(conversation, |_| {}).await?;
-
-    let response_text = result
-        .messages
-        .iter()
-        .rev()
-        .find(|m| matches!(m.role, cc_types::Role::Assistant))
-        .map(|m| {
-            m.content
-                .iter()
-                .filter_map(|b| match b {
-                    ContentBlock::Text { text } => Some(text.as_str()),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-                .join("")
-        })
-        .unwrap_or_default();
-
-    let messages = serde_json::to_value(&result.messages).unwrap_or_default();
-
-    Ok(Json(ChatResponse {
-        response: response_text,
-        messages,
-    }))
-}
+use infrastructure::http::handlers::AppState;
+use infrastructure::http::routes::build_router;
 
 #[tokio::main]
 async fn main() {
@@ -102,15 +28,10 @@ async fn main() {
     let registry = Arc::new(registry);
 
     let permission = Arc::new(AllowAll);
-
     let engine = Arc::new(QueryEngine::new(provider, registry, permission));
 
     let state = AppState { engine };
-
-    let app = Router::new()
-        .route("/health", get(health))
-        .route("/chat", post(chat))
-        .with_state(state);
+    let app = build_router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await

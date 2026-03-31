@@ -2,7 +2,7 @@ use cc_errors::AppResult;
 use futures::stream::BoxStream;
 use serde_json::Value;
 
-use crate::message::Conversation;
+use super::message::Conversation;
 
 #[derive(Debug, Clone)]
 pub enum StopReason {
