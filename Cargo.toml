@@ -8,6 +8,9 @@ members = [
     "cc-server",
     "cc-cli",
     "cc-auth",
+    "cc-permission",
+    "cc-commands",
+    "cc-memory",
 ]
 resolver = "3"
 
@@ -23,6 +26,7 @@ anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+regex = "1"
 
 cc-errors = { path = "cc-errors" }
 cc-types = { path = "cc-types" }
@@ -32,3 +36,6 @@ cc-engine = { path = "cc-engine" }
 cc-server = { path = "cc-server" }
 cc-cli = { path = "cc-cli" }
 cc-auth = { path = "cc-auth" }
+cc-permission = { path = "cc-permission" }
+cc-commands = { path = "cc-commands" }
+cc-memory = { path = "cc-memory" }

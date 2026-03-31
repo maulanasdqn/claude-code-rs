@@ -1,7 +1,6 @@
-pub mod bash;
-pub mod read;
-pub mod registry;
+pub mod application;
+pub mod domain;
+pub mod infrastructure;
 
-pub use bash::BashTool;
-pub use read::ReadTool;
-pub use registry::ToolRegistry;
+pub use application::ToolRegistry;
+pub use infrastructure::{BashTool, ReadTool};

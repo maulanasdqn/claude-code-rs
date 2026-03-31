@@ -1,4 +1,5 @@
-pub mod anthropic;
-pub mod stream;
+pub mod domain;
+pub mod application;
+pub mod infrastructure;
 
-pub use anthropic::AnthropicProvider;
+pub use infrastructure::AnthropicProvider;
