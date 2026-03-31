@@ -7,6 +7,7 @@ members = [
     "cc-engine",
     "cc-server",
     "cc-cli",
+    "cc-auth",
 ]
 resolver = "3"
 
@@ -30,3 +31,4 @@ cc-provider = { path = "cc-provider" }
 cc-engine = { path = "cc-engine" }
 cc-server = { path = "cc-server" }
 cc-cli = { path = "cc-cli" }
+cc-auth = { path = "cc-auth" }

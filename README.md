@@ -7,13 +7,14 @@ The TypeScript original has ~1,900 files. This project distills it to its essenc
 ## Architecture
 
 ```
-cc-errors   - AppError enum, axum IntoResponse impl
-cc-types    - Shared traits (Tool, Provider, PermissionChecker) and message types
-cc-tools    - Tool implementations (BashTool, ReadTool) and ToolRegistry
-cc-provider - Anthropic HTTP + SSE streaming client
-cc-engine   - Agentic tool-use loop with streaming callbacks
-cc-cli      - Interactive terminal REPL (like Claude Code)
-cc-server   - axum HTTP server (POST /chat, GET /health)
+cc-auth      - Credential resolution (macOS Keychain OAuth + API key fallback)
+cc-errors    - AppError enum, axum IntoResponse impl
+cc-types     - Shared traits (Tool, Provider, PermissionChecker) and message types
+cc-tools     - Tool implementations (BashTool, ReadTool) and ToolRegistry
+cc-provider  - Anthropic HTTP + SSE streaming client
+cc-engine    - Agentic tool-use loop with streaming callbacks
+cc-cli       - Interactive terminal REPL (like Claude Code)
+cc-server    - axum HTTP server (POST /chat, GET /health)
 ```
 
 ### Dependency DAG
@@ -22,6 +23,7 @@ cc-server   - axum HTTP server (POST /chat, GET /health)
 cc-errors
   <- cc-types
        <- cc-tools
+  <- cc-auth
        <- cc-provider
             <- cc-engine
                  <- cc-cli
@@ -40,6 +42,15 @@ user input
 ```
 
 Bounded by `max_turns` (default 20). Tool errors are sent back as `is_error: true` so the model can self-correct.
+
+## Authentication
+
+Credentials are resolved automatically in this order:
+
+1. **`ANTHROPIC_API_KEY` environment variable** -- uses `api.anthropic.com` with `x-api-key` header.
+2. **macOS Keychain** -- reads the OAuth token stored by Claude Code (service: `Claude Code-credentials`). Uses `api.claude.ai` with `Authorization: Bearer` header.
+
+If you already have Claude Code installed and logged in, it just works -- no extra configuration needed.
 
 ## Key Traits
 
@@ -92,15 +103,20 @@ The default `AllowAll` implementation permits every tool call. Replace it with y
 ## Prerequisites
 
 - Rust 1.75+ (2024 edition)
-- An [Anthropic API key](https://console.anthropic.com/)
+- One of:
+  - An [Anthropic API key](https://console.anthropic.com/), or
+  - An existing Claude Code installation (credentials are read from the macOS Keychain)
 
 ## Quick Start
 
 ### Interactive CLI
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+# Using your existing Claude Code session (no env var needed)
 cargo run -p cc-cli
+
+# Or with an explicit API key
+ANTHROPIC_API_KEY=sk-ant-... cargo run -p cc-cli
 ```
 
 This starts an interactive REPL. Type a message and press Enter. The assistant streams its response to the terminal. Tool calls are displayed inline with their output.
@@ -112,7 +128,6 @@ Commands:
 ### HTTP Server
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
 cargo run -p cc-server
 ```
 
@@ -146,8 +161,8 @@ All configuration is via environment variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | (required) | Your Anthropic API key |
-| `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | Override the API base URL |
+| `ANTHROPIC_API_KEY` | (auto-detected) | API key. Falls back to macOS Keychain if unset |
+| `ANTHROPIC_BASE_URL` | auto (`api.anthropic.com` or `api.claude.ai`) | Override the API base URL |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Model to use |
 | `RUST_LOG` | `info,cc_provider=debug` (server) / `warn` (cli) | Log level filter |
 
@@ -186,33 +201,35 @@ Implement `cc_types::Provider` to target a different LLM API. The engine is prov
 
 ```
 .
-├── Cargo.toml          Workspace root
+├── Cargo.toml           Workspace root
+├── cc-auth/
+│   └── src/lib.rs       Credential resolution (Keychain + env)
 ├── cc-errors/
-│   └── src/lib.rs      AppError, IntoResponse
+│   └── src/lib.rs       AppError, IntoResponse
 ├── cc-types/
 │   └── src/
-│       ├── lib.rs      Re-exports
-│       ├── message.rs  Message, ContentBlock, Conversation
-│       ├── tool.rs     Tool trait, PermissionLevel
-│       ├── provider.rs Provider trait, StreamEvent, StopReason
+│       ├── lib.rs       Re-exports
+│       ├── message.rs   Message, ContentBlock, Conversation
+│       ├── tool.rs      Tool trait, PermissionLevel
+│       ├── provider.rs  Provider trait, StreamEvent, StopReason
 │       └── permission.rs PermissionChecker trait, AllowAll
 ├── cc-tools/
 │   └── src/
-│       ├── lib.rs      Re-exports
-│       ├── bash.rs     BashTool
-│       ├── read.rs     ReadTool
-│       └── registry.rs ToolRegistry
+│       ├── lib.rs       Re-exports
+│       ├── bash.rs      BashTool
+│       ├── read.rs      ReadTool
+│       └── registry.rs  ToolRegistry
 ├── cc-provider/
 │   └── src/
-│       ├── lib.rs      Re-exports
+│       ├── lib.rs       Re-exports
 │       ├── anthropic.rs AnthropicProvider
-│       └── stream.rs   SSE parser
+│       └── stream.rs    SSE parser
 ├── cc-engine/
-│   └── src/lib.rs      QueryEngine agentic loop
+│   └── src/lib.rs       QueryEngine agentic loop
 ├── cc-cli/
-│   └── src/main.rs     Interactive terminal REPL
+│   └── src/main.rs      Interactive terminal REPL
 └── cc-server/
-    └── src/main.rs     axum HTTP server
+    └── src/main.rs      axum HTTP server
 ```
 
 ## Design Decisions
@@ -222,6 +239,7 @@ Implement `cc_types::Provider` to target a different LLM API. The engine is prov
 - **Streaming callbacks.** The engine emits `EngineEvent`s during execution so the CLI can print text as it arrives and show tool activity in real time.
 - **No framework magic.** Direct use of reqwest for HTTP, manual SSE parsing, explicit wiring. Easy to follow and debug.
 - **Tool errors as messages.** When a tool fails, the error is sent back to the model as a tool result with `is_error: true`, allowing the model to recover or try a different approach.
+- **Automatic credential resolution.** Reuses your existing Claude Code OAuth session from the macOS Keychain, so no manual API key setup is needed.
 
 ## License
 

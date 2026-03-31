@@ -1,3 +1,4 @@
+use cc_auth::Credential;
 use cc_errors::{AppError, AppResult};
 use cc_types::{ContentBlock, Conversation, Provider, StreamEvent};
 use futures::stream::BoxStream;
@@ -7,24 +8,20 @@ use serde_json::{Value, json};
 
 use crate::stream::{parse_sse_event, parse_sse_lines};
 
-const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 const DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
 const MAX_TOKENS: u32 = 8192;
 
 pub struct AnthropicProvider {
     client: Client,
-    api_key: String,
-    base_url: String,
+    credential: Credential,
     model: String,
 }
 
 impl AnthropicProvider {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(credential: Credential) -> Self {
         Self {
             client: Client::new(),
-            api_key,
-            base_url: std::env::var("ANTHROPIC_BASE_URL")
-                .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string()),
+            credential,
             model: std::env::var("ANTHROPIC_MODEL")
                 .unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
         }
@@ -100,17 +97,30 @@ impl Provider for AnthropicProvider {
         conversation: &Conversation,
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
-        let url = format!("{}/v1/messages", self.base_url);
+        let base_url = std::env::var("ANTHROPIC_BASE_URL")
+            .unwrap_or_else(|_| self.credential.base_url().to_string());
+        let url = format!("{base_url}/v1/messages");
         let body = self.build_request_body(conversation, tools);
 
-        tracing::debug!(model = %self.model, "sending request to Anthropic API");
+        tracing::debug!(model = %self.model, url = %url, "sending request");
 
-        let response = self
+        let mut req = self
             .client
             .post(&url)
-            .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
-            .header("content-type", "application/json")
+            .header("content-type", "application/json");
+
+        // OAuth uses Authorization: Bearer, API key uses x-api-key
+        if self.credential.is_oauth() {
+            req = req.header(
+                "Authorization",
+                format!("Bearer {}", self.credential.auth_header_value()),
+            );
+        } else {
+            req = req.header("x-api-key", self.credential.auth_header_value());
+        }
+
+        let response = req
             .json(&body)
             .send()
             .await
