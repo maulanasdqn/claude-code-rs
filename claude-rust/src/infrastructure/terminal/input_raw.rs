@@ -8,11 +8,14 @@ pub(super) fn read_line_raw(
     inner_width: usize,
     mode: &Arc<AtomicU8>,
     history: &[String],
+    skill_names: &[String],
 ) -> Option<String> {
     let mut buf = String::new();
     let mut cursor_pos: usize = 0;
     let mut hist_idx: Option<usize> = None;
     let mut saved_buf = String::new();
+    let mut extra_lines: usize = 0;
+    let mut vim_mode: bool = false;
 
     loop {
         if !event::poll(std::time::Duration::from_millis(100)).unwrap_or(false) {
@@ -29,8 +32,11 @@ pub(super) fn read_line_raw(
             &mut hist_idx,
             &mut saved_buf,
             history,
+            skill_names,
             inner_width,
             mode,
+            &mut extra_lines,
+            &mut vim_mode,
         ) {
             return result;
         }

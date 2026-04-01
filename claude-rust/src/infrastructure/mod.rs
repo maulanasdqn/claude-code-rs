@@ -1,5 +1,9 @@
+pub mod agent_tool;
 pub mod app_loop;
+pub mod command_extras;
 pub mod command_handler;
 pub mod event_renderer;
-pub mod spinner;
+pub mod input_history;
+pub mod run_engine;
+pub mod skills;
 pub mod terminal;

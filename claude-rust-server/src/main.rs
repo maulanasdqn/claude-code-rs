@@ -2,6 +2,7 @@ mod infrastructure;
 
 use std::sync::Arc;
 
+use claude_rust_config::HooksConfig;
 use claude_rust_engine::QueryEngine;
 use claude_rust_provider::AnthropicProvider;
 use claude_rust_tools::{BashTool, ReadTool, ToolRegistry};
@@ -29,7 +30,7 @@ async fn main() {
     let registry = Arc::new(registry);
 
     let permission = Arc::new(AllowAll);
-    let engine = Arc::new(QueryEngine::new(provider, registry, permission, mode));
+    let engine = Arc::new(QueryEngine::new(provider, registry, permission, mode, HooksConfig::default()));
 
     let state = AppState { engine };
     let app = build_router(state);

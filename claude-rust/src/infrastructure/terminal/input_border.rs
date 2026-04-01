@@ -3,7 +3,7 @@ use std::sync::{Arc, atomic::AtomicU8};
 
 use claude_rust_types::PermissionMode;
 
-use super::{BOLD, CYAN, DIM, MAGENTA, RESET, YELLOW};
+use super::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, YELLOW};
 use super::git::git_branch;
 
 pub(super) fn build_top_border(inner: usize, mode: &Arc<AtomicU8>) -> String {
@@ -14,11 +14,13 @@ pub(super) fn build_top_border(inner: usize, mode: &Arc<AtomicU8>) -> String {
         PermissionMode::Normal => "",
         PermissionMode::Plan => " PLAN ",
         PermissionMode::AutoAccept => " AUTO ",
+        PermissionMode::Bypass => " BYPASS ",
     };
     let badge_color = match mode_val {
         PermissionMode::Normal => CYAN,
         PermissionMode::Plan => MAGENTA,
         PermissionMode::AutoAccept => YELLOW,
+        PermissionMode::Bypass => RED,
     };
 
     let branch_vis = branch

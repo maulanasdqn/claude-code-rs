@@ -19,8 +19,17 @@ pub enum AppError {
     #[error("Max turns ({0}) exceeded")]
     MaxTurnsExceeded(usize),
 
+    #[error("Interrupted")]
+    Interrupted,
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
+}
+
+impl AppError {
+    pub fn is_interrupted(&self) -> bool {
+        matches!(self, AppError::Interrupted)
+    }
 }
 
 impl IntoResponse for AppError {
@@ -29,6 +38,7 @@ impl IntoResponse for AppError {
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AppError::PermissionDenied(_) => (StatusCode::FORBIDDEN, self.to_string()),
             AppError::MaxTurnsExceeded(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            AppError::Interrupted => (StatusCode::OK, "Interrupted".into()),
             AppError::Provider(_) | AppError::Tool(_) | AppError::Internal(_) => {
                 tracing::error!(%self, "internal error");
                 (

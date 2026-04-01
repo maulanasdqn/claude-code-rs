@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicU8;
+use std::sync::{Arc, atomic::AtomicU8};
 
+use claude_rust_config::HooksConfig;
 use claude_rust_errors::{AppError, AppResult};
 use claude_rust_types::{
     ContentBlock, Conversation, Message, PermissionChecker, PermissionLevel, PermissionMode,
@@ -8,8 +8,10 @@ use claude_rust_types::{
 };
 use claude_rust_tools::ToolRegistry;
 
+use crate::application::undo::UndoStack;
 use crate::domain::EngineEvent;
 use super::compactor::compact;
+use super::hook_runner::{run_post_tool_use, run_pre_tool_use, run_stop_hooks};
 use super::stream_reader::read_stream;
 use super::tool_executor::{execute_tool, is_overloaded};
 
@@ -17,9 +19,11 @@ pub struct QueryEngine {
     provider: Arc<dyn Provider>,
     registry: Arc<ToolRegistry>,
     permission: Arc<dyn PermissionChecker>,
+    hooks: HooksConfig,
     max_turns: usize,
     context_limit: u64,
     mode: Arc<AtomicU8>,
+    undo_stack: Arc<UndoStack>,
 }
 
 impl QueryEngine {
@@ -28,20 +32,17 @@ impl QueryEngine {
         registry: Arc<ToolRegistry>,
         permission: Arc<dyn PermissionChecker>,
         mode: Arc<AtomicU8>,
+        hooks: HooksConfig,
     ) -> Self {
         Self {
-            provider,
-            registry,
-            permission,
-            max_turns: 20,
-            context_limit: 180_000,
-            mode,
+            provider, registry, permission, hooks, mode,
+            max_turns: 20, context_limit: 180_000,
+            undo_stack: Arc::new(UndoStack::default()),
         }
     }
 
-    pub fn mode_flag(&self) -> Arc<AtomicU8> {
-        self.mode.clone()
-    }
+    pub fn mode_flag(&self) -> Arc<AtomicU8> { self.mode.clone() }
+    pub fn undo_stack(&self) -> Arc<UndoStack> { self.undo_stack.clone() }
 
     pub async fn run<F>(
         &self,
@@ -51,14 +52,8 @@ impl QueryEngine {
     where
         F: FnMut(EngineEvent) + Send,
     {
-        let tools = if PermissionMode::load(&self.mode) == PermissionMode::Plan {
-            self.registry.tool_definitions_filtered(|tool| {
-                tool.permission_level() == PermissionLevel::ReadOnly
-                    || tool.name() == "exit_plan_mode"
-            })
-        } else {
-            self.registry.tool_definitions()
-        };
+        let is_plan = PermissionMode::load(&self.mode) == PermissionMode::Plan;
+        let tools = if is_plan { self.registry.tool_definitions_filtered(|t| t.permission_level() == PermissionLevel::ReadOnly || t.name() == "exit_plan_mode") } else { self.registry.tool_definitions() };
         let mut last_input_tokens: u64 = 0;
 
         for turn in 0..self.max_turns {
@@ -110,6 +105,10 @@ impl QueryEngine {
 
             if !matches!(stop_reason, StopReason::ToolUse) {
                 on_event(EngineEvent::TurnComplete);
+                let stop_out = run_stop_hooks(&self.hooks).await;
+                if !stop_out.is_empty() {
+                    on_event(EngineEvent::HookOutput { source: "stop".into(), output: stop_out });
+                }
                 return Ok(conversation);
             }
 
@@ -122,10 +121,25 @@ impl QueryEngine {
                 .collect();
 
             let mut tool_results = Vec::new();
+            let mut exit_plan_called = false;
             for (id, name, input) in tool_uses {
-                let result = execute_tool(&self.registry, &self.permission, name, input).await;
+                let input_json = input.to_string();
+                let pre = run_pre_tool_use(&self.hooks, name, &input_json).await;
+                if !pre.output.is_empty() {
+                    on_event(EngineEvent::HookOutput { source: "pre-tool".into(), output: pre.output });
+                }
+                if pre.blocked {
+                    on_event(EngineEvent::ToolResult { name: name.clone(), output: pre.reason.clone(), is_error: true });
+                    tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: pre.reason, is_error: Some(true) });
+                    continue;
+                }
+                let result = execute_tool(&self.registry, &self.permission, name, input, &self.undo_stack).await;
                 match result {
                     Ok(output) => {
+                        let post = run_post_tool_use(&self.hooks, name, &input_json, &output).await;
+                        if !post.is_empty() {
+                            on_event(EngineEvent::HookOutput { source: "post-tool".into(), output: post });
+                        }
                         on_event(EngineEvent::ToolResult {
                             name: name.clone(),
                             output: output.clone(),
@@ -136,6 +150,9 @@ impl QueryEngine {
                             content: output,
                             is_error: None,
                         });
+                    }
+                    Err(ref e) if e.is_interrupted() => {
+                        return Err(AppError::Interrupted);
                     }
                     Err(e) => {
                         let msg = e.to_string();
@@ -162,6 +179,7 @@ impl QueryEngine {
                     on_event(EngineEvent::ModeChanged {
                         mode: PermissionMode::Normal,
                     });
+                    exit_plan_called = true;
                 }
             }
 
@@ -169,6 +187,11 @@ impl QueryEngine {
                 role: Role::User,
                 content: tool_results,
             });
+
+            if exit_plan_called {
+                on_event(EngineEvent::TurnComplete);
+                return Ok(conversation);
+            }
         }
 
         Err(AppError::MaxTurnsExceeded(self.max_turns))

@@ -1,12 +1,13 @@
 [package]
 name = "claude-rust-engine"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 description = "Agentic query engine with tool-use loop"
 license = "MIT"
 repository = "https://github.com/maulanasdqn/claude-code-rs"
 
 [dependencies]
+claude-rust-config = { workspace = true }
 claude-rust-errors = { workspace = true }
 claude-rust-types = { workspace = true }
 claude-rust-tools = { workspace = true }

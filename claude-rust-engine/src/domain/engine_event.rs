@@ -11,5 +11,6 @@ pub enum EngineEvent {
     TurnComplete,
     Compacted { original_turns: usize },
     ModeChanged { mode: PermissionMode },
+    HookOutput { source: String, output: String },
     Error(String),
 }

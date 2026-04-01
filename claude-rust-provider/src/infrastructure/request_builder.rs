@@ -9,6 +9,7 @@ pub fn build_request_body(
     model: &str,
     conversation: &Conversation,
     tools: &[Value],
+    thinking: bool,
 ) -> Value {
     let messages: Vec<Value> = conversation
         .messages
@@ -71,7 +72,6 @@ pub fn build_request_body(
     });
 
     if credential.is_oauth() {
-        // OAuth: system prompt as array of text blocks, with billing header as first block
         let mut system_blocks: Vec<Value> = vec![
             json!({"type": "text", "text": BILLING_HEADER_LINE}),
         ];
@@ -80,10 +80,17 @@ pub fn build_request_body(
         }
         body["system"] = json!(system_blocks);
 
-        // Cap thinking budget to avoid excessive reasoning on simple prompts
-        body["thinking"] = json!({"type": "enabled", "budget_tokens": 8000});
+        if thinking {
+            body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
+        }
     } else if let Some(system) = &conversation.system {
         body["system"] = json!(system);
+
+        if thinking {
+            body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
+        }
+    } else if thinking {
+        body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
     }
 
     if !tools.is_empty() {

@@ -14,17 +14,33 @@ pub fn handle_help() -> CommandResult {
          {DIM}  /compact{RESET}           {DIM}Compact context to save tokens{RESET}\n\
          {DIM}  /cost{RESET}              {DIM}Show token usage and cost{RESET}\n\
          {DIM}  /model{RESET} {DIM}<name>{RESET}      {DIM}Switch model{RESET}\n\
+         {DIM}  /fast{RESET}              {DIM}Toggle fast (haiku) model{RESET}\n\
          {DIM}  /diff{RESET}              {DIM}Show git diff{RESET}\n\
          {DIM}  /status{RESET}            {DIM}Show git status{RESET}\n\
+         {DIM}  /review{RESET}            {DIM}Ask Claude to review git diff{RESET}\n\
+         {DIM}  /commit{RESET}            {DIM}Generate git commit message{RESET}\n\
          {DIM}  /doctor{RESET}            {DIM}Check environment health{RESET}\n\
          {DIM}  /config{RESET}            {DIM}Show merged settings{RESET}\n\
          {DIM}  /permissions{RESET}       {DIM}Show allow/deny rules{RESET}\n\
          {DIM}  /session{RESET} {DIM}[id]{RESET}      {DIM}List or load sessions{RESET}\n\
+         {DIM}  /memory{RESET}            {DIM}Show CLAUDE.md / MEMORY.md{RESET}\n\
+         {DIM}  /export{RESET}            {DIM}Export conversation to markdown{RESET}\n\
+         {DIM}  /rewind{RESET} {DIM}[n]{RESET}        {DIM}Remove last n exchanges (default 1){RESET}\n\
          {DIM}  /plan{RESET}              {DIM}Toggle plan mode{RESET}\n\
          {DIM}  /mode{RESET}              {DIM}Cycle permission mode{RESET}\n\
+         {DIM}  /think{RESET}             {DIM}Toggle extended thinking{RESET}\n\
+         {DIM}  /init{RESET}              {DIM}Create/update CLAUDE.md{RESET}\n\
+         {DIM}  /add{RESET} {DIM}<path>{RESET}        {DIM}Pin file to context{RESET}\n\
+         {DIM}  /files{RESET}             {DIM}Show pinned files{RESET}\n\
          {DIM}  /quit{RESET}              {DIM}Exit{RESET}\n\
          \n\
-         {DIM}  Tip: Use @file_path to include file contents in your message.{RESET}"
+         {DIM}  !<command>{RESET}         {DIM}Run shell command directly{RESET}\n\
+         \n\
+         {DIM}  Tip: Use @file_path to include file contents in your message.{RESET}\n\
+         \n\
+         {DIM}  Tools (used by Claude){RESET}\n\
+         {DIM}  agent{RESET}              {DIM}General sub-agent (all tools){RESET}\n\
+         {DIM}  explore{RESET}            {DIM}Read-only exploration sub-agent{RESET}"
     );
 
     CommandResult::Output(text)

@@ -1,17 +1,38 @@
+pub fn tool_display_name(name: &str) -> String {
+    match name {
+        "bash" => "Bash",
+        "read" => "Read",
+        "file_write" => "Write",
+        "file_edit" => "Edit",
+        "glob" => "Glob",
+        "grep" => "Grep",
+        "web_fetch" => "Fetch",
+        "web_search" => "Search",
+        "ask_user_question" => "Ask",
+        "enter_plan_mode" => "Plan",
+        "exit_plan_mode" => "ExitPlan",
+        "agent" => "Agent",
+        "explore" => "Explore",
+        "todo_write" => "TodoWrite",
+        "todo_read" => "TodoRead",
+        other => other,
+    }
+    .to_string()
+}
+
 pub fn tool_icon(name: &str) -> &'static str {
     match name {
-        "bash" => "⚡",
-        "read" => "📄",
-        "file_write" => "✏️",
-        "file_edit" => "✏️",
-        "glob" => "🔍",
-        "grep" => "🔎",
-        "ask_user_question" => "❓",
-        "web_fetch" => "🌐",
-        "web_search" => "🔍",
-        "enter_plan_mode" => "📋",
-        "exit_plan_mode" => "📋",
-        _ => "⚙️",
+        "bash" => "⏺",
+        "read" => "⏺",
+        "file_write" | "file_edit" => "⏺",
+        "glob" | "grep" => "⏺",
+        "web_fetch" | "web_search" => "⏺",
+        "ask_user_question" => "◇",
+        "enter_plan_mode" | "exit_plan_mode" => "◆",
+        "agent" | "explore" => "◈",
+        "todo_write" | "todo_read" => "⏺",
+        n if n.starts_with("mcp__") => "⬡",
+        _ => "⏺",
     }
 }
 
@@ -34,11 +55,11 @@ pub fn summarize_tool_input(name: &str, json: &str) -> String {
             .unwrap_or_default(),
         "file_write" => {
             let path = v.get("file_path").and_then(|p| p.as_str()).unwrap_or("?");
-            format!("{path}")
+            path.to_string()
         }
         "file_edit" => {
             let path = v.get("file_path").and_then(|p| p.as_str()).unwrap_or("?");
-            format!("{path}")
+            path.to_string()
         }
         "glob" => {
             let pat = v.get("pattern").and_then(|p| p.as_str()).unwrap_or("?");
@@ -66,6 +87,21 @@ pub fn summarize_tool_input(name: &str, json: &str) -> String {
             .map(|s| truncate_str(s, 80))
             .unwrap_or_default(),
         "enter_plan_mode" | "exit_plan_mode" => String::new(),
+        "agent" | "explore" => v
+            .get("task")
+            .and_then(|t| t.as_str())
+            .map(|s| truncate_str(s, 80))
+            .unwrap_or_default(),
+        "todo_read" => String::new(),
+        n if n.starts_with("mcp__") => truncate_str(json, 80),
+        "todo_write" => {
+            let count = v
+                .get("todos")
+                .and_then(|t| t.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            format!("{count} items")
+        }
         _ => truncate_str(json, 80),
     }
 }
