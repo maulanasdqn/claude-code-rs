@@ -1,7 +1,7 @@
 use claude_rust_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
-use crate::infrastructure::resolve_keychain_oauth;
+use crate::infrastructure::{resolve_file_oauth, resolve_keychain_oauth};
 
 pub fn resolve_credential() -> AppResult<Credential> {
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
@@ -19,6 +19,16 @@ pub fn resolve_credential() -> AppResult<Credential> {
         }
         Err(e) => {
             tracing::debug!("keychain OAuth not available: {e}");
+        }
+    }
+
+    match resolve_file_oauth() {
+        Ok(cred) => {
+            tracing::info!("using Claude Code OAuth from credentials file");
+            return Ok(cred);
+        }
+        Err(e) => {
+            tracing::debug!("file OAuth not available: {e}");
         }
     }
 
