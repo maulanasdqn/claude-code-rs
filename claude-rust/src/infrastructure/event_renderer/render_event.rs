@@ -1,152 +1,149 @@
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
+use indicatif::{ProgressBar, ProgressStyle};
 use claude_rust_engine::EngineEvent;
 
-use super::super::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, ORANGE, RESET, summarize_tool_input, tool_display_name, tool_icon};
+use super::super::terminal::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, summarize_tool_input, tool_display_name, tool_icon};
 use super::RenderState;
 use super::render_error::render_error_box;
 use super::render_md::{flush_line_buf, render_md_line};
-use super::render_spinner::SpinnerState;
+
+const TICKS: &[&str] = &["·", "✢", "✳", "✶", "✻", "✽"];
+
+const THINK_VERBS: &[&str] = &[
+    "Thinking", "Reasoning", "Pondering", "Analyzing",
+    "Considering", "Processing", "Working", "Reflecting",
+];
+
+fn random_verb() -> &'static str {
+    let idx = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos() as usize)
+        .unwrap_or(0)
+        % THINK_VERBS.len();
+    THINK_VERBS[idx]
+}
+
+fn thinking_style() -> ProgressStyle {
+    ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}  {elapsed:.dim}")
+        .unwrap()
+        .tick_strings(TICKS)
+}
+
+fn tool_style() -> ProgressStyle {
+    ProgressStyle::with_template("  {spinner:.cyan}  {msg}")
+        .unwrap()
+        .tick_strings(TICKS)
+}
+
+fn new_tool_spinner(mp: &indicatif::MultiProgress, icon: &str, display: &str) -> ProgressBar {
+    let pb = mp.add(ProgressBar::new_spinner());
+    pb.set_style(tool_style());
+    pb.set_message(format!("{CYAN}{icon}{RESET}  {DIM}{display}{RESET}"));
+    pb.enable_steady_tick(Duration::from_millis(150));
+    pb
+}
 
 pub fn render_event(event: EngineEvent, state: &mut RenderState) {
     match event {
         EngineEvent::ThinkingDelta(_) => {
             if !state.in_thinking {
-                println!();
                 state.in_thinking = true;
-                state.spinner = Some(SpinnerState::new());
-                state.spin_frame = 0;
-                state.thinking_start = Some(std::time::Instant::now());
+                let pb = state.mp.add(ProgressBar::new_spinner());
+                pb.set_style(thinking_style());
+                pb.set_message(random_verb());
+                pb.enable_steady_tick(Duration::from_millis(150));
+                state.thinking_pb = Some(pb);
             }
-            state.spin_frame += 1;
-            let line = state.spinner.as_ref().map(|s| s.render_frame(state.spin_frame)).unwrap_or_default();
-            print!("\r{line}\x1b[K");
-            io::stdout().flush().ok();
         }
 
         EngineEvent::TextDelta(text) => {
-            if state.in_thinking {
-                print!("\r\x1b[2K");
-                state.in_thinking = false;
-            }
-            if !state.in_text {
-                println!();
-                state.in_text = true;
-            }
+            stop_thinking(state);
+            state.in_text = true;
             state.line_buf.push_str(&text);
             while let Some(pos) = state.line_buf.find('\n') {
                 let line = state.line_buf[..pos].to_string();
                 state.line_buf.drain(..=pos);
                 render_md_line(&line, state);
             }
-            io::stdout().flush().ok();
         }
 
         EngineEvent::ToolStart { name, .. } => {
-            if state.in_thinking { print!("\r\x1b[2K"); state.in_thinking = false; state.spinner = None; }
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
-            state.tool_json_buf.clear();
-            state.current_tool_name = name.clone();
+            stop_thinking(state);
+            if state.in_text {
+                flush_line_buf(state);
+                state.in_text = false;
+            }
+            save_json_to_last_tool(state);
+            state.current_json_buf.clear();
+
             let icon = tool_icon(&name);
             let display = tool_display_name(&name);
-            let active = Arc::new(AtomicBool::new(true));
-            let task_active = active.clone();
-            state.tool_anim = Some(active);
-            let icon_s = icon.to_string();
-            let display_s = display;
-            let is_long = matches!(name.as_str(), "agent" | "explore");
-            let spin_chars = ["·", "✢", "✳", "✶", "✻", "✽"];
-            println!();
-            tokio::spawn(async move {
-                let mut frame = 0usize;
-                while task_active.load(Ordering::Relaxed) {
-                    let spin = spin_chars[frame % spin_chars.len()];
-                    if is_long {
-                        print!("\r  {CYAN}{icon_s}{RESET}  {DIM}{spin}  {ORANGE}{display_s}{RESET}\x1b[K");
-                    } else {
-                        let blink = if (frame / 4) % 2 == 0 { CYAN } else { DIM };
-                        print!("\r  {blink}{icon_s}{RESET}  {DIM}{display_s}{RESET}\x1b[K");
-                    }
-                    io::stdout().flush().ok();
-                    frame += 1;
-                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-                }
-            });
+            let pb = new_tool_spinner(&state.mp, icon, &display);
+            state.active_tools.push_back((pb, name, String::new()));
         }
 
         EngineEvent::ToolInput { json_chunk } => {
-            state.tool_json_buf.push_str(&json_chunk);
+            state.current_json_buf.push_str(&json_chunk);
         }
 
         EngineEvent::ToolResult { name, output, is_error } => {
-            use super::super::terminal::RED;
+            save_json_to_last_tool(state);
 
-            if let Some(anim) = state.tool_anim.take() {
-                anim.store(false, Ordering::Relaxed);
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                let icon = tool_icon(&state.current_tool_name);
-                let tname = state.current_tool_name.clone();
-                print!("\r  {CYAN}{icon}{RESET}  {DIM}{tname}{RESET}");
-                io::stdout().flush().ok();
-            }
+            let (pb, tool_name, json) = match state.active_tools.pop_front() {
+                Some(t) => t,
+                None => {
+                    let pb = state.mp.add(ProgressBar::hidden());
+                    (pb, name.clone(), String::new())
+                }
+            };
 
-            let summary = summarize_tool_input(&state.current_tool_name, &state.tool_json_buf);
-            if !summary.is_empty() {
-                print!("  {DIM}{summary}{RESET}");
-                io::stdout().flush().ok();
-            }
-            let tool_json = std::mem::take(&mut state.tool_json_buf);
+            pb.finish_and_clear();
+
+            let summary = summarize_tool_input(&tool_name, &json);
+            let icon = tool_icon(&tool_name);
+            let display = tool_display_name(&tool_name);
 
             if is_error {
-                println!();
-                println!("    {RED}✗  {}{RESET}", first_line(&output));
+                let msg = format!(
+                    "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}  {RED}✗  {}{RESET}",
+                    fmt_summary(&summary),
+                    first_line(&output)
+                );
+                state.mp.println(msg).ok();
             } else {
-                match state.current_tool_name.as_str() {
+                match tool_name.as_str() {
                     "file_edit" => {
-                        println!();
-                        super::render_diff::render_edit_diff(&tool_json);
+                        state.mp.println(format!("  {CYAN}{icon}{RESET}  {DIM}{display}  {summary}{RESET}")).ok();
+                        super::render_diff::render_edit_diff(&json, &state.mp);
                     }
                     "file_write" => {
-                        println!();
-                        super::render_diff::render_write_preview(&tool_json);
+                        state.mp.println(format!("  {CYAN}{icon}{RESET}  {DIM}{display}  {summary}{RESET}")).ok();
+                        super::render_diff::render_write_preview(&json, &state.mp);
                     }
                     "read" | "glob" | "grep" | "web_fetch" | "web_search" => {
-                        let lines: Vec<&str> = output.lines().collect();
-                        if lines.is_empty() || output == "(no output)" {
-                            println!("  {GREEN}✓{RESET}");
-                        } else {
-                            println!("  {DIM}({} lines){RESET}", lines.len());
-                        }
+                        let n = output.lines().count();
+                        let count = if n > 0 { format!("  {DIM}({n} lines){RESET}") } else { String::new() };
+                        state.mp.println(format!(
+                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}{}",
+                            fmt_summary(&summary), count
+                        )).ok();
                     }
-                    "agent" | "explore" => {
-                        println!();
-                        if output.is_empty() || output == "(no output)" {
-                            println!("    {GREEN}✓{RESET}");
-                        } else {
+                    _ => {
+                        state.mp.println(format!(
+                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}",
+                            fmt_summary(&summary)
+                        )).ok();
+                        if !output.is_empty() && output != "(no output)" {
                             let lines: Vec<&str> = output.lines().collect();
                             let show = lines.len().min(4);
                             for line in &lines[..show] {
-                                println!("    {DIM}{line}{RESET}");
+                                let s = truncate(line, 120);
+                                state.mp.println(format!("    {DIM}{s}{RESET}")).ok();
                             }
                             if lines.len() > show {
-                                println!("    {DIM}… {} more lines{RESET}", lines.len() - show);
+                                state.mp.println(format!("    {DIM}… {} more lines{RESET}", lines.len() - show)).ok();
                             }
-                        }
-                    }
-                    _ if output.is_empty() || output == "(no output)" => {
-                        println!("  {GREEN}✓{RESET}");
-                    }
-                    _ => {
-                        println!();
-                        let lines: Vec<&str> = output.lines().collect();
-                        let show = lines.len().min(5);
-                        for line in &lines[..show] {
-                            println!("    {DIM}{line}{RESET}");
-                        }
-                        if lines.len() > show {
-                            println!("    {DIM}… {} more lines{RESET}", lines.len() - show);
                         }
                     }
                 }
@@ -157,38 +154,36 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         EngineEvent::Usage { input_tokens, output_tokens } => {
             state.turn_input += input_tokens;
             state.turn_output += output_tokens;
-            if let Some(ref mut s) = state.spinner { s.tokens += output_tokens; }
         }
 
         EngineEvent::HookOutput { source, output } => {
             if state.in_text { flush_line_buf(state); state.in_text = false; }
             for line in output.lines() {
-                println!("  {DIM}[hook:{source}] {line}{RESET}");
+                state.mp.println(format!("  {DIM}[hook:{source}] {line}{RESET}")).ok();
             }
         }
 
         EngineEvent::Compacted { original_turns } => {
             if state.in_text { flush_line_buf(state); state.in_text = false; }
-            println!();
-            println!("  {DIM}{MAGENTA}◆  compacted — {original_turns} messages summarized{RESET}");
+            state.mp.println(format!("\n  {DIM}{MAGENTA}◆  compacted — {original_turns} messages summarized{RESET}")).ok();
         }
 
         EngineEvent::ModeChanged { mode } => {
             if state.in_text { flush_line_buf(state); state.in_text = false; }
-            println!("\n  {CYAN}{BOLD}◆  {}{RESET}  {DIM}{}{RESET}", mode.label(), mode.description());
+            state.mp.println(format!("\n  {CYAN}{BOLD}◆  {}{RESET}  {DIM}{}{RESET}", mode.label(), mode.description())).ok();
         }
 
         EngineEvent::TurnComplete => {
+            stop_thinking(state);
             if state.in_text { flush_line_buf(state); state.in_text = false; }
-            if state.in_thinking { print!("\r\x1b[2K"); state.in_thinking = false; state.spinner = None; }
             if state.turn_input > 0 || state.turn_output > 0 {
                 let i = fmt_tokens(state.turn_input);
                 let o = fmt_tokens(state.turn_output);
-                println!("  {DIM}∙  {i} in  ·  {o} out{RESET}");
+                state.mp.println(format!("\n  {DIM}∙  {i} in  ·  {o} out{RESET}")).ok();
                 state.turn_input = 0;
                 state.turn_output = 0;
             }
-            println!();
+            state.mp.println(String::new()).ok();
         }
 
         EngineEvent::Error(msg) => {
@@ -198,10 +193,40 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
     }
 }
 
+fn stop_thinking(state: &mut RenderState) {
+    if state.in_thinking {
+        if let Some(pb) = state.thinking_pb.take() {
+            pb.finish_and_clear();
+        }
+        state.in_thinking = false;
+    }
+}
+
+fn save_json_to_last_tool(state: &mut RenderState) {
+    if let Some(back) = state.active_tools.back_mut() {
+        if back.2.is_empty() && !state.current_json_buf.is_empty() {
+            back.2 = std::mem::take(&mut state.current_json_buf);
+        }
+    }
+}
+
+fn fmt_summary(s: &str) -> String {
+    if s.is_empty() { String::new() } else { format!("  {DIM}{s}{RESET}") }
+}
+
 fn fmt_tokens(n: u64) -> String {
     if n >= 1000 { format!("{:.1}K", n as f64 / 1000.0) } else { format!("{n}") }
 }
 
 fn first_line(s: &str) -> &str {
     s.lines().next().unwrap_or(s)
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= max {
+        s.to_string()
+    } else {
+        format!("{}…", chars[..max - 1].iter().collect::<String>())
+    }
 }

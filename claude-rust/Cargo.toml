@@ -22,5 +22,6 @@ claude-rust-permission = { workspace = true }
 claude-rust-memory = { workspace = true }
 claude-rust-commands = { workspace = true }
 crossterm = { workspace = true }
+indicatif = { workspace = true }
 syntect = { workspace = true }
 async-trait = { workspace = true }

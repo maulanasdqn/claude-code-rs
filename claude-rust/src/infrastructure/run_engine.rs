@@ -1,12 +1,15 @@
-use std::io::{self, Write};
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering}};
+use std::time::Duration;
 
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle, ProgressDrawTarget};
 use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::AppError;
 use claude_rust_types::Conversation;
 
-use super::event_renderer::{RenderState, render_event, render_spinner::SpinnerState};
+use super::event_renderer::{RenderState, render_event};
 use super::terminal::{DIM, RESET};
+
+const TICKS: &[&str] = &["·", "✢", "✳", "✶", "✻", "✽"];
 
 pub(super) async fn run_engine(
     engine: &Arc<QueryEngine>,
@@ -20,21 +23,18 @@ pub(super) async fn run_engine(
 ) -> Result<Conversation, AppError> {
     let _ = (mode_flag, model_id, cwd);
 
-    let init_spinner = SpinnerState::new();
-    let init_active = Arc::new(AtomicBool::new(true));
-    let init_done = init_active.clone();
-    tokio::spawn(async move {
-        let mut frame = 0usize;
-        while init_done.load(Ordering::Relaxed) {
-            let line = init_spinner.render_frame(frame);
-            print!("\r{line}\x1b[K");
-            io::stdout().flush().ok();
-            frame += 1;
-            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-        }
-    });
+    let mp = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
+    let init_pb = mp.add(ProgressBar::new_spinner());
+    init_pb.set_style(
+        ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}  {elapsed:.dim}")
+            .unwrap()
+            .tick_strings(TICKS),
+    );
+    init_pb.set_message("Thinking…");
+    init_pb.enable_steady_tick(Duration::from_millis(150));
 
-    let mut render_state = RenderState::new();
+    let mut render_state = RenderState::new(mp);
+
     let in_counter = total_input.clone();
     let out_counter = total_output.clone();
     let cleared = Arc::new(AtomicBool::new(false));
@@ -42,9 +42,7 @@ pub(super) async fn run_engine(
 
     let engine_fut = engine.run(conversation, move |event| {
         if !cleared2.swap(true, Ordering::Relaxed) {
-            init_active.store(false, Ordering::Relaxed);
-            print!("\r\x1b[2K");
-            io::stdout().flush().ok();
+            init_pb.finish_and_clear();
         }
         if let EngineEvent::Usage { input_tokens, output_tokens } = &event {
             if *input_tokens > 0 { in_counter.fetch_add(*input_tokens, Ordering::Relaxed); }
@@ -120,8 +118,7 @@ fn show_interrupt(cleared: &AtomicBool) -> Result<Conversation, AppError> {
     if cleared.load(Ordering::Relaxed) {
         println!("\n  {DIM}^C{RESET}\n");
     } else {
-        print!("\r\x1b[2K  {DIM}^C{RESET}\n\n");
+        println!("  {DIM}^C{RESET}\n");
     }
-    io::stdout().flush().ok();
     Err(AppError::Interrupted)
 }

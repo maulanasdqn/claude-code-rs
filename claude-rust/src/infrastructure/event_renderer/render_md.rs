@@ -14,11 +14,11 @@ fn wrap_words(text: &str, max: usize) -> Vec<String> {
     let mut lines: Vec<String> = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {
-        let word_len = word.chars().count();
-        let cur_len = current.chars().count();
+        let wlen = word.chars().count();
+        let clen = current.chars().count();
         if current.is_empty() {
             current.push_str(word);
-        } else if cur_len + 1 + word_len <= max {
+        } else if clen + 1 + wlen <= max {
             current.push(' ');
             current.push_str(word);
         } else {
@@ -26,12 +26,8 @@ fn wrap_words(text: &str, max: usize) -> Vec<String> {
             current.push_str(word);
         }
     }
-    if !current.is_empty() {
-        lines.push(current);
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
+    if !current.is_empty() { lines.push(current); }
+    if lines.is_empty() { lines.push(String::new()); }
     lines
 }
 
@@ -39,8 +35,8 @@ pub(super) fn flush_line_buf(state: &mut RenderState) {
     if !state.line_buf.is_empty() {
         let remaining = std::mem::take(&mut state.line_buf);
         render_md_line(&remaining, state);
-        println!();
     }
+    state.mp.println(String::new()).ok();
 }
 
 pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
@@ -51,7 +47,7 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
     if state.in_code_block {
         if trimmed == "```" || trimmed == "~~~" {
             let bar = "─".repeat(w.saturating_sub(4));
-            println!("  {DIM}{bar}{RESET}");
+            state.mp.println(format!("  {DIM}{bar}{RESET}")).ok();
             state.in_code_block = false;
             state.code_block_lang = String::new();
             state.highlighter = None;
@@ -61,7 +57,7 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
             } else {
                 format!("{GREEN}{trimmed}{RESET}")
             };
-            println!("  {DIM}│{RESET}  {rendered}");
+            state.mp.println(format!("  {DIM}│{RESET}  {rendered}")).ok();
         }
         return;
     }
@@ -74,18 +70,17 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
         state.highlighter = render_syntax::new_highlighter(lang);
         let bar = "─".repeat(w.saturating_sub(4));
         if lang.is_empty() {
-            println!("  {DIM}{bar}{RESET}");
+            state.mp.println(format!("  {DIM}{bar}{RESET}")).ok();
         } else {
-            let label = format!(" {CYAN}{lang}{RESET}{DIM} ");
-            let fill = w.saturating_sub(4 + lang.len() + 2);
-            println!("  {DIM}──{label}{}─{RESET}", "─".repeat(fill));
+            let fill = w.saturating_sub(6 + lang.len());
+            state.mp.println(format!("  {DIM}── {CYAN}{lang}{RESET}{DIM} {}─{RESET}", "─".repeat(fill))).ok();
         }
         return;
     }
 
     if matches!(trimmed, "---" | "***" | "___") {
         let hr = "─".repeat(text_w);
-        println!("  {DIM}{hr}{RESET}");
+        state.mp.println(format!("  {DIM}{hr}{RESET}")).ok();
         return;
     }
 
@@ -93,36 +88,38 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
         let inner = trimmed.trim_matches('|');
         let is_sep = inner.split('|').all(|c| c.trim().chars().all(|x| x == '-' || x == ':' || x == ' '));
         if !is_sep {
-            println!("  {}", render_inline(trimmed));
+            state.mp.println(format!("  {}", render_inline(trimmed))).ok();
         }
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("### ") {
-        println!("  {BOLD}{}{RESET}", render_inline(rest));
+        state.mp.println(format!("  {BOLD}{}{RESET}", render_inline(rest))).ok();
         return;
     }
     if let Some(rest) = trimmed.strip_prefix("## ") {
-        println!("\n  {BOLD}{CYAN}{}{RESET}", render_inline(rest));
+        state.mp.println(String::new()).ok();
+        state.mp.println(format!("  {BOLD}{CYAN}{}{RESET}", render_inline(rest))).ok();
         return;
     }
     if let Some(rest) = trimmed.strip_prefix("# ") {
-        println!("\n  {BOLD}{CYAN}{}{RESET}", render_inline(rest));
+        state.mp.println(String::new()).ok();
+        state.mp.println(format!("  {BOLD}{CYAN}{}{RESET}", render_inline(rest))).ok();
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("> ") {
         for wline in wrap_words(rest, text_w.saturating_sub(4)) {
-            println!("  {DIM}│{RESET} {DIM}{}{RESET}", render_inline(&wline));
+            state.mp.println(format!("  {DIM}│{RESET} {DIM}{}{RESET}", render_inline(&wline))).ok();
         }
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
         let chunks = wrap_words(rest, text_w.saturating_sub(2));
-        println!("  • {}", render_inline(&chunks[0]));
+        state.mp.println(format!("  • {}", render_inline(&chunks[0]))).ok();
         for chunk in &chunks[1..] {
-            println!("    {}", render_inline(chunk));
+            state.mp.println(format!("    {}", render_inline(chunk))).ok();
         }
         return;
     }
@@ -133,21 +130,21 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
             let rest = &trimmed[pos + 2..];
             let indent_w = prefix.len() + 2;
             let chunks = wrap_words(rest, text_w.saturating_sub(indent_w));
-            println!("  {DIM}{prefix}.{RESET} {}", render_inline(&chunks[0]));
+            state.mp.println(format!("  {DIM}{prefix}.{RESET} {}", render_inline(&chunks[0]))).ok();
             for chunk in &chunks[1..] {
-                println!("  {}  {}", " ".repeat(indent_w), render_inline(chunk));
+                state.mp.println(format!("  {}  {}", " ".repeat(indent_w), render_inline(chunk))).ok();
             }
             return;
         }
     }
 
     if trimmed.is_empty() {
-        println!();
+        state.mp.println(String::new()).ok();
         return;
     }
 
     for wline in wrap_words(trimmed, text_w) {
-        println!("  {}", render_inline(&wline));
+        state.mp.println(format!("  {}", render_inline(&wline))).ok();
     }
 }
 
