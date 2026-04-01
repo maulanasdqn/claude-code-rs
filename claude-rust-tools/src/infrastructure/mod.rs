@@ -7,6 +7,7 @@ mod grep_tool;
 mod plan_mode_tool;
 mod read_tool;
 mod web_fetch_tool;
+pub(super) mod web_search_client;
 mod web_search_tool;
 
 pub use ask_user_tool::AskUserTool;

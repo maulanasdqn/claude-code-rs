@@ -6,6 +6,7 @@ pub enum SlashCommand {
     Compact,
     Cost,
     Model(String),
+    Mode,
     Diff,
     Status,
     Doctor,

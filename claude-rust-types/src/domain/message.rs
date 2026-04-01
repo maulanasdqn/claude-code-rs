@@ -28,6 +28,10 @@ pub enum ContentBlock {
     Thinking {
         thinking: String,
     },
+    Image {
+        media_type: String,
+        data: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

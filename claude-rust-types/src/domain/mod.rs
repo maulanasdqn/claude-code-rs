@@ -4,6 +4,6 @@ pub mod provider;
 pub mod tool;
 
 pub use message::{ContentBlock, Conversation, Message, Role};
-pub use permission::{AllowAll, PermissionChecker, PermissionDecision};
+pub use permission::{AllowAll, PermissionChecker, PermissionDecision, PermissionMode};
 pub use provider::{Provider, StopReason, StreamEvent, UsageStats};
 pub use tool::{PermissionLevel, Tool};

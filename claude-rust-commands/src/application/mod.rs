@@ -4,4 +4,5 @@ pub mod parse_command;
 
 pub use execute_command::execute_command;
 pub use expand_references::expand_file_references;
+pub use expand_references::expand_message_content;
 pub use parse_command::parse_command;

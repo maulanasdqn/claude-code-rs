@@ -5,6 +5,6 @@ pub mod infrastructure;
 #[cfg(test)]
 mod tests;
 
-pub use application::{execute_command, expand_file_references, parse_command};
+pub use application::{execute_command, expand_file_references, expand_message_content, parse_command};
 pub use domain::{CommandResult, InputPreprocessor, SlashCommand};
 pub use infrastructure::FileReferenceExpander;
