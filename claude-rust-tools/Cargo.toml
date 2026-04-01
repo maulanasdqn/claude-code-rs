@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-tools"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 description = "Tool implementations for bash and file operations"
 license = "MIT"
@@ -17,3 +17,4 @@ tracing = { workspace = true }
 glob = { workspace = true }
 reqwest = { workspace = true }
 regex = { workspace = true }
+crossterm = { workspace = true }

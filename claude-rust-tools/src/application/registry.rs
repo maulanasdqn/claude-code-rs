@@ -53,6 +53,22 @@ impl ToolRegistry {
             })
             .collect()
     }
+
+    pub fn tool_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.tools.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
+    pub fn clone_excluding(&self, exclude: &[&str]) -> Self {
+        let tools = self
+            .tools
+            .iter()
+            .filter(|(name, _)| !exclude.contains(&name.as_str()))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        Self { tools }
+    }
 }
 
 impl Default for ToolRegistry {

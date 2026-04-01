@@ -9,25 +9,22 @@ pub enum PermissionDecision {
     Deny(String),
 }
 
-/// Permission mode controls how dangerous tool permissions are handled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PermissionMode {
-    /// Normal: prompt user for dangerous tools (default)
     Normal = 0,
-    /// Auto-accept: automatically approve all dangerous tools
     AutoAccept = 1,
-    /// Plan: only read-only tools available
     Plan = 2,
+    Bypass = 3,
 }
 
 impl PermissionMode {
-    /// Cycle to the next mode.
     pub fn next(self) -> Self {
         match self {
             Self::Normal => Self::AutoAccept,
             Self::AutoAccept => Self::Plan,
-            Self::Plan => Self::Normal,
+            Self::Plan => Self::Bypass,
+            Self::Bypass => Self::Normal,
         }
     }
 
@@ -36,6 +33,7 @@ impl PermissionMode {
             Self::Normal => "Normal",
             Self::AutoAccept => "Auto-accept",
             Self::Plan => "Plan",
+            Self::Bypass => "Bypass",
         }
     }
 
@@ -44,6 +42,7 @@ impl PermissionMode {
             Self::Normal => "prompts for dangerous tools",
             Self::AutoAccept => "auto-approves all tools",
             Self::Plan => "read-only tools only",
+            Self::Bypass => "bypasses all permission checks",
         }
     }
 
@@ -51,6 +50,7 @@ impl PermissionMode {
         match v {
             1 => Self::AutoAccept,
             2 => Self::Plan,
+            3 => Self::Bypass,
             _ => Self::Normal,
         }
     }

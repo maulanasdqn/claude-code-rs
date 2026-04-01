@@ -16,6 +16,15 @@ pub async fn execute_command(command: SlashCommand) -> CommandResult {
         SlashCommand::Session(id) => handlers::handle_session(&id).await,
         SlashCommand::Plan => CommandResult::Output("Use /plan from the main loop.".into()),
         SlashCommand::Mode => CommandResult::Output("Use /mode from the main loop.".into()),
+        SlashCommand::Think => CommandResult::Output("Use /think from the main loop.".into()),
+        SlashCommand::Add(_) => CommandResult::Output("Use /add from the main loop.".into()),
+        SlashCommand::Files => CommandResult::Output("Use /files from the main loop.".into()),
+        SlashCommand::Memory => CommandResult::Output("Use /memory from the main loop.".into()),
+        SlashCommand::Export => CommandResult::Output("Use /export from the main loop.".into()),
+        SlashCommand::Rewind(_) => CommandResult::Output("Use /rewind from the main loop.".into()),
+        SlashCommand::Review => CommandResult::Output("Use /review from the main loop.".into()),
+        SlashCommand::Commit => CommandResult::Output("Use /commit from the main loop.".into()),
+        SlashCommand::Fast => CommandResult::Output("Use /fast from the main loop.".into()),
         SlashCommand::Quit => CommandResult::Quit,
     }
 }

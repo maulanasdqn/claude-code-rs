@@ -1,3 +1,3 @@
 pub mod config;
 
-pub use config::{PermissionSettings, Settings};
+pub use config::{HookEntry, HooksConfig, PermissionSettings, Settings};

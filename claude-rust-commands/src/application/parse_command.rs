@@ -18,6 +18,14 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
         "/mode" => return Some(SlashCommand::Mode),
         "/model" => return Some(SlashCommand::Model(String::new())),
         "/session" => return Some(SlashCommand::Session(String::new())),
+        "/think" => return Some(SlashCommand::Think),
+        "/files" => return Some(SlashCommand::Files),
+        "/memory" => return Some(SlashCommand::Memory),
+        "/export" => return Some(SlashCommand::Export),
+        "/review" => return Some(SlashCommand::Review),
+        "/commit" => return Some(SlashCommand::Commit),
+        "/fast" => return Some(SlashCommand::Fast),
+        "/rewind" => return Some(SlashCommand::Rewind(1)),
         _ => {}
     }
 
@@ -33,6 +41,18 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
         if !id.is_empty() {
             return Some(SlashCommand::Session(id.to_string()));
         }
+    }
+
+    if let Some(rest) = trimmed.strip_prefix("/add ") {
+        let path = rest.trim();
+        if !path.is_empty() {
+            return Some(SlashCommand::Add(path.to_string()));
+        }
+    }
+
+    if let Some(rest) = trimmed.strip_prefix("/rewind ") {
+        let n: usize = rest.trim().parse().unwrap_or(1);
+        return Some(SlashCommand::Rewind(n.max(1)));
     }
 
     None

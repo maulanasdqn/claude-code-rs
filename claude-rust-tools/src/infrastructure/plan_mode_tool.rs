@@ -40,7 +40,7 @@ impl Tool for ExitPlanModeTool {
     }
 
     fn description(&self) -> &str {
-        "Exit plan mode and return to normal mode where all tools are available."
+        "Signal that you have finished planning. Call this after presenting your complete plan as text to the user. The session will pause so the user can review your plan before any changes are made."
     }
 
     fn input_schema(&self) -> Value {
@@ -56,6 +56,6 @@ impl Tool for ExitPlanModeTool {
     }
 
     async fn execute(&self, _input: Value) -> AppResult<String> {
-        Ok("Exited plan mode. All tools are now available.".into())
+        Ok("Plan submitted for review.".into())
     }
 }

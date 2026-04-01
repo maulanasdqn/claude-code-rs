@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::sync::atomic::AtomicU8;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use claude_rust_auth::Credential;
 use claude_rust_errors::{AppError, AppResult};
@@ -18,15 +18,14 @@ const OPUS_MODEL: &str = "claude-opus-4-6";
 pub(crate) const MAX_TOKENS: u32 = 8192;
 
 pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219";
-/// Attribution header — must be in the system prompt (first text block), NOT as an HTTP header.
 pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
-
 
 pub struct AnthropicProvider {
     client: Client,
     credential: Credential,
     model: std::sync::Mutex<String>,
     mode: Arc<AtomicU8>,
+    thinking: Arc<AtomicBool>,
 }
 
 impl AnthropicProvider {
@@ -37,6 +36,8 @@ impl AnthropicProvider {
             DEFAULT_MODEL
         };
 
+        let thinking_default = credential.is_oauth();
+
         Self {
             client: Client::new(),
             model: std::sync::Mutex::new(
@@ -44,6 +45,7 @@ impl AnthropicProvider {
             ),
             credential,
             mode,
+            thinking: Arc::new(AtomicBool::new(thinking_default)),
         }
     }
 
@@ -57,8 +59,17 @@ impl AnthropicProvider {
         self.effective_model()
     }
 
-    /// Resolves the stored model name, handling Claude Code internal aliases like "opusplan"
-    /// ("use Opus in plan mode, Sonnet otherwise").
+    pub fn toggle_thinking(&self) -> bool {
+        let current = self.thinking.load(Ordering::Relaxed);
+        let next = !current;
+        self.thinking.store(next, Ordering::Relaxed);
+        next
+    }
+
+    pub fn thinking_enabled(&self) -> bool {
+        self.thinking.load(Ordering::Relaxed)
+    }
+
     fn effective_model(&self) -> String {
         let stored = self.model.lock().map(|m| m.clone()).unwrap_or_default();
         match stored.as_str() {
@@ -85,7 +96,8 @@ impl Provider for AnthropicProvider {
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
         let base_url = self.credential.base_url();
         let model_display = self.effective_model();
-        let body = build_request_body(&self.credential, &model_display, conversation, tools);
+        let thinking = self.thinking.load(Ordering::Relaxed);
+        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking);
 
         let request = match &self.credential {
             Credential::ClaudeCodeOAuth { access_token, .. } => {
@@ -106,16 +118,21 @@ impl Provider for AnthropicProvider {
                 let url = format!("{base_url}/v1/messages");
                 tracing::debug!(model = %model_display, url = %url, "sending API key request");
 
-                self.client
+                let mut rb = self.client
                     .post(&url)
                     .header("Authorization", format!("Bearer {api_key}"))
                     .header("x-api-key", api_key)
                     .header("anthropic-version", "2023-06-01")
-                    .header("content-type", "application/json")
+                    .header("content-type", "application/json");
+
+                if thinking {
+                    rb = rb.header("anthropic-beta", "interleaved-thinking-2025-05-14");
+                }
+
+                rb
             }
         };
 
-        // Log full request body for debugging
         tracing::debug!(body = %serde_json::to_string_pretty(&body).unwrap_or_default(), "request body");
 
         let response = request
@@ -130,7 +147,6 @@ impl Provider for AnthropicProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "failed to read body".into());
-            // Include status code in error for retry logic to detect 529/overloaded
             return Err(AppError::Provider(format!(
                 "API returned {status}: {body}"
             )));

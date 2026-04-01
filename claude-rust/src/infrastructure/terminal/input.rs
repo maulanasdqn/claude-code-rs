@@ -5,28 +5,30 @@ use crossterm::terminal;
 
 use claude_rust_types::PermissionMode;
 
-use super::{BOLD, CYAN, DIM, MAGENTA, RESET, YELLOW};
+use super::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, YELLOW};
 use super::banner::layout_width;
 use super::input_border::build_top_border;
 use super::input_raw::read_line_raw;
 
-pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String]) -> Option<String> {
+pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[String]) -> Option<String> {
     if !io::stdin().is_terminal() {
         return read_user_input_simple();
     }
+
+    terminal::disable_raw_mode().ok();
 
     let w = layout_width();
     let inner = w - 2;
 
     let top = build_top_border(inner, mode);
     let bot = format!("  {DIM}╰{}╯{RESET}", "─".repeat(inner));
-    let prompt_cols = 5;
-    let avail = inner.saturating_sub(prompt_cols + 1);
+    let avail = inner.saturating_sub(3);
 
     let pcolor = match PermissionMode::load(mode) {
         PermissionMode::Normal => CYAN,
         PermissionMode::Plan => MAGENTA,
         PermissionMode::AutoAccept => YELLOW,
+        PermissionMode::Bypass => RED,
     };
 
     println!("{top}");
@@ -37,8 +39,9 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String]) -> Option<Strin
     io::stdout().flush().ok();
 
     terminal::enable_raw_mode().ok()?;
-    let result = read_line_raw(inner, mode, history);
+    let result = read_line_raw(inner, mode, history, skill_names);
     terminal::disable_raw_mode().ok();
+    print!("\r");
 
     print!("\x1b[2B\r");
     io::stdout().flush().ok();

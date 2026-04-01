@@ -35,9 +35,19 @@ fn merge(global: Settings, project: Settings) -> Settings {
     let mut deny = global.permissions.deny;
     deny.extend(project.permissions.deny);
 
+    let mut pre_tool_use = global.hooks.pre_tool_use;
+    pre_tool_use.extend(project.hooks.pre_tool_use);
+    let mut post_tool_use = global.hooks.post_tool_use;
+    post_tool_use.extend(project.hooks.post_tool_use);
+    let mut stop = global.hooks.stop;
+    stop.extend(project.hooks.stop);
+    let mut session_start = global.hooks.session_start;
+    session_start.extend(project.hooks.session_start);
+
     Settings {
         permissions: crate::domain::config::PermissionSettings { allow, deny },
         model: project.model.or(global.model),
+        hooks: crate::domain::config::HooksConfig { pre_tool_use, post_tool_use, stop, session_start },
     }
 }
 

@@ -14,6 +14,15 @@ pub enum SlashCommand {
     Permissions,
     Session(String),
     Plan,
+    Think,
+    Add(String),
+    Files,
+    Memory,
+    Export,
+    Rewind(usize),
+    Review,
+    Commit,
+    Fast,
     Quit,
 }
 
