@@ -88,51 +88,65 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
                 std::thread::sleep(std::time::Duration::from_millis(10));
                 let icon = tool_icon(&state.current_tool_name);
                 let tname = state.current_tool_name.clone();
-                print!("\r  {CYAN}{icon}{RESET}  {DIM}{ORANGE}{tname}{RESET}\n");
+                print!("\r  {CYAN}{icon}{RESET}  {DIM}{tname}{RESET}");
                 io::stdout().flush().ok();
             }
 
             let summary = summarize_tool_input(&state.current_tool_name, &state.tool_json_buf);
             if !summary.is_empty() {
-                println!("    {DIM}↳  {summary}{RESET}");
+                print!("  {DIM}{summary}{RESET}");
+                io::stdout().flush().ok();
             }
             let tool_json = std::mem::take(&mut state.tool_json_buf);
 
             if is_error {
-                println!("    {RED}✗  {output}{RESET}");
+                println!();
+                println!("    {RED}✗  {}{RESET}", first_line(&output));
             } else {
                 match state.current_tool_name.as_str() {
-                    "file_edit" => super::render_diff::render_edit_diff(&tool_json),
-                    "file_write" => super::render_diff::render_write_preview(&tool_json),
-                    "agent" | "explore" if output.is_empty() || output == "(no output)" => {
-                        println!("    {GREEN}✓{RESET}");
+                    "file_edit" => {
+                        println!();
+                        super::render_diff::render_edit_diff(&tool_json);
+                    }
+                    "file_write" => {
+                        println!();
+                        super::render_diff::render_write_preview(&tool_json);
+                    }
+                    "read" | "glob" | "grep" | "web_fetch" | "web_search" => {
+                        let lines: Vec<&str> = output.lines().collect();
+                        if lines.is_empty() || output == "(no output)" {
+                            println!("  {GREEN}✓{RESET}");
+                        } else {
+                            println!("  {DIM}({} lines){RESET}", lines.len());
+                        }
                     }
                     "agent" | "explore" => {
-                        let lines: Vec<&str> = output.lines().collect();
-                        let show = lines.len().min(4);
-                        for line in &lines[..show] {
-                            println!("    {DIM}│  {line}{RESET}");
-                        }
-                        if lines.len() > 4 {
-                            println!("    {DIM}│  … {} more lines{RESET}", lines.len() - 4);
+                        println!();
+                        if output.is_empty() || output == "(no output)" {
+                            println!("    {GREEN}✓{RESET}");
+                        } else {
+                            let lines: Vec<&str> = output.lines().collect();
+                            let show = lines.len().min(4);
+                            for line in &lines[..show] {
+                                println!("    {DIM}{line}{RESET}");
+                            }
+                            if lines.len() > show {
+                                println!("    {DIM}… {} more lines{RESET}", lines.len() - show);
+                            }
                         }
                     }
                     _ if output.is_empty() || output == "(no output)" => {
-                        println!("    {GREEN}✓{RESET}");
+                        println!("  {GREEN}✓{RESET}");
                     }
                     _ => {
-                        let preview = if output.len() > 1000 {
-                            format!("{}…", &output[..999])
-                        } else {
-                            output.clone()
-                        };
-                        let lines: Vec<&str> = preview.lines().collect();
-                        let show = lines.len().min(20);
+                        println!();
+                        let lines: Vec<&str> = output.lines().collect();
+                        let show = lines.len().min(5);
                         for line in &lines[..show] {
-                            println!("    {DIM}│{RESET}  {DIM}{line}{RESET}");
+                            println!("    {DIM}{line}{RESET}");
                         }
-                        if lines.len() > 20 {
-                            println!("    {DIM}│  … {} more lines{RESET}", lines.len() - 20);
+                        if lines.len() > show {
+                            println!("    {DIM}… {} more lines{RESET}", lines.len() - show);
                         }
                     }
                 }
@@ -186,4 +200,8 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 
 fn fmt_tokens(n: u64) -> String {
     if n >= 1000 { format!("{:.1}K", n as f64 / 1000.0) } else { format!("{n}") }
+}
+
+fn first_line(s: &str) -> &str {
+    s.lines().next().unwrap_or(s)
 }

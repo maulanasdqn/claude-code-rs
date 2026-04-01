@@ -14,7 +14,7 @@ pub fn print_banner(cwd: &str, model_id: &str) {
     let w = layout_width();
 
     println!();
-    println!("  {BOLD}{CYAN}◆{RESET}  {BOLD}Claude Code{RESET}  {DIM}rust · v0.4.0{RESET}");
+    println!("  {BOLD}{CYAN}◆{RESET}  {BOLD}Claude Code{RESET}  {DIM}rust · v{}{RESET}", env!("CARGO_PKG_VERSION"));
     println!("  {DIM}{}{RESET}", "─".repeat(w));
     println!();
 
