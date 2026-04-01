@@ -1,6 +1,39 @@
+use crossterm::terminal;
 use super::super::terminal::{BOLD, CYAN, DIM, GREEN, ITALIC, RESET, YELLOW};
 use super::render_syntax;
 use super::RenderState;
+
+fn term_width() -> usize {
+    terminal::size().map(|(w, _)| w as usize).unwrap_or(80)
+}
+
+fn wrap_words(text: &str, max: usize) -> Vec<String> {
+    if max < 10 || text.chars().count() <= max {
+        return vec![text.to_string()];
+    }
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        let word_len = word.chars().count();
+        let cur_len = current.chars().count();
+        if current.is_empty() {
+            current.push_str(word);
+        } else if cur_len + 1 + word_len <= max {
+            current.push(' ');
+            current.push_str(word);
+        } else {
+            lines.push(std::mem::take(&mut current));
+            current.push_str(word);
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
 
 pub(super) fn flush_line_buf(state: &mut RenderState) {
     if !state.line_buf.is_empty() {
@@ -12,10 +45,13 @@ pub(super) fn flush_line_buf(state: &mut RenderState) {
 
 pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
     let trimmed = line.trim_end();
+    let w = term_width();
+    let text_w = w.saturating_sub(4);
 
     if state.in_code_block {
         if trimmed == "```" || trimmed == "~~~" {
-            println!("  {DIM}⎿ ──────────────────────────────────────{RESET}");
+            let bar = "─".repeat(w.saturating_sub(4));
+            println!("  {DIM}{bar}{RESET}");
             state.in_code_block = false;
             state.code_block_lang = String::new();
             state.highlighter = None;
@@ -25,7 +61,7 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
             } else {
                 format!("{GREEN}{trimmed}{RESET}")
             };
-            println!("  {DIM}⎿ │{RESET}  {rendered}");
+            println!("  {DIM}│{RESET}  {rendered}");
         }
         return;
     }
@@ -36,58 +72,83 @@ pub(super) fn render_md_line(line: &str, state: &mut RenderState) {
         state.in_code_block = true;
         state.code_block_lang = lang.to_string();
         state.highlighter = render_syntax::new_highlighter(lang);
-        let label = if lang.is_empty() {
-            String::new()
+        let bar = "─".repeat(w.saturating_sub(4));
+        if lang.is_empty() {
+            println!("  {DIM}{bar}{RESET}");
         } else {
-            format!(" {CYAN}{lang}{RESET}{DIM}")
-        };
-        println!("  {DIM}⎿ ──{label}──────────────────────────────────{RESET}");
+            let label = format!(" {CYAN}{lang}{RESET}{DIM} ");
+            let fill = w.saturating_sub(4 + lang.len() + 2);
+            println!("  {DIM}──{label}{}─{RESET}", "─".repeat(fill));
+        }
         return;
     }
 
     if matches!(trimmed, "---" | "***" | "___") {
-        println!("  {DIM}⎿ ────────────────────────────────────────{RESET}");
+        let hr = "─".repeat(text_w);
+        println!("  {DIM}{hr}{RESET}");
+        return;
+    }
+
+    if trimmed.starts_with('|') {
+        let inner = trimmed.trim_matches('|');
+        let is_sep = inner.split('|').all(|c| c.trim().chars().all(|x| x == '-' || x == ':' || x == ' '));
+        if !is_sep {
+            println!("  {}", render_inline(trimmed));
+        }
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("### ") {
-        println!("  {DIM}⎿{RESET} {BOLD}{}{RESET}", render_inline(rest));
+        println!("  {BOLD}{}{RESET}", render_inline(rest));
         return;
     }
     if let Some(rest) = trimmed.strip_prefix("## ") {
-        println!("\n  {DIM}⎿{RESET} {BOLD}{CYAN}{}{RESET}", render_inline(rest));
+        println!("\n  {BOLD}{CYAN}{}{RESET}", render_inline(rest));
         return;
     }
     if let Some(rest) = trimmed.strip_prefix("# ") {
-        println!("\n  {DIM}⎿{RESET} {BOLD}{CYAN}{}{RESET}", render_inline(rest));
+        println!("\n  {BOLD}{CYAN}{}{RESET}", render_inline(rest));
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("> ") {
-        println!("  {DIM}⎿ │{RESET} {DIM}{}{RESET}", render_inline(rest));
+        for wline in wrap_words(rest, text_w.saturating_sub(4)) {
+            println!("  {DIM}│{RESET} {DIM}{}{RESET}", render_inline(&wline));
+        }
         return;
     }
 
     if let Some(rest) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
-        println!("  {DIM}⎿{RESET} {DIM}•{RESET} {}", render_inline(rest));
+        let chunks = wrap_words(rest, text_w.saturating_sub(2));
+        println!("  • {}", render_inline(&chunks[0]));
+        for chunk in &chunks[1..] {
+            println!("    {}", render_inline(chunk));
+        }
         return;
     }
 
     if let Some(pos) = trimmed.find(". ") {
         let prefix = &trimmed[..pos];
-        if prefix.chars().all(|c| c.is_ascii_digit()) && !prefix.is_empty() {
+        if !prefix.is_empty() && prefix.chars().all(|c| c.is_ascii_digit()) {
             let rest = &trimmed[pos + 2..];
-            println!("  {DIM}⎿{RESET} {DIM}{}.{RESET} {}", prefix, render_inline(rest));
+            let indent_w = prefix.len() + 2;
+            let chunks = wrap_words(rest, text_w.saturating_sub(indent_w));
+            println!("  {DIM}{prefix}.{RESET} {}", render_inline(&chunks[0]));
+            for chunk in &chunks[1..] {
+                println!("  {}  {}", " ".repeat(indent_w), render_inline(chunk));
+            }
             return;
         }
     }
 
     if trimmed.is_empty() {
-        println!("  {DIM}⎿{RESET}");
+        println!();
         return;
     }
 
-    println!("  {DIM}⎿{RESET} {}", render_inline(trimmed));
+    for wline in wrap_words(trimmed, text_w) {
+        println!("  {}", render_inline(&wline));
+    }
 }
 
 fn render_inline(s: &str) -> String {
