@@ -48,6 +48,8 @@ fn merge(global: Settings, project: Settings) -> Settings {
         permissions: crate::domain::config::PermissionSettings { allow, deny },
         model: project.model.or(global.model),
         hooks: crate::domain::config::HooksConfig { pre_tool_use, post_tool_use, stop, session_start },
+        max_turns: project.max_turns.or(global.max_turns),
+        max_tokens: project.max_tokens.or(global.max_tokens),
     }
 }
 
@@ -64,7 +66,7 @@ mod tests {
                 deny: vec!["bash(rm -rf *)".into()],
             },
             model: Some("global-model".into()),
-            hooks: HooksConfig::default(),
+            ..Default::default()
         };
         let project = Settings {
             permissions: PermissionSettings {
@@ -72,7 +74,7 @@ mod tests {
                 deny: vec![],
             },
             model: None,
-            hooks: HooksConfig::default(),
+            ..Default::default()
         };
         let merged = merge(global, project);
         assert_eq!(merged.permissions.allow, vec!["read", "glob", "grep"]);

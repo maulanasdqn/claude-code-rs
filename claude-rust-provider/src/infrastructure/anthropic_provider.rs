@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 
 use claude_rust_auth::Credential;
 use claude_rust_errors::{AppError, AppResult};
@@ -9,7 +9,7 @@ use futures::StreamExt;
 use reqwest::Client;
 use serde_json::Value;
 
-use super::sse_parser::{parse_sse_event, parse_sse_lines};
+use super::sse_parser::{parse_sse_block, parse_sse_event};
 use super::request_builder::build_request_body;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -49,6 +49,7 @@ pub struct AnthropicProvider {
     model: std::sync::Mutex<String>,
     mode: Arc<AtomicU8>,
     thinking: Arc<AtomicBool>,
+    max_tokens: AtomicU32,
 }
 
 impl AnthropicProvider {
@@ -63,12 +64,11 @@ impl AnthropicProvider {
 
         Self {
             client: Client::new(),
-            model: std::sync::Mutex::new(
-                std::env::var("MODEL").unwrap_or_else(|_| default_model.to_string()),
-            ),
+            model: std::sync::Mutex::new(default_model.to_string()),
             credential,
             mode,
             thinking: Arc::new(AtomicBool::new(thinking_default)),
+            max_tokens: AtomicU32::new(MAX_TOKENS),
         }
     }
 
@@ -76,6 +76,10 @@ impl AnthropicProvider {
         if let Ok(mut m) = self.model.lock() {
             *m = model.to_string();
         }
+    }
+
+    pub fn set_max_tokens(&self, n: u32) {
+        self.max_tokens.store(n, Ordering::Relaxed);
     }
 
     pub fn model_name(&self) -> String {
@@ -159,7 +163,8 @@ impl Provider for AnthropicProvider {
         let base_url = self.credential.base_url();
         let model_display = self.effective_model();
         let thinking = self.thinking.load(Ordering::Relaxed);
-        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking);
+        let max_tokens = self.max_tokens.load(Ordering::Relaxed);
+        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens);
 
         let request = match &self.credential {
             Credential::ClaudeCodeOAuth { access_token, .. } => {
@@ -195,8 +200,6 @@ impl Provider for AnthropicProvider {
             }
         };
 
-        tracing::debug!(body = %serde_json::to_string_pretty(&body).unwrap_or_default(), "request body");
-
         let response = request
             .json(&body)
             .send()
@@ -217,23 +220,23 @@ impl Provider for AnthropicProvider {
         let byte_stream = response.bytes_stream();
 
         let event_stream = byte_stream
-            .map(|chunk| {
-                let chunk = match chunk {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        return vec![StreamEvent::Error {
-                            message: e.to_string(),
-                        }];
+            .scan(String::new(), |buf, chunk| {
+                let events: Vec<StreamEvent> = match chunk {
+                    Err(e) => vec![StreamEvent::Error { message: e.to_string() }],
+                    Ok(bytes) => {
+                        buf.push_str(&String::from_utf8_lossy(&bytes));
+                        let mut events = Vec::new();
+                        while let Some(pos) = buf.find("\n\n") {
+                            let block = buf[..pos].to_string();
+                            *buf = buf[pos + 2..].to_string();
+                            if let Some((et, d)) = parse_sse_block(&block) {
+                                events.extend(parse_sse_event(&et, &d));
+                            }
+                        }
+                        events
                     }
                 };
-
-                let text = String::from_utf8_lossy(&chunk);
-                let sse_events = parse_sse_lines(&text);
-
-                sse_events
-                    .into_iter()
-                    .flat_map(|(event_type, data)| parse_sse_event(&event_type, &data))
-                    .collect::<Vec<_>>()
+                async move { Some(events) }
             })
             .flat_map(futures::stream::iter);
 

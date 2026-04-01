@@ -8,6 +8,10 @@ pub struct Settings {
     pub model: Option<String>,
     #[serde(default)]
     pub hooks: HooksConfig,
+    #[serde(default)]
+    pub max_turns: Option<usize>,
+    #[serde(default)]
+    pub max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

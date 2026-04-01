@@ -2,7 +2,7 @@ use claude_rust_auth::Credential;
 use claude_rust_types::{ContentBlock, Conversation};
 use serde_json::{Value, json};
 
-use super::anthropic_provider::{BILLING_HEADER_LINE, MAX_TOKENS};
+use super::anthropic_provider::BILLING_HEADER_LINE;
 
 pub fn build_request_body(
     credential: &Credential,
@@ -10,6 +10,7 @@ pub fn build_request_body(
     conversation: &Conversation,
     tools: &[Value],
     thinking: bool,
+    max_tokens: u32,
 ) -> Value {
     let messages: Vec<Value> = conversation
         .messages
@@ -66,7 +67,7 @@ pub fn build_request_body(
 
     let mut body = json!({
         "model": model,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max_tokens,
         "messages": messages,
         "stream": true,
     });

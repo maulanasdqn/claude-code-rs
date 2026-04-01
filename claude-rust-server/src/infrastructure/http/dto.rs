@@ -19,3 +19,12 @@ pub struct ChatResponse {
     pub response: String,
     pub messages: Value,
 }
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum StreamEventDto {
+    Content { text: String },
+    ToolUse { name: String, output: String },
+    Done,
+    Error { message: String },
+}
