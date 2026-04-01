@@ -13,6 +13,7 @@ pub fn handle_help() -> CommandResult {
          {DIM}  /clear{RESET}             {DIM}Clear conversation history{RESET}\n\
          {DIM}  /compact{RESET}           {DIM}Compact context to save tokens{RESET}\n\
          {DIM}  /cost{RESET}              {DIM}Show token usage and cost{RESET}\n\
+         {DIM}  /usage{RESET}             {DIM}Show plan usage limits{RESET}\n\
          {DIM}  /model{RESET} {DIM}<name>{RESET}      {DIM}Switch model{RESET}\n\
          {DIM}  /fast{RESET}              {DIM}Toggle fast (haiku) model{RESET}\n\
          {DIM}  /diff{RESET}              {DIM}Show git diff{RESET}\n\
