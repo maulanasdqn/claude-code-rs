@@ -57,12 +57,12 @@ impl QueryEngine {
     where
         F: FnMut(EngineEvent) + Send,
     {
-        let is_plan = PermissionMode::load(&self.mode) == PermissionMode::Plan;
-        let tools = if is_plan { self.registry.tool_definitions_filtered(|t| t.permission_level() == PermissionLevel::ReadOnly || t.name() == "exit_plan_mode") } else { self.registry.tool_definitions() };
         let mut last_input_tokens: u64 = 0;
 
         for turn in 0..self.max_turns {
             tracing::info!(turn, "starting provider turn");
+            let is_plan = PermissionMode::load(&self.mode) == PermissionMode::Plan;
+            let tools = if is_plan { self.registry.tool_definitions_filtered(|t| t.permission_level() == PermissionLevel::ReadOnly || t.name() == "exit_plan_mode") } else { self.registry.tool_definitions() };
 
             if last_input_tokens > 0
                 && last_input_tokens > self.context_limit * 80 / 100
