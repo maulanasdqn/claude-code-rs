@@ -32,7 +32,8 @@ async fn main() {
     let permission = Arc::new(AllowAll);
     let engine = Arc::new(QueryEngine::new(provider, registry, permission, mode, HooksConfig::default()));
 
-    let state = AppState { engine };
+    let server_token = std::env::var("CLAUDE_SERVER_TOKEN").ok();
+    let state = AppState { engine, server_token };
     let app = build_router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")

@@ -45,6 +45,12 @@ async fn main() {
     if let Some(ref model) = config.model {
         provider.set_model(model);
     }
+    if let Ok(model) = std::env::var("MODEL") {
+        provider.set_model(&model);
+    }
+    if let Some(mt) = config.max_tokens {
+        provider.set_max_tokens(mt);
+    }
 
     let pause_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -92,7 +98,13 @@ async fn main() {
 
     let tool_names = registry.tool_names();
     let registry = Arc::new(registry);
-    let engine = Arc::new(QueryEngine::new(provider.clone(), registry, permission.clone(), mode_flag.clone(), config.hooks.clone()));
+    let engine = {
+        let mut e = QueryEngine::new(provider.clone(), registry, permission.clone(), mode_flag.clone(), config.hooks.clone());
+        if let Some(mt) = config.max_turns {
+            e = e.with_max_turns(mt);
+        }
+        Arc::new(e)
+    };
 
     let session_repo: Arc<dyn claude_rust_memory::SessionRepository> =
         match FileSessionRepository::new(&cwd) {

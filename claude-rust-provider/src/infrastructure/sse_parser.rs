@@ -1,6 +1,19 @@
 use claude_rust_types::{StopReason, StreamEvent, UsageStats};
 use serde_json::Value;
 
+pub fn parse_sse_block(block: &str) -> Option<(String, String)> {
+    let mut event_type = String::new();
+    let mut data = String::new();
+    for line in block.lines() {
+        if let Some(val) = line.strip_prefix("event: ") {
+            event_type = val.to_string();
+        } else if let Some(val) = line.strip_prefix("data: ") {
+            data = val.to_string();
+        }
+    }
+    if data.is_empty() { None } else { Some((event_type, data)) }
+}
+
 pub fn parse_sse_event(event_type: &str, data: &str) -> Vec<StreamEvent> {
     let v: Value = match serde_json::from_str(data) {
         Ok(v) => v,

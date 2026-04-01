@@ -41,6 +41,11 @@ impl QueryEngine {
         }
     }
 
+    pub fn with_max_turns(mut self, n: usize) -> Self {
+        self.max_turns = n;
+        self
+    }
+
     pub fn mode_flag(&self) -> Arc<AtomicU8> { self.mode.clone() }
     pub fn undo_stack(&self) -> Arc<UndoStack> { self.undo_stack.clone() }
 

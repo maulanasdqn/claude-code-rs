@@ -22,6 +22,9 @@ pub enum AppError {
     #[error("Interrupted")]
     Interrupted,
 
+    #[error("Unauthorized")]
+    Unauthorized,
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -39,6 +42,7 @@ impl IntoResponse for AppError {
             AppError::PermissionDenied(_) => (StatusCode::FORBIDDEN, self.to_string()),
             AppError::MaxTurnsExceeded(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             AppError::Interrupted => (StatusCode::OK, "Interrupted".into()),
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
             AppError::Provider(_) | AppError::Tool(_) | AppError::Internal(_) => {
                 tracing::error!(%self, "internal error");
                 (
