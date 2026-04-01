@@ -43,6 +43,14 @@ pub fn build_request_body(
                         }
                         Some(v)
                     }
+                    ContentBlock::Image { media_type, data } => Some(json!({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": data
+                        }
+                    })),
                     // Skip thinking blocks — the API rejects them if sent back
                     ContentBlock::Thinking { .. } => None,
                 })
@@ -72,8 +80,8 @@ pub fn build_request_body(
         }
         body["system"] = json!(system_blocks);
 
-        // Enable adaptive thinking for OAuth models
-        body["thinking"] = json!({"type": "adaptive"});
+        // Cap thinking budget to avoid excessive reasoning on simple prompts
+        body["thinking"] = json!({"type": "enabled", "budget_tokens": 8000});
     } else if let Some(system) = &conversation.system {
         body["system"] = json!(system);
     }

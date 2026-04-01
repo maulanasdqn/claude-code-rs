@@ -1,6 +1,9 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicU8;
+
 use claude_rust_auth::Credential;
 use claude_rust_errors::{AppError, AppResult};
-use claude_rust_types::{Conversation, Provider, StreamEvent};
+use claude_rust_types::{Conversation, PermissionMode, Provider, StreamEvent};
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use reqwest::Client;
@@ -11,6 +14,7 @@ use super::request_builder::build_request_body;
 
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
 pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
+const OPUS_MODEL: &str = "claude-opus-4-6";
 pub(crate) const MAX_TOKENS: u32 = 8192;
 
 pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219";
@@ -22,10 +26,11 @@ pub struct AnthropicProvider {
     client: Client,
     credential: Credential,
     model: std::sync::Mutex<String>,
+    mode: Arc<AtomicU8>,
 }
 
 impl AnthropicProvider {
-    pub fn new(credential: Credential) -> Self {
+    pub fn new(credential: Credential, mode: Arc<AtomicU8>) -> Self {
         let default_model = if credential.is_oauth() {
             OAUTH_DEFAULT_MODEL
         } else {
@@ -38,6 +43,7 @@ impl AnthropicProvider {
                 std::env::var("MODEL").unwrap_or_else(|_| default_model.to_string()),
             ),
             credential,
+            mode,
         }
     }
 
@@ -48,10 +54,25 @@ impl AnthropicProvider {
     }
 
     pub fn model_name(&self) -> String {
-        self.model
-            .lock()
-            .map(|m| m.clone())
-            .unwrap_or_default()
+        self.effective_model()
+    }
+
+    /// Resolves the stored model name, handling Claude Code internal aliases like "opusplan"
+    /// ("use Opus in plan mode, Sonnet otherwise").
+    fn effective_model(&self) -> String {
+        let stored = self.model.lock().map(|m| m.clone()).unwrap_or_default();
+        match stored.as_str() {
+            "opusplan" => {
+                if PermissionMode::load(&self.mode) == PermissionMode::Plan {
+                    OPUS_MODEL.to_string()
+                } else if self.credential.is_oauth() {
+                    OAUTH_DEFAULT_MODEL.to_string()
+                } else {
+                    DEFAULT_MODEL.to_string()
+                }
+            }
+            _ => stored,
+        }
     }
 }
 
@@ -63,7 +84,7 @@ impl Provider for AnthropicProvider {
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
         let base_url = self.credential.base_url();
-        let model_display = self.model_name();
+        let model_display = self.effective_model();
         let body = build_request_body(&self.credential, &model_display, conversation, tools);
 
         let request = match &self.credential {

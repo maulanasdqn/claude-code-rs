@@ -20,7 +20,8 @@ async fn main() {
         .init();
 
     let credential = claude_rust_auth::resolve_credential().expect("no credentials found");
-    let provider = Arc::new(AnthropicProvider::new(credential));
+    let mode = Arc::new(std::sync::atomic::AtomicU8::new(0));
+    let provider = Arc::new(AnthropicProvider::new(credential, mode.clone()));
 
     let mut registry = ToolRegistry::new();
     registry.register(Arc::new(BashTool));
@@ -28,7 +29,7 @@ async fn main() {
     let registry = Arc::new(registry);
 
     let permission = Arc::new(AllowAll);
-    let engine = Arc::new(QueryEngine::new(provider, registry, permission));
+    let engine = Arc::new(QueryEngine::new(provider, registry, permission, mode));
 
     let state = AppState { engine };
     let app = build_router(state);

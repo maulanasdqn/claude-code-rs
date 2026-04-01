@@ -1,3 +1,5 @@
+use claude_rust_types::PermissionMode;
+
 #[derive(Debug, Clone)]
 pub enum EngineEvent {
     TextDelta(String),
@@ -8,6 +10,6 @@ pub enum EngineEvent {
     Usage { input_tokens: u64, output_tokens: u64 },
     TurnComplete,
     Compacted { original_turns: usize },
-    PlanModeChanged { enabled: bool },
+    ModeChanged { mode: PermissionMode },
     Error(String),
 }

@@ -15,6 +15,7 @@ pub async fn execute_command(command: SlashCommand) -> CommandResult {
         SlashCommand::Permissions => CommandResult::Output("Use /permissions from the main loop.".into()),
         SlashCommand::Session(id) => handlers::handle_session(&id).await,
         SlashCommand::Plan => CommandResult::Output("Use /plan from the main loop.".into()),
+        SlashCommand::Mode => CommandResult::Output("Use /mode from the main loop.".into()),
         SlashCommand::Quit => CommandResult::Quit,
     }
 }

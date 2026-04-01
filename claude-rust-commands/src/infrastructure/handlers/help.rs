@@ -9,21 +9,20 @@ pub fn handle_help() -> CommandResult {
     let text = format!(
         "  {BOLD}{CYAN}Commands{RESET}\n\
          \n\
-         {DIM}  ┌─────────────────────────────────────────────────────┐{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/help{RESET}            Show this help message          {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/clear{RESET}           Clear conversation history      {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/compact{RESET}         Compact context to save tokens  {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/cost{RESET}            Show token usage and cost       {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/model{RESET} {DIM}<name>{RESET}    Switch model                    {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/diff{RESET}            Show git diff                   {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/status{RESET}          Show git status                 {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/doctor{RESET}          Check environment health        {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/config{RESET}          Show merged settings            {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/permissions{RESET}     Show allow/deny rules           {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/session{RESET} {DIM}[id]{RESET}   List or load sessions           {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/plan{RESET}            Toggle plan mode                {DIM}│{RESET}\n\
-         {DIM}  │{RESET}  {BOLD}/quit{RESET}            Exit                            {DIM}│{RESET}\n\
-         {DIM}  └─────────────────────────────────────────────────────┘{RESET}\n\
+         {DIM}  /help{RESET}              {DIM}Show this help message{RESET}\n\
+         {DIM}  /clear{RESET}             {DIM}Clear conversation history{RESET}\n\
+         {DIM}  /compact{RESET}           {DIM}Compact context to save tokens{RESET}\n\
+         {DIM}  /cost{RESET}              {DIM}Show token usage and cost{RESET}\n\
+         {DIM}  /model{RESET} {DIM}<name>{RESET}      {DIM}Switch model{RESET}\n\
+         {DIM}  /diff{RESET}              {DIM}Show git diff{RESET}\n\
+         {DIM}  /status{RESET}            {DIM}Show git status{RESET}\n\
+         {DIM}  /doctor{RESET}            {DIM}Check environment health{RESET}\n\
+         {DIM}  /config{RESET}            {DIM}Show merged settings{RESET}\n\
+         {DIM}  /permissions{RESET}       {DIM}Show allow/deny rules{RESET}\n\
+         {DIM}  /session{RESET} {DIM}[id]{RESET}      {DIM}List or load sessions{RESET}\n\
+         {DIM}  /plan{RESET}              {DIM}Toggle plan mode{RESET}\n\
+         {DIM}  /mode{RESET}              {DIM}Cycle permission mode{RESET}\n\
+         {DIM}  /quit{RESET}              {DIM}Exit{RESET}\n\
          \n\
          {DIM}  Tip: Use @file_path to include file contents in your message.{RESET}"
     );

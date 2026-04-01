@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-tools"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 description = "Tool implementations for bash and file operations"
 license = "MIT"
