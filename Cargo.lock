@@ -158,7 +158,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "claude-rust"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "claude-rust-auth",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-auth"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "claude-rust-errors",
  "serde",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-commands"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "base64",
  "claude-rust-errors",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-config"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -210,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-engine"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "claude-rust-config",
  "claude-rust-errors",
@@ -224,7 +224,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-errors"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "anyhow",
  "axum",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-memory"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-permission"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "claude-rust-config",
@@ -262,7 +262,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-provider"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "claude-rust-auth",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-server"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "axum",
  "claude-rust-auth",
@@ -297,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-tools"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "claude-rust-errors",
@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-types"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "claude-rust-errors",

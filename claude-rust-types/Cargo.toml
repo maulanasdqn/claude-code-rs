@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-types"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2024"
 description = "Shared domain types for messages, providers, tools, and permissions"
 license = "MIT"
