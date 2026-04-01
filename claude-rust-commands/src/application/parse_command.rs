@@ -15,6 +15,7 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
         "/config" => return Some(SlashCommand::Config),
         "/permissions" => return Some(SlashCommand::Permissions),
         "/plan" => return Some(SlashCommand::Plan),
+        "/usage" => return Some(SlashCommand::Usage),
         "/mode" => return Some(SlashCommand::Mode),
         "/model" => return Some(SlashCommand::Model(String::new())),
         "/session" => return Some(SlashCommand::Session(String::new())),

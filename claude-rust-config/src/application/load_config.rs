@@ -54,7 +54,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::config::{PermissionSettings, Settings};
+    use crate::domain::config::{HooksConfig, PermissionSettings, Settings};
 
     #[test]
     fn test_merge_concatenates_permissions() {
@@ -64,6 +64,7 @@ mod tests {
                 deny: vec!["bash(rm -rf *)".into()],
             },
             model: Some("global-model".into()),
+            hooks: HooksConfig::default(),
         };
         let project = Settings {
             permissions: PermissionSettings {
@@ -71,6 +72,7 @@ mod tests {
                 deny: vec![],
             },
             model: None,
+            hooks: HooksConfig::default(),
         };
         let merged = merge(global, project);
         assert_eq!(merged.permissions.allow, vec!["read", "glob", "grep"]);

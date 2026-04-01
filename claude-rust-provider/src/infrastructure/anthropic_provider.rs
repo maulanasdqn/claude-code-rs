@@ -12,6 +12,29 @@ use serde_json::Value;
 use super::sse_parser::{parse_sse_event, parse_sse_lines};
 use super::request_builder::build_request_body;
 
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct RateLimit {
+    pub utilization: Option<f64>,
+    pub resets_at: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ExtraUsage {
+    pub is_enabled: bool,
+    pub monthly_limit: Option<f64>,
+    pub used_credits: Option<f64>,
+    pub utilization: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct Utilization {
+    pub five_hour: Option<RateLimit>,
+    pub seven_day: Option<RateLimit>,
+    pub seven_day_opus: Option<RateLimit>,
+    pub seven_day_sonnet: Option<RateLimit>,
+    pub extra_usage: Option<ExtraUsage>,
+}
+
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
 pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 const OPUS_MODEL: &str = "claude-opus-4-6";
@@ -68,6 +91,45 @@ impl AnthropicProvider {
 
     pub fn thinking_enabled(&self) -> bool {
         self.thinking.load(Ordering::Relaxed)
+    }
+
+    pub fn is_oauth(&self) -> bool {
+        self.credential.is_oauth()
+    }
+
+    pub async fn fetch_usage(&self) -> AppResult<Utilization> {
+        let access_token = match &self.credential {
+            Credential::ClaudeCodeOAuth { access_token, .. } => access_token.clone(),
+            _ => {
+                return Err(AppError::Provider(
+                    "/usage is only available for Claude AI subscribers (OAuth login)".to_string(),
+                ));
+            }
+        };
+
+        let url = format!("{}/api/oauth/usage", self.credential.base_url());
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .header("anthropic-beta", "oauth-2025-04-20")
+            .header("anthropic-dangerous-direct-browser-access", "true")
+            .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
+            .header("Content-Type", "application/json")
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| AppError::Provider(format!("usage request failed: {e}")))?;
+
+        if !response.status().is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(AppError::Provider(format!("usage API error: {body}")));
+        }
+
+        response
+            .json::<Utilization>()
+            .await
+            .map_err(|e| AppError::Provider(format!("failed to parse usage response: {e}")))
     }
 
     fn effective_model(&self) -> String {

@@ -23,6 +23,7 @@ pub enum SlashCommand {
     Review,
     Commit,
     Fast,
+    Usage,
     Quit,
 }
 

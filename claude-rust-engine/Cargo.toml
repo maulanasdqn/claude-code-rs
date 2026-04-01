@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-engine"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "Agentic query engine with tool-use loop"
 license = "MIT"
