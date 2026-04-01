@@ -62,7 +62,15 @@ impl QueryEngine {
         for turn in 0..self.max_turns {
             tracing::info!(turn, "starting provider turn");
             let is_plan = PermissionMode::load(&self.mode) == PermissionMode::Plan;
-            let tools = if is_plan { self.registry.tool_definitions_filtered(|t| t.permission_level() == PermissionLevel::ReadOnly || t.name() == "exit_plan_mode") } else { self.registry.tool_definitions() };
+            let tools = if is_plan {
+                self.registry.tool_definitions_filtered(|t| {
+                    t.permission_level() == PermissionLevel::ReadOnly || t.name() == "exit_plan_mode"
+                })
+            } else {
+                self.registry.tool_definitions_filtered(|t| {
+                    t.name() != "enter_plan_mode" && t.name() != "exit_plan_mode"
+                })
+            };
 
             if last_input_tokens > 0
                 && last_input_tokens > self.context_limit * 80 / 100
@@ -180,6 +188,11 @@ impl QueryEngine {
                             }
                             on_event(EngineEvent::ToolResult { name: name.clone(), output: output.clone(), is_error: false });
                             tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: output, is_error: None });
+                            if name == "exit_plan_mode" {
+                                PermissionMode::Normal.store(&self.mode);
+                                on_event(EngineEvent::ModeChanged { mode: PermissionMode::Normal });
+                                exit_plan_called = true;
+                            }
                         }
                         Err(ref e) if e.is_interrupted() => {
                             return Err(AppError::Interrupted);
@@ -190,15 +203,6 @@ impl QueryEngine {
                             tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: msg, is_error: Some(true) });
                         }
                     }
-                }
-
-                if name == "enter_plan_mode" {
-                    PermissionMode::Plan.store(&self.mode);
-                    on_event(EngineEvent::ModeChanged { mode: PermissionMode::Plan });
-                } else if name == "exit_plan_mode" {
-                    PermissionMode::Normal.store(&self.mode);
-                    on_event(EngineEvent::ModeChanged { mode: PermissionMode::Normal });
-                    exit_plan_called = true;
                 }
             }
 

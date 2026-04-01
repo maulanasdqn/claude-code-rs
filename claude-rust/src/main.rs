@@ -10,7 +10,7 @@ use claude_rust_memory::FileSessionRepository;
 use claude_rust_permission::ConfigAwarePermissionChecker;
 use claude_rust_provider::AnthropicProvider;
 use claude_rust_tools::{
-    AskUserTool, BashTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
+    AskUserTool, BashTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
     GlobTool, GrepTool, ReadTool, TodoReadTool, TodoWriteTool, ToolRegistry, WebFetchTool,
     WebSearchTool,
 };
@@ -64,8 +64,7 @@ async fn main() {
     registry.register(Arc::new(AskUserTool::new(pause_flag.clone())));
     registry.register(Arc::new(WebFetchTool));
     registry.register(Arc::new(WebSearchTool));
-    registry.register(Arc::new(EnterPlanModeTool));
-    registry.register(Arc::new(ExitPlanModeTool));
+    registry.register(Arc::new(ExitPlanModeTool::new(pause_flag.clone())));
     registry.register(Arc::new(TodoWriteTool));
     registry.register(Arc::new(TodoReadTool));
 
