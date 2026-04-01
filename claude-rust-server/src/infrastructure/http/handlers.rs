@@ -9,6 +9,7 @@ use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::{AppError, AppResult};
 use claude_rust_types::{ContentBlock, Conversation, Message};
 use futures::StreamExt;
+use serde_json::json;
 
 use super::dto::{ChatRequest, ChatResponse, StreamEventDto};
 
@@ -16,6 +17,9 @@ use super::dto::{ChatRequest, ChatResponse, StreamEventDto};
 pub struct AppState {
     pub engine: Arc<QueryEngine>,
     pub server_token: Option<String>,
+    pub started_at: std::time::Instant,
+    pub model_name: String,
+    pub auth_type: String,
 }
 
 fn check_auth(state: &AppState, headers: &HeaderMap) -> Result<(), AppError> {
@@ -44,8 +48,13 @@ fn build_conversation(req: ChatRequest) -> Result<Conversation, AppError> {
     Ok(conversation)
 }
 
-pub async fn health() -> &'static str {
-    "ok"
+pub async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
+    Json(json!({
+        "status": "ok",
+        "uptime_seconds": state.started_at.elapsed().as_secs(),
+        "model": state.model_name,
+        "auth_type": state.auth_type,
+    }))
 }
 
 pub async fn chat(

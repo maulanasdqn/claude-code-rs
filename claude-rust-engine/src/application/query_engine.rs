@@ -117,73 +117,87 @@ impl QueryEngine {
                 return Ok(conversation);
             }
 
-            let tool_uses: Vec<_> = assistant_blocks
+            let tool_uses: Vec<(String, String, serde_json::Value)> = assistant_blocks
                 .iter()
                 .filter_map(|b| match b {
-                    ContentBlock::ToolUse { id, name, input } => Some((id, name, input)),
+                    ContentBlock::ToolUse { id, name, input } => Some((id.clone(), name.clone(), input.clone())),
                     _ => None,
                 })
                 .collect();
 
+            let mut pre_outs = Vec::new();
+            for (_, name, input) in &tool_uses {
+                let pre = run_pre_tool_use(&self.hooks, name, &input.to_string()).await;
+                pre_outs.push(pre);
+            }
+
+            let registry = self.registry.clone();
+            let permission = self.permission.clone();
+            let undo = self.undo_stack.clone();
+            let handles: Vec<_> = tool_uses.iter()
+                .zip(pre_outs.iter())
+                .map(|((_, name, input), pre)| {
+                    if pre.blocked {
+                        tokio::spawn(async { Ok::<String, AppError>(String::new()) })
+                    } else {
+                        let registry = registry.clone();
+                        let permission = permission.clone();
+                        let undo = undo.clone();
+                        let name = name.clone();
+                        let input = input.clone();
+                        tokio::spawn(async move {
+                            execute_tool(&registry, &permission, &name, &input, &undo).await
+                        })
+                    }
+                })
+                .collect();
+            let exec_results = futures::future::join_all(handles).await;
+
             let mut tool_results = Vec::new();
             let mut exit_plan_called = false;
-            for (id, name, input) in tool_uses {
+            let mut pre_iter = pre_outs.into_iter();
+            let mut exec_iter = exec_results.into_iter();
+            for (id, name, input) in &tool_uses {
+                let pre = pre_iter.next().unwrap();
+                let exec_result = exec_iter.next().unwrap();
                 let input_json = input.to_string();
-                let pre = run_pre_tool_use(&self.hooks, name, &input_json).await;
                 if !pre.output.is_empty() {
                     on_event(EngineEvent::HookOutput { source: "pre-tool".into(), output: pre.output });
                 }
                 if pre.blocked {
                     on_event(EngineEvent::ToolResult { name: name.clone(), output: pre.reason.clone(), is_error: true });
                     tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: pre.reason, is_error: Some(true) });
-                    continue;
-                }
-                let result = execute_tool(&self.registry, &self.permission, name, input, &self.undo_stack).await;
-                match result {
-                    Ok(output) => {
-                        let post = run_post_tool_use(&self.hooks, name, &input_json, &output).await;
-                        if !post.is_empty() {
-                            on_event(EngineEvent::HookOutput { source: "post-tool".into(), output: post });
+                } else {
+                    let result: AppResult<String> = match exec_result {
+                        Ok(r) => r,
+                        Err(e) => Err(AppError::Tool(e.to_string())),
+                    };
+                    match result {
+                        Ok(output) => {
+                            let post = run_post_tool_use(&self.hooks, name, &input_json, &output).await;
+                            if !post.is_empty() {
+                                on_event(EngineEvent::HookOutput { source: "post-tool".into(), output: post });
+                            }
+                            on_event(EngineEvent::ToolResult { name: name.clone(), output: output.clone(), is_error: false });
+                            tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: output, is_error: None });
                         }
-                        on_event(EngineEvent::ToolResult {
-                            name: name.clone(),
-                            output: output.clone(),
-                            is_error: false,
-                        });
-                        tool_results.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: output,
-                            is_error: None,
-                        });
-                    }
-                    Err(ref e) if e.is_interrupted() => {
-                        return Err(AppError::Interrupted);
-                    }
-                    Err(e) => {
-                        let msg = e.to_string();
-                        on_event(EngineEvent::ToolResult {
-                            name: name.clone(),
-                            output: msg.clone(),
-                            is_error: true,
-                        });
-                        tool_results.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: msg,
-                            is_error: Some(true),
-                        });
+                        Err(ref e) if e.is_interrupted() => {
+                            return Err(AppError::Interrupted);
+                        }
+                        Err(e) => {
+                            let msg = e.to_string();
+                            on_event(EngineEvent::ToolResult { name: name.clone(), output: msg.clone(), is_error: true });
+                            tool_results.push(ContentBlock::ToolResult { tool_use_id: id.clone(), content: msg, is_error: Some(true) });
+                        }
                     }
                 }
 
                 if name == "enter_plan_mode" {
                     PermissionMode::Plan.store(&self.mode);
-                    on_event(EngineEvent::ModeChanged {
-                        mode: PermissionMode::Plan,
-                    });
+                    on_event(EngineEvent::ModeChanged { mode: PermissionMode::Plan });
                 } else if name == "exit_plan_mode" {
                     PermissionMode::Normal.store(&self.mode);
-                    on_event(EngineEvent::ModeChanged {
-                        mode: PermissionMode::Normal,
-                    });
+                    on_event(EngineEvent::ModeChanged { mode: PermissionMode::Normal });
                     exit_plan_called = true;
                 }
             }
