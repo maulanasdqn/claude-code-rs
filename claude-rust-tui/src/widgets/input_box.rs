@@ -24,7 +24,6 @@ impl<'a> Widget for InputBox<'a> {
         let mode_label = match self.state.mode {
             InputMode::Insert => " INSERT ",
             InputMode::Normal => " NORMAL ",
-            InputMode::Visual => " VISUAL ",
         };
 
         let border_color = if self.focused {

@@ -2,6 +2,7 @@
 pub struct DisplayMessage {
     pub role: String,
     pub content: String,
+    pub thinking: String,
     pub tool_uses: Vec<DisplayToolUse>,
     pub is_streaming: bool,
 }
