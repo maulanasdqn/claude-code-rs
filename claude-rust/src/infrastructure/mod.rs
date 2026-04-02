@@ -2,6 +2,7 @@ pub mod agent_tool;
 pub mod app_loop;
 pub mod command_extras;
 pub mod command_handler;
+pub mod conductor;
 pub mod event_renderer;
 pub mod input_history;
 pub mod run_engine;

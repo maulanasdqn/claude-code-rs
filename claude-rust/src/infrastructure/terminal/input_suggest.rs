@@ -13,6 +13,7 @@ pub(super) const COMMAND_CATALOG: &[(&str, &str)] = &[
     ("/effort", "Set effort level"),
     ("/mode", "Cycle permission mode"),
     ("/plan", "Toggle plan mode"),
+    ("/conductor", "Run multi-agent orchestration"),
     ("/think", "Toggle extended thinking"),
     ("/diff", "Show git diff"),
     ("/status", "Show git status"),
