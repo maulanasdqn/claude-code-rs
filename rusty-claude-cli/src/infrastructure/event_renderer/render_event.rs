@@ -5,19 +5,9 @@ use claude_rust_types::EngineEvent;
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 const DIM: &str = "\x1b[2m";
-const CYAN: &str = "\x1b[36m";
 const YELLOW: &str = "\x1b[33m";
 const RED: &str = "\x1b[31m";
 const GREEN: &str = "\x1b[32m";
-
-pub fn print_banner(cwd: &str, model: &str) {
-    let short_model = model.trim_start_matches("claude-");
-    eprintln!();
-    eprintln!("  {BOLD}{CYAN}◆{RESET}  {BOLD}Rusty Claude{RESET}  {DIM}v{}{RESET}", env!("CARGO_PKG_VERSION"));
-    eprintln!("  {DIM}cwd{RESET}   {cwd}");
-    eprintln!("  {DIM}model{RESET} {short_model}");
-    eprintln!();
-}
 
 pub fn render_event(event: &EngineEvent, json_mode: bool) {
     match event {
@@ -38,7 +28,11 @@ pub fn render_event(event: &EngineEvent, json_mode: bool) {
         EngineEvent::ToolInput { .. } => {}
         EngineEvent::ToolResult { name, is_error, .. } => {
             if !json_mode {
-                let icon = if *is_error { format!("{RED}✗") } else { format!("{GREEN}✓") };
+                let icon = if *is_error {
+                    format!("{RED}✗")
+                } else {
+                    format!("{GREEN}✓")
+                };
                 eprintln!("{icon}{RESET} {DIM}{name}{RESET}");
             }
         }
@@ -73,13 +67,4 @@ pub fn render_event(event: &EngineEvent, json_mode: bool) {
             }
         }
     }
-}
-
-pub fn render_error(msg: &str) {
-    eprintln!("  {RED}{BOLD}error:{RESET} {msg}");
-}
-
-pub fn print_prompt() {
-    eprint!("{BOLD}{CYAN}❯{RESET} ");
-    io::stderr().flush().ok();
 }

@@ -27,7 +27,7 @@ pub struct Cli {
     #[arg(long, help = "System prompt override")]
     pub system: Option<String>,
 
-    #[arg(long, help = "Print version and exit")]
+    #[arg(long, help = "Enable verbose logging")]
     pub verbose: bool,
 }
 

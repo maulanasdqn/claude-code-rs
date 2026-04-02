@@ -1,23 +1,18 @@
 use std::sync::Arc;
-use std::sync::atomic::AtomicU8;
+use std::sync::atomic::{AtomicBool, AtomicU8};
 
 use claude_rust_config::load_config;
 use claude_rust_engine::QueryEngine;
 use claude_rust_permission::ConfigAwarePermissionChecker;
 use claude_rust_provider::AnthropicProvider;
 use claude_rust_tools::{
-    AskUserTool, BashTool, ExitPlanModeTool, FileEditTool, FileWriteTool, GlobTool, GrepTool,
-    ReadTool, TodoReadTool, TodoWriteTool, ToolRegistry, WebFetchTool, WebSearchTool,
+    AskUserTool, BashTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
+    GlobTool, GrepTool, ReadTool, TodoReadTool, TodoWriteTool, ToolRegistry,
+    WebFetchTool, WebSearchTool,
 };
 use claude_rust_types::PermissionMode;
 
-use crate::cli::Cli;
-
-pub struct AppContext {
-    pub engine: Arc<QueryEngine>,
-    pub provider: Arc<AnthropicProvider>,
-    pub cwd: String,
-}
+use crate::domain::{AppContext, Cli};
 
 pub async fn build_context(cli: &Cli) -> Result<AppContext, String> {
     let config = load_config();
@@ -39,7 +34,7 @@ pub async fn build_context(cli: &Cli) -> Result<AppContext, String> {
         provider.set_max_tokens(mt);
     }
 
-    let pause_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let pause_flag = Arc::new(AtomicBool::new(false));
     let mut registry = ToolRegistry::new();
     registry.register(Arc::new(BashTool));
     registry.register(Arc::new(ReadTool));
@@ -65,22 +60,30 @@ pub async fn build_context(cli: &Cli) -> Result<AppContext, String> {
     let permission = Arc::new(ConfigAwarePermissionChecker::new_with_pause(
         config.permissions.clone(),
         mode_flag.clone(),
-        pause_flag,
+        pause_flag.clone(),
     ));
 
     let registry = Arc::new(registry);
     let mut engine = QueryEngine::new(
         provider.clone(),
         registry,
-        permission,
+        permission.clone(),
         mode_flag.clone(),
         config.hooks.clone(),
     );
-    engine = engine.with_max_turns(cli.max_turns);
+    if let Some(mt) = config.max_turns {
+        engine = engine.with_max_turns(mt);
+    } else {
+        engine = engine.with_max_turns(cli.max_turns);
+    }
 
     Ok(AppContext {
         engine: Arc::new(engine),
         provider,
+        config,
+        mode_flag,
+        pause_flag,
+        permission,
         cwd,
     })
 }

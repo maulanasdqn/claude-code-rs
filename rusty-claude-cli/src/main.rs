@@ -1,33 +1,13 @@
-mod cli;
-mod oneshot;
-mod output;
-mod pipe;
-mod repl;
-mod runner;
-mod setup;
+mod application;
+mod domain;
+mod infrastructure;
 
 use clap::Parser;
 
-use cli::Cli;
-use output::{print_banner, render_error};
-use setup::build_context;
-
-fn build_system_prompt(ctx: &setup::AppContext, custom: Option<&str>) -> String {
-    match custom {
-        Some(s) => s.to_string(),
-        None => {
-            let model = ctx.provider.model_name();
-            format!(
-                "You are Claude, an AI assistant by Anthropic. \
-                 You help with software engineering tasks. \
-                 Be concise and direct.\n\n\
-                 Working directory: {}\n\
-                 Model: {model}",
-                ctx.cwd
-            )
-        }
-    }
-}
+use application::{build_context, run_loop, run_oneshot, run_pipe};
+use domain::Cli;
+use infrastructure::event_renderer::render_error_box;
+use infrastructure::terminal::{build_system_prompt, print_banner};
 
 #[tokio::main]
 async fn main() {
@@ -44,33 +24,39 @@ async fn main() {
     let ctx = match build_context(&cli).await {
         Ok(c) => c,
         Err(e) => {
-            render_error(&e);
+            render_error_box(&e);
             std::process::exit(1);
         }
     };
 
-    let system_prompt = build_system_prompt(&ctx, cli.system.as_deref());
+    let system_prompt = cli
+        .system
+        .clone()
+        .unwrap_or_else(|| build_system_prompt(&ctx.cwd, &ctx.provider.model_name()));
 
     if Cli::is_piped() {
-        if let Err(e) =
-            pipe::run_pipe(&ctx, system_prompt, cli.prompt.as_deref(), cli.json).await
-        {
-            render_error(&e);
+        if let Err(e) = run_pipe(&ctx, system_prompt, cli.prompt.as_deref(), cli.json).await {
+            render_error_box(&e);
             std::process::exit(1);
         }
         return;
     }
 
     if let Some(ref prompt) = cli.prompt {
-        if let Err(e) =
-            oneshot::run_oneshot(&ctx, system_prompt, prompt, cli.json).await
-        {
-            render_error(&e);
+        if let Err(e) = run_oneshot(&ctx, system_prompt, prompt, cli.json).await {
+            render_error_box(&e);
             std::process::exit(1);
         }
         return;
     }
 
-    print_banner(&ctx.cwd, &ctx.provider.model_name());
-    repl::run_repl(&ctx, system_prompt).await;
+    let model_id = ctx.provider.model_name();
+    print_banner(&ctx.cwd, &model_id);
+
+    let conversation = claude_rust_types::Conversation {
+        system: Some(system_prompt.clone()),
+        ..Default::default()
+    };
+
+    run_loop(&ctx, system_prompt, conversation).await;
 }
