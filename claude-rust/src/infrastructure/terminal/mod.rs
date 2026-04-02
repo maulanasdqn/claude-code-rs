@@ -29,6 +29,7 @@ mod system_prompt;
 mod tool_display;
 
 pub use banner::{layout_width, print_banner, term_width};
+pub use git::git_branch;
 pub use input::{prompt_resume, read_user_input};
 pub use input_border::set_current_model;
 pub use input_raw::{clear_pasted_images, take_pasted_images};

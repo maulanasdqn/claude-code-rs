@@ -1,4 +1,4 @@
-pub(super) fn git_branch() -> Option<String> {
+pub fn git_branch() -> Option<String> {
     let mut dir = std::env::current_dir().ok()?;
     loop {
         let head = dir.join(".git").join("HEAD");
