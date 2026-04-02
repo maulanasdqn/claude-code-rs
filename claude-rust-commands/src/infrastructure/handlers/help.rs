@@ -16,6 +16,7 @@ pub fn handle_help() -> CommandResult {
          {DIM}  /usage{RESET}             {DIM}Show plan usage limits{RESET}\n\
          {DIM}  /model{RESET} {DIM}<name>{RESET}      {DIM}Switch model{RESET}\n\
          {DIM}  /fast{RESET}              {DIM}Toggle fast (haiku) model{RESET}\n\
+         {DIM}  /effort{RESET} {DIM}<level>{RESET}    {DIM}Set effort (low/medium/high/max){RESET}\n\
          {DIM}  /diff{RESET}              {DIM}Show git diff{RESET}\n\
          {DIM}  /status{RESET}            {DIM}Show git status{RESET}\n\
          {DIM}  /review{RESET}            {DIM}Ask Claude to review git diff{RESET}\n\
@@ -33,6 +34,11 @@ pub fn handle_help() -> CommandResult {
          {DIM}  /init{RESET}              {DIM}Create/update CLAUDE.md{RESET}\n\
          {DIM}  /add{RESET} {DIM}<path>{RESET}        {DIM}Pin file to context{RESET}\n\
          {DIM}  /files{RESET}             {DIM}Show pinned files{RESET}\n\
+         {DIM}  /copy{RESET}              {DIM}Copy last response to clipboard{RESET}\n\
+         {DIM}  /login{RESET}             {DIM}Show authentication instructions{RESET}\n\
+         {DIM}  /logout{RESET}            {DIM}Clear saved credentials{RESET}\n\
+         {DIM}  /vim{RESET}               {DIM}Show vim mode status{RESET}\n\
+         {DIM}  /version{RESET}           {DIM}Show claude-rust version{RESET}\n\
          {DIM}  /quit{RESET}              {DIM}Exit{RESET}\n\
          \n\
          {DIM}  !<command>{RESET}         {DIM}Run shell command directly{RESET}\n\
