@@ -1,10 +1,11 @@
 [package]
 name = "claude-rust-memory"
-version = "1.1.2"
+version = "1.1.3"
 edition = "2024"
 description = "Session persistence with JSON file storage"
 license = "MIT"
-repository = "https://github.com/maulanasdqn/claude-code-rs"
+repository = "https://github.com/maulanasdqn/claude-rust"
+readme = "../README.md"
 
 [dependencies]
 claude-rust-errors = { workspace = true }
