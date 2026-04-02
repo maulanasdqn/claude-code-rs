@@ -1,8 +1,5 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use crate::layout::MainLayout;
 use crate::state::{AppState, ModalKind};

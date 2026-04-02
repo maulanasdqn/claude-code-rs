@@ -1,5 +1,5 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use crate::state::{AppState, ModalKind};
+use crate::state::AppState;
 
 pub enum UiAction {
     Submit(String),
