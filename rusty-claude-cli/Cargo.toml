@@ -1,0 +1,30 @@
+[package]
+name = "rusty-claude-cli"
+version = "2.0.0"
+edition = "2024"
+description = "Lightweight CLI for Claude AI with REPL, one-shot, and pipe modes"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-rust"
+readme = "../README.md"
+
+[[bin]]
+name = "rusty-claude"
+path = "src/main.rs"
+
+[dependencies]
+claude-rust-auth = { workspace = true }
+claude-rust-config = { workspace = true }
+claude-rust-commands = { workspace = true }
+claude-rust-engine = { workspace = true }
+claude-rust-errors = { workspace = true }
+claude-rust-memory = { workspace = true }
+claude-rust-permission = { workspace = true }
+claude-rust-provider = { workspace = true }
+claude-rust-tools = { workspace = true }
+claude-rust-types = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+crossterm = { workspace = true }
+serde_json = { workspace = true }

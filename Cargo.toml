@@ -19,6 +19,7 @@ members = [
     "claude-rust-plugins",
     "claude-rust-skills",
     "claude-rust-tui",
+    "rusty-claude-cli",
 ]
 resolver = "3"
 
