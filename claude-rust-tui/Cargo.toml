@@ -1,0 +1,18 @@
+[package]
+name = "claude-rust-tui"
+version = "1.4.7"
+edition = "2024"
+
+[dependencies]
+claude-rust-errors = { workspace = true }
+claude-rust-types = { workspace = true }
+claude-rust-config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+crossterm = { workspace = true }
+syntect = { workspace = true }
+ratatui = "0.29"
+unicode-width = "0.2"
