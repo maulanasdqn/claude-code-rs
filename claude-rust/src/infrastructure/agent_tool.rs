@@ -5,7 +5,8 @@ use claude_rust_config::HooksConfig;
 use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::AppResult;
 use claude_rust_types::{
-    Conversation, Message, PermissionChecker, PermissionLevel, Role, Tool,
+    Conversation, InterruptBehavior, Message, PermissionChecker, PermissionLevel, Role,
+    SearchReadInfo, Tool,
 };
 use claude_rust_tools::ToolRegistry;
 use serde_json::{Value, json};
@@ -92,6 +93,8 @@ impl Tool for AgentTool {
 
     fn permission_level(&self) -> PermissionLevel { PermissionLevel::Dangerous }
 
+    fn interrupt_behavior(&self) -> InterruptBehavior { InterruptBehavior::Cancel }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let task = input["task"].as_str().unwrap_or("").to_string();
         let system = input["system_prompt"].as_str().unwrap_or(AGENT_SYSTEM);
@@ -135,6 +138,13 @@ impl Tool for ExploreAgentTool {
     }
 
     fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
+
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn is_concurrent_safe(&self, _input: &Value) -> bool { true }
+
+    fn is_search_or_read_command(&self, _input: &Value) -> SearchReadInfo {
+        SearchReadInfo { is_search: false, is_read: true, is_list: false }
+    }
 
     async fn execute(&self, input: Value) -> AppResult<String> {
         let task = input["task"].as_str().unwrap_or("").to_string();

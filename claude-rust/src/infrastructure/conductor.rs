@@ -13,7 +13,8 @@ use claude_rust_config::HooksConfig;
 use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::{AppError, AppResult};
 use claude_rust_types::{
-    Conversation, ContentBlock, Message, PermissionChecker, PermissionLevel, Role, Tool,
+    Conversation, ContentBlock, Message, PermissionChecker, PermissionLevel, Role, SearchReadInfo,
+    Tool,
 };
 use claude_rust_tools::ToolRegistry;
 use serde_json::{Value, json};
@@ -283,6 +284,8 @@ impl Tool for WaitAgentTool {
 
     fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
 
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let id = input["agent_id"].as_str()
             .ok_or_else(|| AppError::Tool("wait_agent: 'agent_id' is required".into()))?
@@ -327,6 +330,13 @@ impl Tool for ListAgentsTool {
     }
 
     fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
+
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn is_concurrent_safe(&self, _input: &Value) -> bool { true }
+
+    fn is_search_or_read_command(&self, _input: &Value) -> SearchReadInfo {
+        SearchReadInfo { is_search: false, is_read: false, is_list: true }
+    }
 
     async fn execute(&self, _input: Value) -> AppResult<String> {
         let agents = self.manager.snapshot();
