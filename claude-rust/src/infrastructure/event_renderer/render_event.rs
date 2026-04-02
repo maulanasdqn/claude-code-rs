@@ -201,7 +201,6 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 
         EngineEvent::TurnComplete => {
             stop_thinking(state);
-            clear_task_list(state);
             if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             if state.turn_input > 0 || state.turn_output > 0 {
                 let i = fmt_tokens(state.turn_input);
@@ -230,41 +229,29 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 }
 
 fn render_task_list(state: &mut RenderState) {
-    // Clear any previous task bars
-    clear_task_list(state);
-
     let todos = todo_store::read_todos();
     if todos.is_empty() {
         return;
     }
 
-    // Update the thinking spinner with the active_form if available
-    if let Some(active_form) = todo_store::current_active_form()
-        && let Some(pb) = &state.thinking_pb {
+    // Update the thinking spinner with the active task if available
+    if let Some(active_form) = todo_store::current_active_form() {
+        if let Some(pb) = &state.thinking_pb {
             pb.set_message(format!("{active_form}…"));
         }
+    }
 
-    // Render each todo as a static progress bar line
+    // Print task list as plain scrollable text — no progress bars to avoid duplication
+    let count = todos.len();
     for (i, todo) in todos.iter().enumerate() {
         let (marker, color) = match todo.status.as_str() {
             "in_progress" => ("■", ORANGE),
             "completed" => ("✓", GREEN),
-            _ => ("□", DIM), // pending
+            _ => ("□", DIM),
         };
-        let connector = if i == 0 { "└─" } else { "  " };
+        let connector = if i + 1 == count { "└─" } else { "├─" };
         let content = truncate(&todo.content, 80);
-        let line = format!("    {DIM}{connector}{RESET} {color}{marker}{RESET}  {DIM}{content}{RESET}");
-
-        let pb = state.mp.add(ProgressBar::new(0));
-        pb.set_style(ProgressStyle::with_template("{msg}").unwrap());
-        pb.set_message(line);
-        state.task_pbs.push(pb);
-    }
-}
-
-fn clear_task_list(state: &mut RenderState) {
-    for pb in state.task_pbs.drain(..) {
-        pb.finish_and_clear();
+        state.mp.println(format!("    {DIM}{connector}{RESET} {color}{marker}{RESET}  {DIM}{content}{RESET}")).ok();
     }
 }
 
