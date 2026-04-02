@@ -2,6 +2,7 @@ pub mod event;
 pub mod layout;
 pub mod render;
 pub mod state;
+pub mod theme;
 pub mod tool_ui_impl;
 pub mod widgets;
 
@@ -64,7 +65,10 @@ impl TuiApp {
 
     pub fn tick_spinner(&mut self) {
         if self.state.is_streaming {
-            self.state.spinner_frame = self.state.spinner_frame.wrapping_add(1) % 10;
+            self.state.spinner_tick = self.state.spinner_tick.wrapping_add(1);
+            if self.state.spinner_tick % 8 == 0 {
+                self.state.spinner_frame = self.state.spinner_frame.wrapping_add(1) % 10;
+            }
         }
     }
 

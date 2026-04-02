@@ -1,10 +1,12 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Widget},
 };
+
+use crate::theme;
 
 pub struct AutocompleteDropdown<'a> {
     pub options: &'a [String],
@@ -19,28 +21,20 @@ impl<'a> AutocompleteDropdown<'a> {
 
 impl<'a> Widget for AutocompleteDropdown<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let items: Vec<ListItem<'_>> = self
-            .options
-            .iter()
-            .enumerate()
-            .map(|(i, opt)| {
-                let style = if i == self.selected {
-                    Style::default()
-                        .fg(Color::Black)
-                        .bg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(Color::White)
-                };
-                ListItem::new(Line::from(Span::styled(opt.as_str(), style)))
-            })
-            .collect();
+        let items: Vec<ListItem<'_>> = self.options.iter().enumerate().map(|(i, opt)| {
+            let style = if i == self.selected {
+                Style::default().fg(theme::BASE).bg(theme::PINE).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme::TEXT)
+            };
+            ListItem::new(Line::from(Span::styled(opt.as_str(), style)))
+        }).collect();
 
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::DarkGray));
+            .border_style(Style::default().fg(theme::OVERLAY))
+            .style(Style::default().bg(theme::SURFACE));
 
-        let list = List::new(items).block(block);
-        list.render(area, buf);
+        List::new(items).block(block).render(area, buf);
     }
 }
