@@ -12,6 +12,7 @@ use crate::application::{format_permission_prompt, permission_title};
 pub struct InteractivePermissionChecker {
     paused: Arc<AtomicBool>,
     session_allowed: Arc<Mutex<HashSet<String>>>,
+    prompt_lock: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl InteractivePermissionChecker {
@@ -19,11 +20,12 @@ impl InteractivePermissionChecker {
         Self {
             paused: Arc::new(AtomicBool::new(false)),
             session_allowed: Arc::new(Mutex::new(HashSet::new())),
+            prompt_lock: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 
     pub fn with_flag(paused: Arc<AtomicBool>) -> Self {
-        Self { paused, session_allowed: Arc::new(Mutex::new(HashSet::new())) }
+        Self { paused, session_allowed: Arc::new(Mutex::new(HashSet::new())), prompt_lock: Arc::new(tokio::sync::Mutex::new(())) }
     }
 
     pub fn pause_flag(&self) -> Arc<AtomicBool> {
@@ -50,11 +52,14 @@ impl PermissionChecker for InteractivePermissionChecker {
         let paused = self.paused.clone();
         let session_allowed = self.session_allowed.clone();
 
+        let _guard = self.prompt_lock.lock().await;
+
         let decision = tokio::task::spawn_blocking(move || -> AppResult<SelectResult> {
             paused.store(true, Ordering::Relaxed);
             std::thread::sleep(std::time::Duration::from_millis(80));
             let result = prompt_select(&title, &detail, &tool_name);
             paused.store(false, Ordering::Relaxed);
+            std::thread::sleep(std::time::Duration::from_millis(50));
             result
         })
         .await
