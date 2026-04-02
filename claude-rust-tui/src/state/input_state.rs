@@ -2,7 +2,6 @@
 pub enum InputMode {
     Insert,
     Normal,
-    Visual,
 }
 
 pub struct InputState {
@@ -11,7 +10,6 @@ pub struct InputState {
     pub mode: InputMode,
     pub history: Vec<String>,
     pub history_index: Option<usize>,
-    pub suggestion: Option<String>,
 }
 
 impl InputState {
@@ -22,7 +20,6 @@ impl InputState {
             mode: InputMode::Insert,
             history: Vec::new(),
             history_index: None,
-            suggestion: None,
         }
     }
 
@@ -47,6 +44,17 @@ impl InputState {
         }
     }
 
+    pub fn delete_char_forward(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            let next = self.buffer[self.cursor_pos..]
+                .char_indices()
+                .nth(1)
+                .map(|(i, _)| self.cursor_pos + i)
+                .unwrap_or(self.buffer.len());
+            self.buffer.drain(self.cursor_pos..next);
+        }
+    }
+
     pub fn move_cursor_left(&mut self) {
         if self.cursor_pos > 0 {
             self.cursor_pos = self.buffer[..self.cursor_pos]
@@ -67,19 +75,62 @@ impl InputState {
         }
     }
 
+    pub fn move_word_left(&mut self) {
+        let s = &self.buffer[..self.cursor_pos];
+        let trimmed = s.trim_end_matches(|c: char| !c.is_alphanumeric());
+        let word_end = trimmed.rfind(|c: char| !c.is_alphanumeric()).map(|i| i + 1).unwrap_or(0);
+        self.cursor_pos = word_end;
+    }
+
+    pub fn move_word_right(&mut self) {
+        let s = &self.buffer[self.cursor_pos..];
+        let skip = s.find(|c: char| c.is_alphanumeric()).unwrap_or(s.len());
+        let after = &s[skip..];
+        let word_end = after.find(|c: char| !c.is_alphanumeric()).unwrap_or(after.len());
+        self.cursor_pos = (self.cursor_pos + skip + word_end).min(self.buffer.len());
+    }
+
+    pub fn history_prev(&mut self) {
+        if self.history.is_empty() { return; }
+        let idx = match self.history_index {
+            None => self.history.len() - 1,
+            Some(i) if i > 0 => i - 1,
+            Some(i) => i,
+        };
+        self.history_index = Some(idx);
+        self.buffer = self.history[idx].clone();
+        self.cursor_pos = self.buffer.len();
+    }
+
+    pub fn history_next(&mut self) {
+        match self.history_index {
+            None => {}
+            Some(i) if i + 1 < self.history.len() => {
+                let idx = i + 1;
+                self.history_index = Some(idx);
+                self.buffer = self.history[idx].clone();
+                self.cursor_pos = self.buffer.len();
+            }
+            _ => { self.history_index = None; self.buffer.clear(); self.cursor_pos = 0; }
+        }
+    }
+
+    pub fn push_history(&mut self, text: String) {
+        if !text.is_empty() && self.history.last().map(|s| s.as_str()) != Some(&text) {
+            self.history.push(text);
+        }
+        self.history_index = None;
+    }
+
     pub fn clear(&mut self) {
         self.buffer.clear();
         self.cursor_pos = 0;
-        self.suggestion = None;
+        self.history_index = None;
     }
 
-    pub fn get_display_text(&self) -> &str {
-        &self.buffer
-    }
+    pub fn get_display_text(&self) -> &str { &self.buffer }
 }
 
 impl Default for InputState {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }

@@ -36,6 +36,7 @@ impl AppState {
         self.conversation.messages.push(DisplayMessage {
             role: "user".to_string(),
             content: text.into(),
+            thinking: String::new(),
             tool_uses: Vec::new(),
             is_streaming: false,
         });
@@ -46,6 +47,7 @@ impl AppState {
         self.conversation.messages.push(DisplayMessage {
             role: "system".to_string(),
             content: text.into(),
+            thinking: String::new(),
             tool_uses: Vec::new(),
             is_streaming: false,
         });
@@ -60,11 +62,20 @@ impl AppState {
                     Some(m) if m.role == "assistant" && m.is_streaming => m.content.push_str(&text),
                     _ => self.conversation.messages.push(DisplayMessage {
                         role: "assistant".to_string(), content: text,
-                        tool_uses: Vec::new(), is_streaming: true,
+                        thinking: String::new(), tool_uses: Vec::new(), is_streaming: true,
                     }),
                 }
             }
-            EngineEvent::ThinkingDelta(_) => { self.is_streaming = true; }
+            EngineEvent::ThinkingDelta(text) => {
+                self.is_streaming = true;
+                match self.conversation.messages.last_mut() {
+                    Some(m) if m.role == "assistant" && m.is_streaming => m.thinking.push_str(&text),
+                    _ => self.conversation.messages.push(DisplayMessage {
+                        role: "assistant".to_string(), content: String::new(),
+                        thinking: text, tool_uses: Vec::new(), is_streaming: true,
+                    }),
+                }
+            }
             EngineEvent::ToolStart { name, .. } => {
                 self.is_streaming = true;
                 let tool = DisplayToolUse { name, status: ToolUseStatus::Running, output_preview: String::new() };
@@ -72,7 +83,7 @@ impl AppState {
                     Some(m) => m.tool_uses.push(tool),
                     None => self.conversation.messages.push(DisplayMessage {
                         role: "assistant".to_string(), content: String::new(),
-                        tool_uses: vec![tool], is_streaming: true,
+                        thinking: String::new(), tool_uses: vec![tool], is_streaming: true,
                     }),
                 }
             }
@@ -98,7 +109,7 @@ impl AppState {
                 self.is_streaming = false;
                 self.conversation.messages.push(DisplayMessage {
                     role: "error".to_string(), content: e,
-                    tool_uses: Vec::new(), is_streaming: false,
+                    thinking: String::new(), tool_uses: Vec::new(), is_streaming: false,
                 });
             }
             _ => {}

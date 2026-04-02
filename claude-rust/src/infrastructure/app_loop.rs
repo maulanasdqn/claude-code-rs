@@ -28,7 +28,7 @@ fn conv_to_tui(conversation: &Conversation) -> Vec<DisplayMessage> {
             if let claude_rust_types::ContentBlock::Text { text } = b { Some(text.as_str()) } else { None }
         }).collect::<Vec<_>>().join("");
         if text.is_empty() { return None; }
-        Some(DisplayMessage { role: role.to_string(), content: text, tool_uses: Vec::new(), is_streaming: false })
+        Some(DisplayMessage { role: role.to_string(), content: text, thinking: String::new(), tool_uses: Vec::new(), is_streaming: false })
     }).collect()
 }
 
@@ -80,8 +80,13 @@ pub async fn run_loop(
     let (key_tx, mut key_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
     let stop = Arc::new(AtomicBool::new(false));
     let stop2 = stop.clone();
+    let pause_for_keys = pause_flag.clone();
     tokio::task::spawn_blocking(move || {
         while !stop2.load(Ordering::Relaxed) {
+            if pause_for_keys.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(10));
+                continue;
+            }
             if crossterm::event::poll(Duration::from_millis(30)).unwrap_or(false) {
                 if let Ok(ev) = crossterm::event::read() { if key_tx.send(ev).is_err() { break; } }
             }
@@ -184,5 +189,8 @@ async fn handle_tui_slash(
     }
     if let Some(path) = cmd.strip_prefix("/add ") { handle_add(path, pinned_files); return None; }
 
-    handle_slash_command(cmd, provider, config, mode_flag, system_prompt, cwd, conversation, skills).await
+    tui.leave_alt();
+    let result = handle_slash_command(cmd, provider, config, mode_flag, system_prompt, cwd, conversation, skills).await;
+    tui.enter_alt();
+    result
 }
