@@ -25,6 +25,7 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
     let inner = w.saturating_sub(2);
 
     let top = build_top_border(inner, mode);
+    let bot = format!("  {DIM}{}{RESET}", "─".repeat(inner));
     let bar = build_status_bar(mode);
     // avail: how many text chars fit on one line after "  ❯ " (4 cols)
     let avail = inner.saturating_sub(1);
@@ -36,13 +37,14 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
         PermissionMode::Bypass => RED,
     };
 
-    // Layout: separator | input | status bar  (3 lines)
+    // Layout: top | input | bottom | status bar  (4 lines)
     print!("\x1b[2K"); println!("{top}");
     print!("\x1b[2K"); println!("  {BOLD}{pcolor}❯{RESET} {}", " ".repeat(avail));
+    print!("\x1b[2K"); println!("{bot}");
     print!("\x1b[2K"); println!("{bar}");
 
-    // Move cursor back to the input line, position after "  ❯ " (col 4)
-    print!("\x1b[2A\r\x1b[4C");
+    // Move cursor back to the input line (3 up), position after "  ❯ " (col 4)
+    print!("\x1b[3A\r\x1b[4C");
     io::stdout().flush().ok();
 
     terminal::enable_raw_mode().ok()?;
@@ -50,8 +52,8 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
     terminal::disable_raw_mode().ok();
     print!("\r");
 
-    // Move past the status bar line so engine output starts below
-    print!("\x1b[2B\r");
+    // Move past bot + status bar lines so engine output starts below
+    print!("\x1b[3B\r");
     io::stdout().flush().ok();
 
     result
