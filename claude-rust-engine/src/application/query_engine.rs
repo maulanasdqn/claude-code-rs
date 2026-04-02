@@ -142,24 +142,50 @@ impl QueryEngine {
             let registry = self.registry.clone();
             let permission = self.permission.clone();
             let undo = self.undo_stack.clone();
-            let handles: Vec<_> = tool_uses.iter()
-                .zip(pre_outs.iter())
-                .map(|((_, name, input), pre)| {
-                    if pre.blocked {
-                        tokio::spawn(async { Ok::<String, AppError>(String::new()) })
-                    } else {
-                        let registry = registry.clone();
-                        let permission = permission.clone();
-                        let undo = undo.clone();
-                        let name = name.clone();
-                        let input = input.clone();
-                        tokio::spawn(async move {
-                            execute_tool(&registry, &permission, &name, &input, &undo).await
-                        })
-                    }
-                })
-                .collect();
-            let exec_results = futures::future::join_all(handles).await;
+
+            // Separate concurrent-safe tools (parallel) from non-concurrent-safe (sequential)
+            let mut exec_results: Vec<Result<Result<String, AppError>, tokio::task::JoinError>> =
+                Vec::with_capacity(tool_uses.len());
+
+            // First pass: launch concurrent-safe tools in parallel
+            let mut parallel_handles: Vec<(usize, tokio::task::JoinHandle<Result<String, AppError>>)> = Vec::new();
+            for (i, ((_, name, input), pre)) in tool_uses.iter().zip(pre_outs.iter()).enumerate() {
+                if pre.blocked {
+                    continue; // handled below
+                }
+                let tool = registry.get(name);
+                let is_safe = tool.is_some_and(|t| t.is_concurrent_safe(input));
+                if is_safe {
+                    let reg = registry.clone();
+                    let perm = permission.clone();
+                    let ud = undo.clone();
+                    let n = name.clone();
+                    let inp = input.clone();
+                    parallel_handles.push((i, tokio::spawn(async move {
+                        execute_tool(&reg, &perm, &n, &inp, &ud).await
+                    })));
+                }
+            }
+
+            // Wait for all parallel tools
+            let parallel_results: Vec<_> = futures::future::join_all(
+                parallel_handles.into_iter().map(|(i, h)| async move { (i, h.await) })
+            ).await;
+            let mut result_map: std::collections::HashMap<usize, Result<Result<String, AppError>, tokio::task::JoinError>> =
+                parallel_results.into_iter().collect();
+
+            // Second pass: execute non-concurrent-safe tools sequentially, merge results
+            for (i, ((_, name, input), pre)) in tool_uses.iter().zip(pre_outs.iter()).enumerate() {
+                if pre.blocked {
+                    exec_results.push(Ok(Ok(String::new())));
+                } else if let Some(result) = result_map.remove(&i) {
+                    exec_results.push(result);
+                } else {
+                    // Non-concurrent-safe: execute sequentially
+                    let result = execute_tool(&registry, &permission, name, input, &undo).await;
+                    exec_results.push(Ok(result));
+                }
+            }
 
             let mut tool_results = Vec::new();
             let mut exit_plan_called = false;
