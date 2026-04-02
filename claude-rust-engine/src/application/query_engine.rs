@@ -36,7 +36,7 @@ impl QueryEngine {
     ) -> Self {
         Self {
             provider, registry, permission, hooks, mode,
-            max_turns: 20, context_limit: 180_000,
+            max_turns: 20, context_limit: 80_000,
             undo_stack: Arc::new(UndoStack::default()),
         }
     }
@@ -73,7 +73,7 @@ impl QueryEngine {
             };
 
             if last_input_tokens > 0
-                && last_input_tokens > self.context_limit * 80 / 100
+                && last_input_tokens > self.context_limit * 60 / 100
                 && conversation.messages.len() > 2
             {
                 let original_turns = conversation.messages.len();

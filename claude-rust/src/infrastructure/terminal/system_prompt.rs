@@ -52,10 +52,9 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
     }
 
     sections.push("# Session-specific guidance\n \
-         - If you need the user to run a shell command themselves (e.g., an interactive login like `gcloud auth login`), suggest they type `! <command>` in the prompt — the `!` prefix runs the command in this session so its output lands directly in the conversation.\n \
-         - Use the `agent` tool to delegate complex, independent subtasks to a sub-agent that has access to all tools. The sub-agent runs autonomously and returns its final response.\n \
-         - Use the `explore` tool to spawn a read-only sub-agent specialized for codebase exploration (glob, grep, read). Use this when you need to research code without making changes.\n \
-         - Sub-agents cannot spawn further sub-agents. Keep sub-agent tasks focused and self-contained.".to_string());
+         - For interactive shell commands users must run themselves, suggest `! <command>` in the prompt.\n \
+         - Use `agent` to delegate independent subtasks. Use `explore` for read-only codebase research.\n \
+         - Sub-agents cannot spawn further sub-agents.".to_string());
 
     if !skills.is_empty() {
         let mut skill_section = "# User-defined Skills\nThe following custom skills are available as slash commands:\n".to_string();
@@ -69,13 +68,10 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
         sections.push(skill_section);
     }
 
-    sections.push("# Project-specific rules (always apply these)\n \
- - Never add code comments of any kind (no inline, no block, no doc comments) to any file\n \
- - Never add Claude branding or co-author lines to git commits\n \
- - No single source file may exceed 200 lines of code — split large files before they reach this limit\n \
- - Test files must be separate from feature/implementation files\n \
- - Always split code into small, single-responsibility files following Clean Architecture\n \
- - Design for Low Coupling and High Cohesion: each module should have one clear purpose with minimal dependencies on other modules".to_string());
+    sections.push("# Project-specific rules\n \
+ - No code comments of any kind. No Claude branding in commits.\n \
+ - Max 200 lines per source file — split before reaching the limit.\n \
+ - Single-responsibility files. Low coupling, high cohesion.".to_string());
 
     sections.push(environment_section(env));
 
@@ -95,22 +91,10 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
 
 fn rust_section() -> String {
     "# Rust Project Context
-
-You are operating in a Rust project. Apply senior Rust engineering practices:
- - Prefer `cargo check` over `cargo build` for fast error feedback
- - Use `cargo clippy -- -D warnings` to enforce lint hygiene
- - Use `cargo test` to run tests; `cargo test -- --nocapture` to see println output
- - Use `cargo fmt` to format code
- - Understand and respect the borrow checker; don't fight it with unnecessary `clone()` or `Arc<Mutex<_>>`
- - Prefer `?` over `unwrap()`/`expect()` in library code; `expect()` is acceptable in binaries/tests
- - Use `cargo add <crate>` to add dependencies (requires cargo-edit)
- - For workspace projects, use `-p <crate>` to target specific crates
- - Understand Rust's ownership model: move semantics, lifetimes, borrowing
- - Prefer iterators and combinators over explicit loops when idiomatic
- - Use `#[derive(Debug, Clone, PartialEq)]` appropriately
- - For async code, prefer `tokio` patterns; avoid blocking in async contexts
- - When editing, always check that borrow/lifetime rules are satisfied before writing code
- - Run `cargo check` after edits to verify correctness before claiming done".to_string()
+ - Use `cargo check` (not build) for fast feedback. `cargo clippy -- -D warnings` for lints. `cargo fmt` for formatting.
+ - Respect the borrow checker. Prefer `?` over `unwrap`. Use `-p <crate>` for workspace targets.
+ - Prefer iterators and combinators. Avoid blocking in async contexts.
+ - Run `cargo check` after edits to confirm correctness.".to_string()
 }
 
 fn is_rust_project(cwd: &str) -> bool {
