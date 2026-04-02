@@ -82,16 +82,7 @@ where
         }
         Err(e) => {
             on_event(EngineEvent::Error(format!("compact failed: {e}")));
-            let mut compacted = Conversation {
-                system: conversation.system,
-                ..Default::default()
-            };
-            let keep = conversation.messages.len().min(4);
-            let start = conversation.messages.len() - keep;
-            for msg in &conversation.messages[start..] {
-                compacted.push(msg.clone());
-            }
-            return Ok(compacted);
+            return Ok(fallback_compact(conversation));
         }
     }
 
@@ -106,9 +97,24 @@ where
     compacted.push(Message::user(format!(
         "[Context from previous conversation]\n{summary_text}"
     )));
-    compacted.push(Message::assistant(vec![ContentBlock::Text {
-        text: "I understand. I have the context from our previous conversation. How can I help you next?".into(),
-    }]));
 
     Ok(compacted)
+}
+
+fn fallback_compact(conversation: Conversation) -> Conversation {
+    let mut compacted = Conversation {
+        system: conversation.system,
+        ..Default::default()
+    };
+    let msgs = &conversation.messages;
+    let start = msgs.len().saturating_sub(6);
+    let first_user = msgs[start..]
+        .iter()
+        .position(|m| matches!(m.role, Role::User))
+        .map(|i| start + i)
+        .unwrap_or(start);
+    for msg in &msgs[first_user..] {
+        compacted.push(msg.clone());
+    }
+    compacted
 }
