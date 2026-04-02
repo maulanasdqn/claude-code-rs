@@ -1,0 +1,14 @@
+[package]
+name = "claude-rust-plugins"
+version = "1.4.6"
+edition = "2024"
+
+[dependencies]
+claude-rust-errors = { workspace = true }
+claude-rust-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
