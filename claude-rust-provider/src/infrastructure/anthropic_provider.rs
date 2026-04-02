@@ -40,7 +40,7 @@ pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 const OPUS_MODEL: &str = "claude-opus-4-6";
 pub(crate) const MAX_TOKENS: u32 = 8192;
 
-pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219";
+pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219,prompt-caching-2024-07-31";
 pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
 
 pub struct AnthropicProvider {

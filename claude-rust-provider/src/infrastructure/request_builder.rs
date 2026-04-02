@@ -80,18 +80,17 @@ pub fn build_request_body(
             system_blocks.push(json!({"type": "text", "text": system}));
         }
         body["system"] = json!(system_blocks);
-
-        if thinking {
-            body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
-        }
     } else if let Some(system) = &conversation.system {
         body["system"] = json!(system);
+    }
 
-        if thinking {
-            body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
+    if thinking {
+        let budget = 10000u32;
+        // API requires max_tokens > budget_tokens
+        if max_tokens <= budget {
+            body["max_tokens"] = json!(budget + 4096);
         }
-    } else if thinking {
-        body["thinking"] = json!({"type": "enabled", "budget_tokens": 10000});
+        body["thinking"] = json!({"type": "enabled", "budget_tokens": budget});
     }
 
     if !tools.is_empty() {
