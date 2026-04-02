@@ -29,11 +29,19 @@ impl<'a> Widget for StatusBar<'a> {
 
         let sep = Span::styled("  ·  ", Style::default().fg(theme::HL_HIGH).bg(theme::SURFACE));
 
+        let (mode_icon, mode_color) = match self.mode {
+            "Auto-accept" => ("⚡ ", theme::GOLD),
+            "Plan"        => ("◆ ", theme::IRIS),
+            "Bypass"      => ("⚠ ", theme::LOVE),
+            _             => ("● ", theme::FOAM),
+        };
+
         let mut spans = vec![
             Span::styled(" ", Style::default().bg(theme::SURFACE)),
             Span::styled(self.model, Style::default().fg(theme::FOAM).bg(theme::SURFACE).add_modifier(Modifier::BOLD)),
             sep.clone(),
-            Span::styled(self.mode, Style::default().fg(theme::GOLD).bg(theme::SURFACE)),
+            Span::styled(mode_icon, Style::default().fg(mode_color).bg(theme::SURFACE).add_modifier(Modifier::BOLD)),
+            Span::styled(self.mode, Style::default().fg(mode_color).bg(theme::SURFACE)),
             sep.clone(),
             Span::styled(format!("${:.4}", self.cost), Style::default().fg(theme::IRIS).bg(theme::SURFACE)),
         ];

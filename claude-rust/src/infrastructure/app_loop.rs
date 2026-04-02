@@ -6,7 +6,7 @@ use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::AppError;
 use claude_rust_permission::ConfigAwarePermissionChecker;
 use claude_rust_provider::AnthropicProvider;
-use claude_rust_types::{Conversation, Message, Role};
+use claude_rust_types::{Conversation, Message, PermissionMode, Role};
 use claude_rust_tui::{DisplayMessage, EventHandler, TuiApp, UiAction};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -144,6 +144,11 @@ pub async fn run_loop(
                         let expanded = expand_with_pins(&trimmed, &pinned_files);
                         engine_task = spawn_engine(&expanded, &mut conversation, &mut tui, &engine, &total_input, &total_output);
                     }
+                }
+                UiAction::CyclePermissionMode => {
+                    let next = PermissionMode::load(&mode_flag).next();
+                    next.store(&mode_flag);
+                    tui.state.permission_mode = next.label().to_string();
                 }
                 UiAction::Quit => { stop.store(true, Ordering::Relaxed); break; }
                 _ => {}
