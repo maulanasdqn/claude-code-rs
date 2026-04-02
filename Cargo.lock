@@ -161,6 +161,7 @@ name = "claude-rust"
 version = "0.7.4"
 dependencies = [
  "async-trait",
+ "base64",
  "claude-rust-auth",
  "claude-rust-commands",
  "claude-rust-config",
