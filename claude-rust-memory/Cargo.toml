@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-memory"
-version = "1.1.7"
+version = "1.1.8"
 edition = "2024"
 description = "Session persistence with JSON file storage"
 license = "MIT"

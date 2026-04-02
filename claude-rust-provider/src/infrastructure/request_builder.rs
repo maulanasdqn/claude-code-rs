@@ -85,7 +85,7 @@ pub fn build_request_body(
     }
 
     if thinking {
-        let budget = 10000u32;
+        let budget = 5000u32;
         // API requires max_tokens > budget_tokens
         if max_tokens <= budget {
             body["max_tokens"] = json!(budget + 4096);
