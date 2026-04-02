@@ -26,7 +26,7 @@ pub struct RenderState {
     pub(super) active_tools: std::collections::VecDeque<(String, String)>,
     pub(super) current_json_buf: String,
     pub(super) thinking_pb: Option<indicatif::ProgressBar>,
-    pub(super) last_read: Option<(String, usize, usize)>,
+    pub(super) last_read: Vec<String>,
     pub(super) table_rows: Vec<Vec<String>>,
 }
 
@@ -47,7 +47,7 @@ impl RenderState {
             active_tools: std::collections::VecDeque::new(),
             current_json_buf: String::new(),
             thinking_pb: None,
-            last_read: None,
+            last_read: Vec::new(),
             table_rows: Vec::new(),
         }
     }
