@@ -53,6 +53,8 @@ pub fn build_request_body(
         json!({"role": serde_json::to_value(&msg.role).unwrap_or(json!("user")), "content": content})
     }).collect();
 
+    let messages = sanitize_messages(messages);
+
     let mut body = json!({
         "model": model,
         "max_tokens": max_tokens,
@@ -88,4 +90,51 @@ pub fn build_request_body(
     }
 
     body
+}
+
+fn sanitize_messages(mut messages: Vec<Value>) -> Vec<Value> {
+    let mut i = 0;
+    while i < messages.len() {
+        if messages[i].get("role").and_then(|r| r.as_str()) != Some("assistant") {
+            i += 1;
+            continue;
+        }
+        let tool_use_ids: Vec<String> = messages[i]["content"]
+            .as_array()
+            .map(|arr| arr.iter()
+                .filter_map(|b| if b["type"] == "tool_use" {
+                    b["id"].as_str().map(String::from)
+                } else { None })
+                .collect())
+            .unwrap_or_default();
+        if tool_use_ids.is_empty() { i += 1; continue; }
+
+        let next_result_ids: Vec<String> = messages.get(i + 1)
+            .and_then(|m| m["content"].as_array())
+            .map(|arr| arr.iter()
+                .filter_map(|b| if b["type"] == "tool_result" {
+                    b["tool_use_id"].as_str().map(String::from)
+                } else { None })
+                .collect())
+            .unwrap_or_default();
+
+        let orphaned: Vec<&str> = tool_use_ids.iter()
+            .filter(|id| !next_result_ids.contains(id))
+            .map(String::as_str)
+            .collect();
+
+        if orphaned.is_empty() { i += 1; continue; }
+
+        if let Some(arr) = messages[i]["content"].as_array_mut() {
+            arr.retain(|b| !(b["type"] == "tool_use"
+                && b["id"].as_str().map(|id| orphaned.contains(&id)).unwrap_or(false)));
+        }
+
+        if messages[i]["content"].as_array().map(|a| a.is_empty()).unwrap_or(true) {
+            messages.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+    messages
 }
