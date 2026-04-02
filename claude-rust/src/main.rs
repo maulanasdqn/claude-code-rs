@@ -109,6 +109,11 @@ async fn main() {
         provider.clone(), Arc::new(conductor_reg), permission.clone(), mode_flag.clone(), config.hooks.clone(),
     ));
 
+    // Reflection engine: no tools — only evaluates text for self-correction.
+    let reflect_engine = Arc::new(QueryEngine::new(
+        provider.clone(), Arc::new(ToolRegistry::new()), permission.clone(), mode_flag.clone(), config.hooks.clone(),
+    ));
+
     let tool_names = registry.tool_names();
     let registry = Arc::new(registry);
     let engine = {
@@ -164,5 +169,5 @@ async fn main() {
         _ => Conversation { system: Some(system_prompt.clone()), ..Default::default() },
     };
 
-    run_loop(engine, conductor_engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
+    run_loop(engine, conductor_engine, reflect_engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
 }

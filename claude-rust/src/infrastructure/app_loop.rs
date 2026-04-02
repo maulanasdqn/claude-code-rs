@@ -13,6 +13,7 @@ use super::conductor::CONDUCTOR_SYSTEM;
 use super::event_renderer::{render_cost, render_error_box, render_exit_summary};
 use super::input_history::{append_history, load_history};
 use super::run_engine::run_engine;
+use super::self_correct::run_self_correct;
 use super::skills::Skill;
 use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, layout_width, print_banner, read_user_input, set_current_model, take_pasted_images};
 
@@ -20,6 +21,7 @@ use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, layout_width,
 pub async fn run_loop(
     engine: Arc<QueryEngine>,
     conductor_engine: Arc<QueryEngine>,
+    reflect_engine: Arc<QueryEngine>,
     session_repo: Arc<dyn claude_rust_memory::SessionRepository>,
     provider: Arc<AnthropicProvider>,
     config: claude_rust_config::Settings,
@@ -34,6 +36,7 @@ pub async fn run_loop(
     let session_start = std::time::Instant::now();
     let total_input = Arc::new(AtomicU64::new(0));
     let total_output = Arc::new(AtomicU64::new(0));
+    let reflect_enabled = Arc::new(AtomicBool::new(true));
     let undo_stack = engine.undo_stack();
     let mut prompt_history: Vec<String> = load_history(&cwd);
     let mut pinned_files: Vec<String> = Vec::new();
@@ -233,6 +236,16 @@ pub async fn run_loop(
             continue;
         }
 
+        if input.trim() == "/reflect" {
+            let was = reflect_enabled.fetch_xor(true, Ordering::Relaxed);
+            if was {
+                println!("  {DIM}◆ Self-correction disabled{RESET}\n");
+            } else {
+                println!("  {CYAN}{BOLD}◆ Self-correction enabled{RESET}  {DIM}— responses will be auto-reviewed against system standards{RESET}\n");
+            }
+            continue;
+        }
+
         if input.trim() == "/version" {
             println!("  {DIM}claude-rust v{}{RESET}\n", env!("CARGO_PKG_VERSION"));
             continue;
@@ -296,7 +309,13 @@ pub async fn run_loop(
         conversation.push(Message { role: Role::User, content });
 
         match run_engine(&engine, conversation.clone(), &total_input, &total_output, &mode_flag, &model_id, &cwd, &pause_flag).await {
-            Ok(u) => { conversation = u; save_session(&session_repo, &conversation).await; }
+            Ok(mut updated) => {
+                if reflect_enabled.load(Ordering::Relaxed) {
+                    run_self_correct(&mut updated, &reflect_engine, &system_prompt).await;
+                }
+                conversation = updated;
+                save_session(&session_repo, &conversation).await;
+            }
             Err(e) if e.is_interrupted() => { conversation.messages.pop(); }
             Err(e) => render_error_box(&e.to_string()),
         }
@@ -519,6 +538,7 @@ fn print_help(skills: &[Skill], _cwd: &str) {
         ("/mode",        "Cycle permission mode"),
         ("/plan [task]", "Toggle plan mode, or plan a task"),
         ("/conductor <task>", "Orchestrate parallel worker agents"),
+        ("/reflect",          "Toggle self-correction (default: on)"),
         ("/diff",        "Show git diff"),
         ("/status",      "Show git status"),
         ("/review",      "Review current git diff"),
