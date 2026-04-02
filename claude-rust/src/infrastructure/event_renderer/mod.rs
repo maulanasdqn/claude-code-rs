@@ -22,6 +22,7 @@ pub struct RenderState {
     pub(super) active_tools: std::collections::VecDeque<(indicatif::ProgressBar, String, String)>,
     pub(super) current_json_buf: String,
     pub(super) thinking_pb: Option<indicatif::ProgressBar>,
+    pub(super) task_pbs: Vec<indicatif::ProgressBar>,
 }
 
 impl RenderState {
@@ -39,6 +40,7 @@ impl RenderState {
             active_tools: std::collections::VecDeque::new(),
             current_json_buf: String::new(),
             thinking_pb: None,
+            task_pbs: Vec::new(),
         }
     }
 }
