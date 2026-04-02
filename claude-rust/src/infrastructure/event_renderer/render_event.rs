@@ -5,6 +5,7 @@ use claude_rust_engine::EngineEvent;
 
 use claude_rust_tools::todo_store;
 use super::super::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, ORANGE, RED, RESET, summarize_tool_input, tool_display_name};
+use serde_json;
 use super::RenderState;
 use super::render_error::render_error_box;
 use super::render_md::{flush_line_buf, render_md_line};
@@ -130,6 +131,31 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
                 )).ok();
             } else {
                 match tool_name.as_str() {
+                    // Conductor tools: compact single-line output, no output dump
+                    "spawn_agent" => {
+                        // Extract agent_id from output JSON
+                        let agent_id = serde_json::from_str::<serde_json::Value>(&output)
+                            .ok()
+                            .and_then(|v| v["agent_id"].as_str().map(|s| s.to_string()))
+                            .unwrap_or_default();
+                        let id_hint = if agent_id.is_empty() { String::new() } else { format!("  {DIM}→ {agent_id}{RESET}") };
+                        state.mp.println(format!("  {DIM}⟳  Spawn{arg}{RESET}{id_hint}")).ok();
+                    }
+                    "wait_agent" => {
+                        // Show whether the agent succeeded or failed
+                        let (icon, suffix) = serde_json::from_str::<serde_json::Value>(&output)
+                            .ok()
+                            .map(|v| {
+                                let status = v["status"].as_str().unwrap_or("?");
+                                if status == "completed" { (GREEN, "done".to_string()) }
+                                else { (RED, format!("failed: {}", v["error"].as_str().unwrap_or("?"))) }
+                            })
+                            .unwrap_or((DIM, "done".to_string()));
+                        state.mp.println(format!("  {DIM}✓  Wait{arg}  {icon}{suffix}{RESET}")).ok();
+                    }
+                    "list_agents" => {
+                        // Suppress — too noisy, conductor uses this internally
+                    }
                     "file_edit" => {
                         state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
                         super::render_diff::render_edit_diff(&json, &state.mp);
