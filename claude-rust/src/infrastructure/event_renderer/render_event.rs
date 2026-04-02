@@ -60,6 +60,7 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::TextDelta(text) => {
+            flush_last_read(state);
             stop_thinking(state);
             if !state.in_text {
                 state.in_text = true;
@@ -78,6 +79,10 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::ToolStart { name, .. } => {
+            // Flush deduped reads when a non-read tool starts
+            if !matches!(name.as_str(), "read" | "glob" | "grep" | "web_fetch" | "web_search") {
+                flush_last_read(state);
+            }
             stop_thinking(state);
             if state.in_text {
                 flush_line_buf(state);
@@ -88,7 +93,16 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
             state.current_json_buf.clear();
 
             let display = tool_display_name(&name);
-            let pb = new_tool_spinner(&state.mp, &display);
+            // For read-class tools with an existing spinner already active, use a hidden bar
+            // to avoid stacking many identical spinners on screen.
+            let pb = if !state.active_tools.is_empty()
+                && matches!(name.as_str(), "read" | "glob" | "grep" | "web_fetch" | "web_search")
+            {
+                let hidden = state.mp.add(indicatif::ProgressBar::hidden());
+                hidden
+            } else {
+                new_tool_spinner(&state.mp, &display)
+            };
             state.active_tools.push_back((pb, name, String::new()));
         }
 
@@ -166,14 +180,19 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
                     }
                     "read" | "glob" | "grep" | "web_fetch" | "web_search" => {
                         let n = output.lines().count();
-                        let count = if n > 0 {
-                            format!("  {DIM}({n} lines){RESET}")
-                        } else {
-                            String::new()
-                        };
-                        state.mp.println(format!(
-                            "  {DIM}{display}{arg}{RESET}{count}"
-                        )).ok();
+                        let label = format!("{display}{arg}");
+                        // Deduplicate: collapse consecutive reads to the same target
+                        match &mut state.last_read {
+                            Some((prev_label, count, prev_lines)) if *prev_label == label => {
+                                *count += 1;
+                                *prev_lines = n;
+                            }
+                            _ => {
+                                // Flush previous if any
+                                flush_last_read(state);
+                                state.last_read = Some((label, 1, n));
+                            }
+                        }
                     }
                     "todo_write" => {
                         state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
@@ -226,6 +245,7 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::TurnComplete => {
+            flush_last_read(state);
             stop_thinking(state);
             if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             if state.turn_input > 0 || state.turn_output > 0 {
@@ -308,6 +328,23 @@ fn fmt_tokens(n: u64) -> String {
 
 fn first_line(s: &str) -> &str {
     s.lines().next().unwrap_or(s)
+}
+
+/// Flush the deduplication buffer — print the accumulated read/search line.
+fn flush_last_read(state: &mut RenderState) {
+    if let Some((label, count, lines)) = state.last_read.take() {
+        let count_tag = if count > 1 {
+            format!("  {DIM}×{count}{RESET}")
+        } else {
+            String::new()
+        };
+        let lines_tag = if lines > 0 {
+            format!("  {DIM}({lines} lines){RESET}")
+        } else {
+            String::new()
+        };
+        state.mp.println(format!("  {DIM}{label}{RESET}{count_tag}{lines_tag}")).ok();
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
