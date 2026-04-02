@@ -67,9 +67,9 @@ fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
         return Line::from(Span::styled(format!("  {r}"), Style::default().fg(theme::GOLD).add_modifier(Modifier::BOLD)));
     }
     let (pre, body) = if let Some(r) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
-        (format!("  {} ", Span::styled("•", Style::default().fg(theme::PINE)).content), r)
+        ("  • ".to_string(), r)
     } else if let Some(r) = trimmed.strip_prefix("  - ").or_else(|| trimmed.strip_prefix("  * ")) {
-        (format!("    {} ", Span::styled("◦", Style::default().fg(theme::MUTED)).content), r)
+        ("    ◦ ".to_string(), r)
     } else {
         ("  ".to_string(), trimmed)
     };
@@ -84,50 +84,92 @@ impl<'a> Widget for MessageList<'a> {
         let mut lines: Vec<Line<'static>> = Vec::new();
 
         for msg in &self.state.messages {
-            let (label, color) = match msg.role.as_str() {
-                "user"      => ("  You", theme::FOAM),
-                "assistant" => ("  Assistant", theme::IRIS),
-                "error"     => ("  Error", theme::LOVE),
-                _           => ("  System", theme::MUTED),
-            };
-            lines.push(Line::from(Span::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD))));
-
-            if !msg.thinking.is_empty() {
-                lines.push(Line::from(Span::styled("  ◈ Thinking", Style::default().fg(theme::MUTED).add_modifier(Modifier::ITALIC))));
-                for raw in msg.thinking.lines() {
-                    lines.push(Line::from(Span::styled(format!("  {}", raw.trim_end()), Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM))));
+            match msg.role.as_str() {
+                "user" => {
+                    for (i, raw) in msg.content.lines().enumerate() {
+                        let line = if i == 0 {
+                            Line::from(vec![
+                                Span::styled("  ❯ ", Style::default().fg(theme::FOAM).add_modifier(Modifier::BOLD)),
+                                Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::TEXT)),
+                            ])
+                        } else {
+                            Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::TEXT)))
+                        };
+                        lines.push(line);
+                    }
+                }
+                "error" => {
+                    for (i, raw) in msg.content.lines().enumerate() {
+                        let line = if i == 0 {
+                            Line::from(vec![
+                                Span::styled("  ✗ ", Style::default().fg(theme::LOVE).add_modifier(Modifier::BOLD)),
+                                Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::LOVE)),
+                            ])
+                        } else {
+                            Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::LOVE)))
+                        };
+                        lines.push(line);
+                    }
+                }
+                "system" => {
+                    for raw in msg.content.lines() {
+                        lines.push(Line::from(Span::styled(
+                            format!("  · {}", raw.trim_end()),
+                            Style::default().fg(theme::MUTED).add_modifier(Modifier::ITALIC),
+                        )));
+                    }
+                }
+                _ => {
+                    if !msg.thinking.is_empty() {
+                        lines.push(Line::from(Span::styled("  ◈ thinking", Style::default().fg(theme::MUTED).add_modifier(Modifier::ITALIC))));
+                        for raw in msg.thinking.lines() {
+                            lines.push(Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM))));
+                        }
+                    }
+                    let mut in_code = false;
+                    let mut in_mermaid = false;
+                    for raw in msg.content.lines() {
+                        let trimmed_start = raw.trim_start();
+                        if trimmed_start.starts_with("```mermaid") {
+                            in_mermaid = true; in_code = true;
+                            lines.push(Line::from(Span::styled("  ╭─ mermaid ", Style::default().fg(theme::IRIS).add_modifier(Modifier::BOLD))));
+                        } else if in_mermaid && trimmed_start.starts_with("```") {
+                            in_mermaid = false; in_code = false;
+                            lines.push(Line::from(Span::styled("  ╰────────── ", Style::default().fg(theme::IRIS))));
+                        } else if in_mermaid {
+                            lines.push(Line::from(vec![
+                                Span::styled("  │ ", Style::default().fg(theme::IRIS)),
+                                Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::GOLD)),
+                            ]));
+                        } else if trimmed_start.starts_with("```") {
+                            in_code = !in_code;
+                            lines.push(Line::from(Span::styled(format!("  {}", raw.trim_end()), Style::default().fg(theme::OVERLAY))));
+                        } else {
+                            lines.push(render_md_line(raw, in_code));
+                        }
+                    }
+                    let _ = in_code;
+                    for tool in &msg.tool_uses {
+                        let (icon, col) = match tool.status {
+                            ToolUseStatus::Running   => ("◌", theme::GOLD),
+                            ToolUseStatus::Completed => ("✓", theme::FOAM),
+                            ToolUseStatus::Error     => ("✗", theme::LOVE),
+                        };
+                        let preview = if tool.output_preview.is_empty() { String::new() }
+                            else { format!("  {}", tool.output_preview) };
+                        lines.push(Line::from(vec![
+                            Span::styled(format!("  {icon} "), Style::default().fg(col)),
+                            Span::styled(tool.name.clone(), Style::default().fg(theme::SUBTLE)),
+                            Span::styled(preview, Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM)),
+                        ]));
+                    }
                 }
             }
-
-            let mut in_code = false;
-            for raw in msg.content.lines() {
-                let is_fence = raw.trim_start().starts_with("```");
-                if is_fence {
-                    in_code = !in_code;
-                    lines.push(Line::from(Span::styled(format!("  {}", raw.trim_end()), Style::default().fg(theme::OVERLAY))));
-                } else {
-                    lines.push(render_md_line(raw, in_code));
-                }
-            }
-            let _ = in_code;
-
-            for tool in &msg.tool_uses {
-                let (icon, col) = match tool.status {
-                    ToolUseStatus::Running   => ("◌", theme::GOLD),
-                    ToolUseStatus::Completed => ("✓", theme::FOAM),
-                    ToolUseStatus::Error     => ("✗", theme::LOVE),
-                };
-                let preview = if tool.output_preview.is_empty() { String::new() }
-                    else { format!("  {}", tool.output_preview) };
-                lines.push(Line::from(vec![
-                    Span::styled(format!("  {icon} "), Style::default().fg(col)),
-                    Span::styled(tool.name.clone(), Style::default().fg(theme::SUBTLE)),
-                    Span::styled(preview, Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM)),
-                ]));
-            }
-
             lines.push(Line::from(""));
         }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(""));
 
         let total = lines.len();
         let visible = area.height as usize;
