@@ -9,3 +9,9 @@ pub mod search_overlay;
 pub mod spinner;
 pub mod status_bar;
 pub mod tool_progress;
+
+pub use input_box::InputBox;
+pub use message_list::MessageList;
+pub use permission_dialog::PermissionDialog;
+pub use spinner::Spinner;
+pub use status_bar::StatusBar;
