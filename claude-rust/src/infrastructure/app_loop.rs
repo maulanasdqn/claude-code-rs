@@ -2,6 +2,7 @@ use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering}};
 
 use claude_rust_commands::expand_message_content;
 use claude_rust_engine::{QueryEngine, UndoStack, restore_undo};
+use claude_rust_permission::ConfigAwarePermissionChecker;
 use claude_rust_provider::AnthropicProvider;
 use claude_rust_types::{Conversation, Message, Role};
 use tokio::sync::mpsc;
@@ -25,6 +26,7 @@ pub async fn run_loop(
     mut conversation: Conversation,
     skills: Vec<Skill>,
     pause_flag: Arc<AtomicBool>,
+    permission: Arc<ConfigAwarePermissionChecker>,
 ) {
     let total_input = Arc::new(AtomicU64::new(0));
     let total_output = Arc::new(AtomicU64::new(0));
@@ -32,7 +34,10 @@ pub async fn run_loop(
     let mut prompt_history: Vec<String> = load_history(&cwd);
     let mut pinned_files: Vec<String> = Vec::new();
     let model_id = provider.model_name();
-    let skill_names: Vec<String> = skills.iter().map(|s| s.name.clone()).collect();
+    let skill_names: Vec<String> = skills.iter()
+        .filter(|s| s.user_invocable)
+        .map(|s| s.name.clone())
+        .collect();
 
     let (bg_tx, mut bg_rx) = mpsc::unbounded_channel::<Result<Conversation, claude_rust_errors::AppError>>();
     let mut bg_count: usize = 0;
@@ -215,7 +220,10 @@ pub async fn run_loop(
                     println!("  {DIM}✓ {msg_count} messages kept.{RESET}\n");
                     continue;
                 }
-                Some(CommandAction::SendToEngine(msg)) => {
+                Some(CommandAction::SendToEngine(msg, allowed_tools)) => {
+                    if !allowed_tools.is_empty() {
+                        permission.set_skill_allow_rules(allowed_tools);
+                    }
                     let content = expand_message_content(&msg);
                     conversation.push(Message { role: Role::User, content });
                     match run_engine(&engine, conversation.clone(), &total_input, &total_output, &mode_flag, &model_id, &cwd, &pause_flag).await {
@@ -223,6 +231,7 @@ pub async fn run_loop(
                         Err(e) if e.is_interrupted() => { conversation.messages.pop(); }
                         Err(e) => render_error_box(&e.to_string()),
                     }
+                    permission.clear_skill_allow_rules();
                     continue;
                 }
                 Some(CommandAction::Quit) => break,
