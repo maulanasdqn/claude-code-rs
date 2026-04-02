@@ -60,14 +60,12 @@ impl AnthropicProvider {
             DEFAULT_MODEL
         };
 
-        let thinking_default = credential.is_oauth();
-
         Self {
             client: Client::new(),
             model: std::sync::Mutex::new(default_model.to_string()),
             credential,
             mode,
-            thinking: Arc::new(AtomicBool::new(thinking_default)),
+            thinking: Arc::new(AtomicBool::new(false)), // off by default; enable with /think
             max_tokens: AtomicU32::new(MAX_TOKENS),
         }
     }
