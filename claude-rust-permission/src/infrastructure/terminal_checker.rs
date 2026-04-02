@@ -52,6 +52,7 @@ impl PermissionChecker for InteractivePermissionChecker {
 
         let decision = tokio::task::spawn_blocking(move || -> AppResult<SelectResult> {
             paused.store(true, Ordering::Relaxed);
+            std::thread::sleep(std::time::Duration::from_millis(30));
             let result = prompt_select(&title, &detail, &tool_name);
             paused.store(false, Ordering::Relaxed);
             result
