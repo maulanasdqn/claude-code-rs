@@ -92,16 +92,17 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     let top_label = format!("─ {title} ");
     let top_fill = inner.saturating_sub(top_label.len());
 
+    let always_label = format!("Yes, and don't ask again for {tool_name}");
     let options: Vec<(&str, SelectResult)> = vec![
         ("Yes", SelectResult::AllowOnce),
-        (&*Box::leak(format!("Yes, and don't ask again for {tool_name}").into_boxed_str()), SelectResult::AllowAlways),
+        (&always_label, SelectResult::AllowAlways),
         ("No", SelectResult::Deny),
     ];
 
     let mut selected = 0usize;
     let n = options.len();
 
-    let mut out = std::io::stderr();
+    let mut out = std::io::stdout();
 
     let draw = |out: &mut dyn Write, sel: usize| -> std::io::Result<()> {
         writeln!(out, "\n  \x1b[33m\x1b[1m╭{top_label}{}\x1b[0m", "─".repeat(top_fill))?;

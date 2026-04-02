@@ -4,12 +4,12 @@ use indicatif::{ProgressBar, ProgressStyle};
 use claude_rust_engine::EngineEvent;
 
 use claude_rust_tools::todo_store;
-use super::super::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, ORANGE, RED, RESET, summarize_tool_input, tool_display_name, tool_icon};
+use super::super::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, ORANGE, RED, RESET, summarize_tool_input, tool_display_name};
 use super::RenderState;
 use super::render_error::render_error_box;
 use super::render_md::{flush_line_buf, render_md_line};
 
-const TICKS: &[&str] = &["·", "✢", "✳", "✶", "✻", "✽"];
+const TICKS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 const THINK_VERBS: &[&str] = &[
     "Thinking", "Reasoning", "Pondering", "Analyzing",
@@ -26,21 +26,21 @@ fn random_verb() -> &'static str {
 }
 
 fn thinking_style() -> ProgressStyle {
-    ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}  {elapsed:.dim}")
+    ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}")
         .unwrap()
         .tick_strings(TICKS)
 }
 
 fn tool_style() -> ProgressStyle {
-    ProgressStyle::with_template("  {spinner:.cyan}  {msg}")
+    ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}")
         .unwrap()
         .tick_strings(TICKS)
 }
 
-fn new_tool_spinner(mp: &indicatif::MultiProgress, icon: &str, display: &str) -> ProgressBar {
+fn new_tool_spinner(mp: &indicatif::MultiProgress, display: &str) -> ProgressBar {
     let pb = mp.add(ProgressBar::new_spinner());
     pb.set_style(tool_style());
-    pb.set_message(format!("{CYAN}{icon}{RESET}  {DIM}{display}{RESET}"));
+    pb.set_message(format!("{display}…"));
     pb.enable_steady_tick(Duration::from_millis(150));
     pb
 }
@@ -60,11 +60,18 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 
         EngineEvent::TextDelta(text) => {
             stop_thinking(state);
-            state.in_text = true;
+            if !state.in_text {
+                state.in_text = true;
+                state.text_started = false;
+            }
             state.line_buf.push_str(&text);
             while let Some(pos) = state.line_buf.find('\n') {
                 let line = state.line_buf[..pos].to_string();
                 state.line_buf.drain(..=pos);
+                if !state.text_started {
+                    state.text_started = true;
+                    state.mp.println(format!("\n  {DIM}●{RESET}")).ok();
+                }
                 render_md_line(&line, state);
             }
         }
@@ -74,13 +81,13 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
             if state.in_text {
                 flush_line_buf(state);
                 state.in_text = false;
+                state.text_started = false;
             }
             save_json_to_last_tool(state);
             state.current_json_buf.clear();
 
-            let icon = tool_icon(&name);
             let display = tool_display_name(&name);
-            let pb = new_tool_spinner(&state.mp, icon, &display);
+            let pb = new_tool_spinner(&state.mp, &display);
             state.active_tools.push_back((pb, name, String::new()));
         }
 
@@ -102,45 +109,42 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
             pb.finish_and_clear();
 
             let summary = summarize_tool_input(&tool_name, &json);
-            let icon = tool_icon(&tool_name);
             let display = tool_display_name(&tool_name);
+            let arg = fmt_arg(&summary);
 
             if is_error {
-                let msg = format!(
-                    "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}  {RED}✗  {}{RESET}",
-                    fmt_summary(&summary),
+                state.mp.println(format!(
+                    "  {DIM}{display}{arg}  {RED}✗  {}{RESET}",
                     first_line(&output)
-                );
-                state.mp.println(msg).ok();
+                )).ok();
             } else {
                 match tool_name.as_str() {
                     "file_edit" => {
-                        state.mp.println(format!("  {CYAN}{icon}{RESET}  {DIM}{display}  {summary}{RESET}")).ok();
+                        state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
                         super::render_diff::render_edit_diff(&json, &state.mp);
                     }
                     "file_write" => {
-                        state.mp.println(format!("  {CYAN}{icon}{RESET}  {DIM}{display}  {summary}{RESET}")).ok();
+                        state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
                         super::render_diff::render_write_preview(&json, &state.mp);
                     }
                     "read" | "glob" | "grep" | "web_fetch" | "web_search" => {
                         let n = output.lines().count();
-                        let count = if n > 0 { format!("  {DIM}({n} lines){RESET}") } else { String::new() };
+                        let count = if n > 0 {
+                            format!("  {DIM}({n} lines){RESET}")
+                        } else {
+                            String::new()
+                        };
                         state.mp.println(format!(
-                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}{}",
-                            fmt_summary(&summary), count
+                            "  {DIM}{display}{arg}{RESET}{count}"
                         )).ok();
                     }
                     "todo_write" => {
-                        state.mp.println(format!(
-                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}",
-                            fmt_summary(&summary)
-                        )).ok();
+                        state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
                         render_task_list(state);
                     }
                     _ => {
                         state.mp.println(format!(
-                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}",
-                            fmt_summary(&summary)
+                            "  {DIM}{display}{arg}{RESET}"
                         )).ok();
                         if !output.is_empty() && output != "(no output)" {
                             let lines: Vec<&str> = output.lines().collect();
@@ -150,7 +154,10 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
                                 state.mp.println(format!("    {DIM}{s}{RESET}")).ok();
                             }
                             if lines.len() > show {
-                                state.mp.println(format!("    {DIM}… {} more lines{RESET}", lines.len() - show)).ok();
+                                state.mp.println(format!(
+                                    "    {DIM}… {} more lines{RESET}",
+                                    lines.len() - show
+                                )).ok();
                             }
                         }
                     }
@@ -165,26 +172,26 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::HookOutput { source, output } => {
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
+            if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             for line in output.lines() {
                 state.mp.println(format!("  {DIM}[hook:{source}] {line}{RESET}")).ok();
             }
         }
 
         EngineEvent::Compacted { original_turns } => {
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
+            if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             state.mp.println(format!("\n  {DIM}{MAGENTA}◆  compacted — {original_turns} messages summarized{RESET}")).ok();
         }
 
         EngineEvent::ModeChanged { mode } => {
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
+            if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             state.mp.println(format!("\n  {CYAN}{BOLD}◆  {}{RESET}  {DIM}{}{RESET}", mode.label(), mode.description())).ok();
         }
 
         EngineEvent::TurnComplete => {
             stop_thinking(state);
             clear_task_list(state);
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
+            if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             if state.turn_input > 0 || state.turn_output > 0 {
                 let i = fmt_tokens(state.turn_input);
                 let o = fmt_tokens(state.turn_output);
@@ -196,7 +203,7 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::Error(msg) => {
-            if state.in_text { flush_line_buf(state); state.in_text = false; }
+            if state.in_text { flush_line_buf(state); state.in_text = false; state.text_started = false; }
             render_error_box(&msg);
         }
     }
@@ -259,8 +266,9 @@ fn save_json_to_last_tool(state: &mut RenderState) {
     }
 }
 
-fn fmt_summary(s: &str) -> String {
-    if s.is_empty() { String::new() } else { format!("  {DIM}{s}{RESET}") }
+/// Format tool argument as `(arg)` or empty string if no arg.
+fn fmt_arg(s: &str) -> String {
+    if s.is_empty() { String::new() } else { format!("({s})") }
 }
 
 fn fmt_tokens(n: u64) -> String {

@@ -31,4 +31,4 @@ pub use input::{prompt_resume, read_user_input};
 pub use input_raw::{clear_pasted_images, take_pasted_images};
 pub use input_select::select_from_list;
 pub use system_prompt::{build_env_info, make_system_prompt};
-pub use tool_display::{summarize_tool_input, tool_display_name, tool_icon};
+pub use tool_display::{summarize_tool_input, tool_display_name};

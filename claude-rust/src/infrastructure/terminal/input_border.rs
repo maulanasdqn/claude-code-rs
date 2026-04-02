@@ -6,53 +6,43 @@ use claude_rust_types::PermissionMode;
 use super::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, YELLOW};
 use super::git::git_branch;
 
-pub(super) fn build_top_border(inner: usize, mode: &Arc<AtomicU8>) -> String {
-    let mode_val = PermissionMode::load(mode);
+/// Separator line with branch name right-aligned, no box corners.
+pub(super) fn build_top_border(inner: usize, _mode: &Arc<AtomicU8>) -> String {
     let branch = git_branch();
-
-    let badge = match mode_val {
-        PermissionMode::Normal => "",
-        PermissionMode::Plan => " PLAN ",
-        PermissionMode::AutoAccept => " AUTO ",
-        PermissionMode::Bypass => " BYPASS ",
-    };
-    let badge_color = match mode_val {
-        PermissionMode::Normal => CYAN,
-        PermissionMode::Plan => MAGENTA,
-        PermissionMode::AutoAccept => YELLOW,
-        PermissionMode::Bypass => RED,
-    };
-
-    let branch_vis = branch
-        .as_deref()
-        .filter(|b| badge.len() + b.len() + 7 <= inner)
-        .map(|b| b.len() + 5);
-
-    let total_fixed = badge.len() + branch_vis.unwrap_or(0);
-    let dash_count = inner.saturating_sub(total_fixed);
-
-    let badge_str = if badge.is_empty() {
-        String::new()
-    } else {
-        format!("{badge_color}{BOLD}{badge}{RESET}{DIM}")
-    };
-
-    let dashes = "─".repeat(dash_count);
-
-    let branch_str = branch
-        .as_deref()
-        .filter(|_| branch_vis.is_some())
-        .map(|b| format!("{RESET} on {CYAN}{b}{RESET}{DIM} "))
-        .unwrap_or_default();
-
-    format!("  {DIM}╭{badge_str}{dashes}{branch_str}╮{RESET}")
+    match branch.as_deref() {
+        Some(b) if b.len() + 4 <= inner => {
+            let left = inner.saturating_sub(b.len() + 4);
+            format!("  {DIM}{}{RESET} {BOLD}{CYAN}{b}{RESET}{DIM} ──{RESET}", "─".repeat(left))
+        }
+        _ => format!("  {DIM}{}{RESET}", "─".repeat(inner)),
+    }
 }
 
-pub(super) fn redraw_top_border(inner_width: usize, mode: &Arc<AtomicU8>) {
-    let top = build_top_border(inner_width, mode);
-    print!("\x1b7");
-    print!("\x1b[1A\r");
-    print!("{top}\x1b[K");
-    print!("\x1b8");
+/// Status bar shown below the input prompt.
+pub(super) fn build_status_bar(mode: &Arc<AtomicU8>) -> String {
+    let hint = format!("{DIM}(shift+tab to cycle) · esc to interrupt{RESET}");
+    match PermissionMode::load(mode) {
+        PermissionMode::Normal => {
+            format!("  {DIM}▶▶ default mode  {hint}")
+        }
+        PermissionMode::Plan => {
+            format!("  {MAGENTA}{BOLD}▶▶{RESET} {MAGENTA}plan mode{RESET}  {hint}")
+        }
+        PermissionMode::AutoAccept => {
+            format!("  {YELLOW}{BOLD}▶▶{RESET} {YELLOW}auto-accept permissions{RESET}  {hint}")
+        }
+        PermissionMode::Bypass => {
+            format!("  {RED}{BOLD}▶▶{RESET} {RED}bypass permissions on{RESET}  {hint}")
+        }
+    }
+}
+
+/// Redraw status bar in-place after a mode change.
+pub(super) fn redraw_status_bar(mode: &Arc<AtomicU8>) {
+    let bar = build_status_bar(mode);
+    print!("\x1b7");        // save cursor
+    print!("\x1b[1B\r");   // move down 1 to status bar line
+    print!("{bar}\x1b[K"); // redraw + clear rest of line
+    print!("\x1b8");       // restore cursor
     io::stdout().flush().ok();
 }

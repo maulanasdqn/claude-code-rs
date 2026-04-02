@@ -7,7 +7,7 @@ use claude_rust_types::PermissionMode;
 
 use super::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, YELLOW};
 use super::banner::layout_width;
-use super::input_border::build_top_border;
+use super::input_border::{build_status_bar, build_top_border};
 use super::input_raw::read_line_raw;
 
 pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[String]) -> Option<String> {
@@ -22,11 +22,12 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
     io::stdout().flush().ok();
 
     let w = layout_width();
-    let inner = w - 2;
+    let inner = w.saturating_sub(2);
 
     let top = build_top_border(inner, mode);
-    let bot = format!("  {DIM}╰{}╯{RESET}", "─".repeat(inner));
-    let avail = inner.saturating_sub(3);
+    let bar = build_status_bar(mode);
+    // avail: how many text chars fit on one line after "  ❯ " (4 cols)
+    let avail = inner.saturating_sub(1);
 
     let pcolor = match PermissionMode::load(mode) {
         PermissionMode::Normal => CYAN,
@@ -35,14 +36,13 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
         PermissionMode::Bypass => RED,
     };
 
-    print!("\x1b[2K");
-    println!("{top}");
-    print!("\x1b[2K");
-    println!("  {DIM}│{RESET} {BOLD}{pcolor}❯{RESET} {}{DIM}│{RESET}", " ".repeat(avail));
-    print!("\x1b[2K");
-    println!("{bot}");
+    // Layout: separator | input | status bar  (3 lines)
+    print!("\x1b[2K"); println!("{top}");
+    print!("\x1b[2K"); println!("  {BOLD}{pcolor}❯{RESET} {}", " ".repeat(avail));
+    print!("\x1b[2K"); println!("{bar}");
 
-    print!("\x1b[2A\r\x1b[6C");
+    // Move cursor back to the input line, position after "  ❯ " (col 4)
+    print!("\x1b[2A\r\x1b[4C");
     io::stdout().flush().ok();
 
     terminal::enable_raw_mode().ok()?;
@@ -50,6 +50,7 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
     terminal::disable_raw_mode().ok();
     print!("\r");
 
+    // Move past the status bar line so engine output starts below
     print!("\x1b[2B\r");
     io::stdout().flush().ok();
 
