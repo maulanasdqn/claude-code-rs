@@ -25,9 +25,10 @@ struct SubEngine {
 
 impl SubEngine {
     async fn run(&self, system: &str, task: &str) -> AppResult<String> {
+        let sub_registry = Arc::new(self.registry.clone_excluding(&["agent", "explore"]));
         let engine = QueryEngine::new(
             self.provider.clone(),
-            self.registry.clone(),
+            sub_registry,
             self.permission.clone(),
             self.mode.clone(),
             self.hooks.clone(),
