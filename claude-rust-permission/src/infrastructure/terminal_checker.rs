@@ -85,12 +85,29 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
         .unwrap_or(80)
         .saturating_sub(4)
         .max(24);
-    let inner = w.saturating_sub(2);
-    let detail_max = inner.saturating_sub(4);
-    let detail_display = if detail.len() > detail_max { &detail[..detail_max] } else { detail };
-    let pad = detail_max.saturating_sub(detail_display.len());
-    let top_label = format!("─ {title} ");
-    let top_fill = inner.saturating_sub(top_label.len());
+    let inner = w;
+
+    // Word-wrap the detail so long commands don't get truncated
+    let detail_lines: Vec<String> = {
+        let mut lines = Vec::new();
+        let mut remaining = detail;
+        while remaining.len() > inner {
+            // Find a good break point (space) near the limit
+            let break_at = remaining[..inner].rfind(' ').unwrap_or(inner);
+            lines.push(remaining[..break_at].to_string());
+            remaining = remaining[break_at..].trim_start();
+        }
+        if !remaining.is_empty() {
+            lines.push(remaining.to_string());
+        }
+        if lines.is_empty() { lines.push(String::new()); }
+        lines
+    };
+    let detail_line_count = detail_lines.len();
+
+    // Title separator: ─── Bash ──────────────
+    let title_prefix = format!("─── {title} ");
+    let title_fill = inner.saturating_sub(title_prefix.len());
 
     let always_label = format!("Yes, and don't ask again for {tool_name}");
     let options: Vec<(&str, SelectResult)> = vec![
@@ -105,9 +122,17 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     let mut out = std::io::stdout();
 
     let draw = |out: &mut dyn Write, sel: usize| -> std::io::Result<()> {
-        writeln!(out, "\n  \x1b[33m\x1b[1m╭{top_label}{}\x1b[0m", "─".repeat(top_fill))?;
-        writeln!(out, "  \x1b[33m│\x1b[0m  {detail_display}{}  \x1b[33m│\x1b[0m", " ".repeat(pad))?;
-        writeln!(out, "  \x1b[33m\x1b[1m╰{}\x1b[0m", "─".repeat(inner))?;
+        // Blank line + title separator
+        writeln!(out, "\n  \x1b[33m\x1b[1m{title_prefix}{}\x1b[0m", "─".repeat(title_fill))?;
+        // Detail lines (dim, code-style)
+        for line in &detail_lines {
+            writeln!(out, "  \x1b[2m{line}\x1b[0m")?;
+        }
+        // Bottom separator
+        writeln!(out, "  \x1b[2m{}\x1b[0m", "─".repeat(inner))?;
+        // Blank line before options
+        writeln!(out)?;
+        // Options
         for (i, (label, _)) in options.iter().enumerate() {
             if i == sel {
                 writeln!(out, "  \x1b[33m\x1b[1m❯\x1b[0m \x1b[1m{label}\x1b[0m")?;
@@ -118,9 +143,11 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
         out.flush()
     };
 
+    // Lines consumed: 1(blank) + 1(title) + detail_lines + 1(bottom sep) + 1(blank) + n(options)
+    let total_lines = (4 + detail_line_count + n) as u16;
+
     let clear = |out: &mut dyn Write| -> std::io::Result<()> {
-        let lines = (3 + n + 1) as u16;
-        write!(out, "\x1b[{lines}A\r\x1b[J")?;
+        write!(out, "\x1b[{total_lines}A\r\x1b[J")?;
         out.flush()
     };
 
