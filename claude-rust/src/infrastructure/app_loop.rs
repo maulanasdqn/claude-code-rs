@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 use super::command_extras::expand_at_mentions;
 use super::command_handler::{CommandAction, handle_slash_command};
+use super::conductor::CONDUCTOR_SYSTEM;
 use super::event_renderer::{render_cost, render_error_box, render_exit_summary};
 use super::input_history::{append_history, load_history};
 use super::run_engine::run_engine;
@@ -18,6 +19,7 @@ use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, layout_width,
 #[allow(clippy::too_many_arguments)]
 pub async fn run_loop(
     engine: Arc<QueryEngine>,
+    conductor_engine: Arc<QueryEngine>,
     session_repo: Arc<dyn claude_rust_memory::SessionRepository>,
     provider: Arc<AnthropicProvider>,
     config: claude_rust_config::Settings,
@@ -112,6 +114,25 @@ pub async fn run_loop(
 
         if input.trim() == "/help" {
             print_help(&skills, &cwd);
+            continue;
+        }
+
+        if let Some(task) = input.trim().strip_prefix("/conductor") {
+            let task = task.trim();
+            if task.is_empty() {
+                println!("  {DIM}Usage: /conductor <task description>{RESET}\n");
+            } else {
+                let mut cond_conv = Conversation {
+                    system: Some(CONDUCTOR_SYSTEM.to_string()),
+                    ..Default::default()
+                };
+                cond_conv.push(Message { role: Role::User, content: expand_message_content(task) });
+                match run_engine(&conductor_engine, cond_conv, &total_input, &total_output, &mode_flag, &model_id, &cwd, &pause_flag).await {
+                    Ok(_) => {}
+                    Err(e) if e.is_interrupted() => {}
+                    Err(e) => render_error_box(&e.to_string()),
+                }
+            }
             continue;
         }
 
@@ -497,6 +518,7 @@ fn print_help(skills: &[Skill], _cwd: &str) {
         ("/effort",      "Set effort level (low/medium/high/max)"),
         ("/mode",        "Cycle permission mode"),
         ("/plan [task]", "Toggle plan mode, or plan a task"),
+        ("/conductor <task>", "Orchestrate parallel worker agents"),
         ("/diff",        "Show git diff"),
         ("/status",      "Show git status"),
         ("/review",      "Review current git diff"),

@@ -18,6 +18,7 @@ use claude_rust_types::{Conversation, PermissionMode};
 
 use infrastructure::agent_tool::{AgentTool, ExploreAgentTool};
 use infrastructure::app_loop::run_loop;
+use infrastructure::conductor::{AgentManager, ListAgentsTool, SpawnAgentTool, WaitAgentTool};
 use infrastructure::event_renderer::render_error_box;
 use infrastructure::skills::load_skills;
 use infrastructure::terminal::{DIM, RESET, build_env_info, make_system_prompt, print_banner, prompt_resume};
@@ -88,12 +89,25 @@ async fn main() {
         "web_fetch", "web_search", "todo_write", "todo_read",
     ]));
 
+    // Conductor registry: all sub-agent tools + spawn/wait/list for orchestration
+    let agent_manager = AgentManager::new();
+    let mut conductor_reg = sub_registry.clone_excluding(&[]);
+
     registry.register(Arc::new(AgentTool::new(
-        provider.clone(), sub_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(),
+        provider.clone(), sub_registry.clone(), permission.clone(), mode_flag.clone(), config.hooks.clone(),
     )));
     registry.register(Arc::new(ExploreAgentTool::new(
         provider.clone(), explore_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(),
     )));
+    conductor_reg.register(Arc::new(SpawnAgentTool::new(
+        provider.clone(), sub_registry, permission.clone(),
+        mode_flag.clone(), config.hooks.clone(), agent_manager.clone(),
+    )));
+    conductor_reg.register(Arc::new(WaitAgentTool::new(agent_manager.clone())));
+    conductor_reg.register(Arc::new(ListAgentsTool::new(agent_manager)));
+    let conductor_engine = Arc::new(QueryEngine::new(
+        provider.clone(), Arc::new(conductor_reg), permission.clone(), mode_flag.clone(), config.hooks.clone(),
+    ));
 
     let tool_names = registry.tool_names();
     let registry = Arc::new(registry);
@@ -150,5 +164,5 @@ async fn main() {
         _ => Conversation { system: Some(system_prompt.clone()), ..Default::default() },
     };
 
-    run_loop(engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
+    run_loop(engine, conductor_engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
 }
