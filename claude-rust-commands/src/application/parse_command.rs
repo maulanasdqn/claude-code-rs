@@ -26,6 +26,12 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
         "/review" => return Some(SlashCommand::Review),
         "/commit" => return Some(SlashCommand::Commit),
         "/fast" => return Some(SlashCommand::Fast),
+        "/effort" => return Some(SlashCommand::Effort(String::new())),
+        "/copy" => return Some(SlashCommand::Copy),
+        "/login" => return Some(SlashCommand::Login),
+        "/logout" => return Some(SlashCommand::Logout),
+        "/vim" => return Some(SlashCommand::Vim),
+        "/version" => return Some(SlashCommand::Version),
         "/rewind" => return Some(SlashCommand::Rewind(1)),
         _ => {}
     }
@@ -54,6 +60,13 @@ pub fn parse_command(input: &str) -> Option<SlashCommand> {
     if let Some(rest) = trimmed.strip_prefix("/rewind ") {
         let n: usize = rest.trim().parse().unwrap_or(1);
         return Some(SlashCommand::Rewind(n.max(1)));
+    }
+
+    if let Some(rest) = trimmed.strip_prefix("/effort ") {
+        let level = rest.trim().to_lowercase();
+        if !level.is_empty() {
+            return Some(SlashCommand::Effort(level));
+        }
     }
 
     None

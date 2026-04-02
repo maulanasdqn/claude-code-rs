@@ -23,7 +23,13 @@ pub enum SlashCommand {
     Review,
     Commit,
     Fast,
+    Effort(String),
     Usage,
+    Copy,
+    Login,
+    Logout,
+    Vim,
+    Version,
     Quit,
 }
 

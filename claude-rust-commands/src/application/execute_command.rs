@@ -26,6 +26,12 @@ pub async fn execute_command(command: SlashCommand) -> CommandResult {
         SlashCommand::Review => CommandResult::Output("Use /review from the main loop.".into()),
         SlashCommand::Commit => CommandResult::Output("Use /commit from the main loop.".into()),
         SlashCommand::Fast => CommandResult::Output("Use /fast from the main loop.".into()),
+        SlashCommand::Effort(_) => CommandResult::Output("Use /effort from the main loop.".into()),
+        SlashCommand::Copy => CommandResult::Output("Use /copy from the main loop.".into()),
+        SlashCommand::Login => CommandResult::Output("Use /login from the main loop.".into()),
+        SlashCommand::Logout => CommandResult::Output("Use /logout from the main loop.".into()),
+        SlashCommand::Vim => CommandResult::Output("Use /vim from the main loop.".into()),
+        SlashCommand::Version => CommandResult::Output("Use /version from the main loop.".into()),
         SlashCommand::Quit => CommandResult::Quit,
     }
 }
