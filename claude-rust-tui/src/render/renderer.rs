@@ -17,7 +17,7 @@ impl Renderer {
         frame.render_widget(Block::default().style(Style::default().bg(theme::BASE)), full);
         let [msg, inp, stat] = MainLayout::split(full);
 
-        frame.render_widget(MessageList::new(&mut state.conversation), msg);
+        frame.render_widget(MessageList::new(&mut state.conversation, state.spinner_frame), msg);
         frame.render_widget(InputBox::new(&state.input, !state.is_streaming), inp);
         frame.render_widget(
             StatusBar::new(

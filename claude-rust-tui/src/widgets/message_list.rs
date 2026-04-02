@@ -8,13 +8,17 @@ use ratatui::{
 
 use crate::state::{ConversationState, ToolUseStatus};
 use crate::theme;
+use crate::widgets::spinner::FRAMES;
 
 pub struct MessageList<'a> {
     pub state: &'a mut ConversationState,
+    pub spinner_frame: usize,
 }
 
 impl<'a> MessageList<'a> {
-    pub fn new(state: &'a mut ConversationState) -> Self { Self { state } }
+    pub fn new(state: &'a mut ConversationState, spinner_frame: usize) -> Self {
+        Self { state, spinner_frame }
+    }
 }
 
 fn parse_inline(text: &str) -> Vec<Span<'static>> {
@@ -157,16 +161,22 @@ impl<'a> Widget for MessageList<'a> {
                     }
                     let _ = in_code;
                     for tool in &msg.tool_uses {
-                        let (icon, col) = match tool.status {
-                            ToolUseStatus::Running   => ("◌", theme::GOLD),
-                            ToolUseStatus::Completed => ("✓", theme::FOAM),
-                            ToolUseStatus::Error     => ("✗", theme::LOVE),
+                        let (icon, name_str, col) = match tool.status {
+                            ToolUseStatus::Running => {
+                                let ch = FRAMES[self.spinner_frame % FRAMES.len()].to_string();
+                                let cap = tool.name.chars().next()
+                                    .map(|c| c.to_uppercase().to_string() + &tool.name[c.len_utf8()..])
+                                    .unwrap_or_else(|| tool.name.clone());
+                                (ch, format!("{cap}..."), theme::GOLD)
+                            }
+                            ToolUseStatus::Completed => ("✓".into(), tool.name.clone(), theme::FOAM),
+                            ToolUseStatus::Error     => ("✗".into(), tool.name.clone(), theme::LOVE),
                         };
                         let preview = if tool.output_preview.is_empty() { String::new() }
                             else { format!("  {}", tool.output_preview) };
                         lines.push(Line::from(vec![
-                            Span::styled(format!("  {icon} "), Style::default().fg(col)),
-                            Span::styled(tool.name.clone(), Style::default().fg(theme::SUBTLE)),
+                            Span::styled(format!("  {icon} "), Style::default().fg(col).add_modifier(Modifier::BOLD)),
+                            Span::styled(name_str, Style::default().fg(col).add_modifier(Modifier::ITALIC)),
                             Span::styled(preview, Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM)),
                         ]));
                     }
