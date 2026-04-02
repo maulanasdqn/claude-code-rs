@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-errors"
-version = "1.3.3"
+version = "1.3.4"
 edition = "2024"
 description = "Centralized error types for the claude-rust workspace"
 license = "MIT"
