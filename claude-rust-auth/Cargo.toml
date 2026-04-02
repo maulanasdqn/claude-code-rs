@@ -12,3 +12,6 @@ claude-rust-errors = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+base64 = { workspace = true }
+sha2 = "0.10"
+tokio = { workspace = true }
