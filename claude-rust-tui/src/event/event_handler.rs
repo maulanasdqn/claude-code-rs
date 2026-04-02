@@ -3,6 +3,7 @@ use crate::state::{AppState, InputMode};
 
 pub enum UiAction {
     Submit(String),
+    CyclePermissionMode,
     Quit,
     None,
 }
@@ -61,7 +62,8 @@ impl EventHandler {
     fn insert_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
-            (KeyCode::Esc, _) | (KeyCode::BackTab, _) => { state.input.mode = InputMode::Normal; UiAction::None }
+            (KeyCode::Esc, _) => { state.input.mode = InputMode::Normal; UiAction::None }
+            (KeyCode::BackTab, _) => UiAction::CyclePermissionMode,
             (KeyCode::Tab, _) => { state.input.complete_suggestion(); UiAction::None }
             (KeyCode::Enter, _) => {
                 let text = state.input.buffer.trim().to_string();
@@ -127,7 +129,8 @@ impl EventHandler {
     fn normal_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
-            (KeyCode::BackTab, _) | (KeyCode::Tab, _) => { state.input.mode = InputMode::Insert; UiAction::None }
+            (KeyCode::BackTab, _) => UiAction::CyclePermissionMode,
+            (KeyCode::Tab, _) => { state.input.mode = InputMode::Insert; UiAction::None }
             (KeyCode::Char('i'), _) | (KeyCode::Char('a'), _) => {
                 if key.code == KeyCode::Char('a') { state.input.move_cursor_right(); }
                 state.input.mode = InputMode::Insert; UiAction::None

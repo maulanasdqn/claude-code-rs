@@ -23,7 +23,7 @@ impl AppState {
             conversation: ConversationState::new(),
             modal: ModalState::new(),
             model_name: String::from("claude-sonnet-4-20250514"),
-            permission_mode: String::from("normal"),
+            permission_mode: String::from("Normal"),
             total_cost: 0.0,
             git_branch: None,
             is_streaming: false,
@@ -113,6 +113,9 @@ impl AppState {
                     role: "error".to_string(), content: e,
                     thinking: String::new(), tool_uses: Vec::new(), is_streaming: false,
                 });
+            }
+            EngineEvent::ModeChanged { mode } => {
+                self.permission_mode = mode.label().to_string();
             }
             _ => {}
         }
