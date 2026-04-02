@@ -76,6 +76,7 @@ pub async fn run_loop(
     tui.state.git_branch = super::terminal::git_branch();
     tui.state.conversation.messages = conv_to_tui(&conversation);
     set_current_model(&model_id);
+    provider.toggle_thinking(); // enable thinking by default
 
     let (key_tx, mut key_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
     let stop = Arc::new(AtomicBool::new(false));

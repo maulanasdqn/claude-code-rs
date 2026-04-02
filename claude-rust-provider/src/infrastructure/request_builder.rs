@@ -30,7 +30,12 @@ pub fn build_request_body(
                 ContentBlock::ToolResult { tool_use_id, content, is_error } => {
                     const MAX_RESULT: usize = 8_000;
                     let content = if content.len() > MAX_RESULT {
-                        format!("{}…\n[truncated {} chars]", &content[..MAX_RESULT], content.len() - MAX_RESULT)
+                        let boundary = content.char_indices()
+                            .map(|(i, _)| i)
+                            .take_while(|&i| i < MAX_RESULT)
+                            .last()
+                            .unwrap_or(0);
+                        format!("{}…\n[truncated {} chars]", &content[..boundary], content.len() - boundary)
                     } else {
                         content.clone()
                     };

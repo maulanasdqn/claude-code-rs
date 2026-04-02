@@ -121,8 +121,15 @@ impl<'a> Widget for MessageList<'a> {
                 }
                 _ => {
                     if !msg.thinking.is_empty() {
-                        lines.push(Line::from(Span::styled("  ◈ thinking", Style::default().fg(theme::MUTED).add_modifier(Modifier::ITALIC))));
-                        for raw in msg.thinking.lines() {
+                        let think_lines: Vec<&str> = msg.thinking.lines().collect();
+                        let show_lines = if msg.is_streaming {
+                            &think_lines[think_lines.len().saturating_sub(3)..]
+                        } else {
+                            &think_lines[..]
+                        };
+                        let label = if msg.is_streaming { "  ◈ thinking..." } else { "  ◈ thinking" };
+                        lines.push(Line::from(Span::styled(label, Style::default().fg(theme::MUTED).add_modifier(Modifier::ITALIC))));
+                        for raw in show_lines {
                             lines.push(Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::MUTED).add_modifier(Modifier::DIM))));
                         }
                     }
