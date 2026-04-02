@@ -1,5 +1,5 @@
 use claude_rust_errors::{AppError, AppResult};
-use claude_rust_types::{PermissionLevel, Tool};
+use claude_rust_types::{InterruptBehavior, PermissionLevel, Tool};
 use serde_json::{Value, json};
 use tokio::process::Command;
 
@@ -30,6 +30,10 @@ impl Tool for BashTool {
 
     fn permission_level(&self) -> PermissionLevel {
         PermissionLevel::Dangerous
+    }
+
+    fn interrupt_behavior(&self) -> InterruptBehavior {
+        InterruptBehavior::Cancel
     }
 
     async fn execute(&self, input: Value) -> AppResult<String> {

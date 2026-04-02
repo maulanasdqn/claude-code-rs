@@ -41,6 +41,9 @@ impl Tool for AskUserTool {
         PermissionLevel::ReadOnly
     }
 
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn requires_user_interaction(&self) -> bool { true }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let question = input
             .get("question")

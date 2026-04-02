@@ -1,5 +1,5 @@
 use claude_rust_errors::AppResult;
-use claude_rust_types::{PermissionLevel, Tool};
+use claude_rust_types::{PermissionLevel, SearchReadInfo, Tool};
 use serde_json::{Value, json};
 
 use super::todo_store::read_todos;
@@ -25,6 +25,13 @@ impl Tool for TodoReadTool {
 
     fn permission_level(&self) -> PermissionLevel {
         PermissionLevel::ReadOnly
+    }
+
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn is_concurrent_safe(&self, _input: &Value) -> bool { true }
+
+    fn is_search_or_read_command(&self, _input: &Value) -> SearchReadInfo {
+        SearchReadInfo { is_search: false, is_read: true, is_list: false }
     }
 
     async fn execute(&self, _input: Value) -> AppResult<String> {

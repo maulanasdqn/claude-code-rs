@@ -39,6 +39,10 @@ impl Tool for FileEditTool {
         PermissionLevel::Dangerous
     }
 
+    fn get_path(&self, input: &Value) -> Option<String> {
+        input.get("file_path").and_then(|v| v.as_str()).map(|s| s.to_string())
+    }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let path = input
             .get("file_path")

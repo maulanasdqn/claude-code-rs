@@ -35,6 +35,12 @@ impl Tool for FileWriteTool {
         PermissionLevel::Dangerous
     }
 
+    fn is_destructive(&self, _input: &Value) -> bool { true }
+
+    fn get_path(&self, input: &Value) -> Option<String> {
+        input.get("file_path").and_then(|v| v.as_str()).map(|s| s.to_string())
+    }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let path = input
             .get("file_path")

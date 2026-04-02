@@ -13,6 +13,7 @@ impl Tool for EnterPlanModeTool {
     fn description(&self) -> &str { "Enter plan mode." }
     fn input_schema(&self) -> Value { json!({"type":"object","properties":{},"required":[]}) }
     fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
+    fn is_read_only(&self, _input: &Value) -> bool { true }
     async fn execute(&self, _input: Value) -> AppResult<String> {
         Ok("Plan mode activated.".into())
     }
@@ -43,6 +44,9 @@ impl Tool for ExitPlanModeTool {
     fn permission_level(&self) -> PermissionLevel {
         PermissionLevel::ReadOnly
     }
+
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn requires_user_interaction(&self) -> bool { true }
 
     async fn execute(&self, _input: Value) -> AppResult<String> {
         let paused = self.paused.clone();
