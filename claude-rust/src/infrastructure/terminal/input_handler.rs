@@ -11,6 +11,7 @@ use super::input_vim::process_vim_char;
 ///
 /// When `suggestions` is non-empty, Up/Down navigate suggestions instead of history,
 /// Tab/Enter accept the selected suggestion, and Esc clears suggestions.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn process_key(
     ev: Event,
     buf: &mut String,
@@ -43,8 +44,8 @@ pub(super) fn process_key(
 
         // ── Enter: accept suggestion or submit ─────────────────────
         Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
-            if has_suggestions {
-                if let Some(idx) = *suggestion_idx {
+            if has_suggestions
+                && let Some(idx) = *suggestion_idx {
                     // Accept selected suggestion and submit
                     *buf = suggestions[idx].0.clone();
                     if !buf.ends_with(' ') {
@@ -54,7 +55,6 @@ pub(super) fn process_key(
                     *suggestion_idx = None;
                     return Some(Some(buf.trim().to_string()));
                 }
-            }
             return Some(Some(buf.trim().to_string()));
         }
 

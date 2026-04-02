@@ -219,11 +219,10 @@ fn render_task_list(state: &mut RenderState) {
     }
 
     // Update the thinking spinner with the active_form if available
-    if let Some(active_form) = todo_store::current_active_form() {
-        if let Some(pb) = &state.thinking_pb {
+    if let Some(active_form) = todo_store::current_active_form()
+        && let Some(pb) = &state.thinking_pb {
             pb.set_message(format!("{active_form}…"));
         }
-    }
 
     // Render each todo as a static progress bar line
     for (i, todo) in todos.iter().enumerate() {
@@ -259,11 +258,10 @@ fn stop_thinking(state: &mut RenderState) {
 }
 
 fn save_json_to_last_tool(state: &mut RenderState) {
-    if let Some(back) = state.active_tools.back_mut() {
-        if back.2.is_empty() && !state.current_json_buf.is_empty() {
+    if let Some(back) = state.active_tools.back_mut()
+        && back.2.is_empty() && !state.current_json_buf.is_empty() {
             back.2 = std::mem::take(&mut state.current_json_buf);
         }
-    }
 }
 
 /// Format tool argument as `(arg)` or empty string if no arg.

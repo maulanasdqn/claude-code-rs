@@ -31,8 +31,10 @@ impl SubEngine {
             self.mode.clone(),
             self.hooks.clone(),
         );
-        let mut conv = Conversation::default();
-        conv.system = Some(system.to_string());
+        let mut conv = Conversation {
+            system: Some(system.to_string()),
+            ..Default::default()
+        };
         conv.push(Message { role: Role::User, content: vec![claude_rust_types::ContentBlock::Text { text: task.to_string() }] });
 
         let output = Arc::new(std::sync::Mutex::new(String::new()));

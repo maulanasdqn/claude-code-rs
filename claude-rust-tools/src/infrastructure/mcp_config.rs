@@ -26,15 +26,14 @@ pub fn load_mcp_configs(cwd: &str) -> Vec<(String, McpServerEntry)> {
     let mut seen = std::collections::HashSet::new();
     let mut result = Vec::new();
     for path in &paths {
-        if let Ok(text) = std::fs::read_to_string(path) {
-            if let Ok(cfg) = serde_json::from_str::<McpConfig>(&text) {
+        if let Ok(text) = std::fs::read_to_string(path)
+            && let Ok(cfg) = serde_json::from_str::<McpConfig>(&text) {
                 for (name, entry) in cfg.mcp_servers {
                     if seen.insert(name.clone()) {
                         result.push((name, entry));
                     }
                 }
             }
-        }
     }
     result
 }

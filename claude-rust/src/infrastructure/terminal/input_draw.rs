@@ -33,7 +33,7 @@ pub(super) fn redraw_input_line(
     let (visible, vis_cursor) = if buf.len() <= avail {
         (buf.to_string(), cursor_pos)
     } else {
-        let start = if cursor_pos > avail { cursor_pos - avail } else { 0 };
+        let start = cursor_pos.saturating_sub(avail);
         let end = (start + avail).min(buf.len());
         (buf[start..end].to_string(), cursor_pos - start)
     };

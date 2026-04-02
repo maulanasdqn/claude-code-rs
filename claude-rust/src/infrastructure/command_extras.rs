@@ -108,13 +108,12 @@ pub fn expand_at_mentions(input: &str) -> String {
             let end = rest.find(|c: char| c.is_whitespace() || c == ',').unwrap_or(rest.len());
             let raw = &rest[..end];
             let path = if raw.starts_with('"') && raw.ends_with('"') { &raw[1..raw.len()-1] } else { raw };
-            if !path.is_empty() && Path::new(path).exists() {
-                if let Ok(content) = std::fs::read_to_string(path) {
+            if !path.is_empty() && Path::new(path).exists()
+                && let Ok(content) = std::fs::read_to_string(path) {
                     appended.push_str(&format!("\n\n<file path=\"{path}\">{content}</file>"));
                     for _ in 0..raw.len() { chars.next(); }
                     continue;
                 }
-            }
         }
         result.push(c);
     }

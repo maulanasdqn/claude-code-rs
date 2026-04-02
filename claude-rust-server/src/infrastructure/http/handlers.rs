@@ -36,8 +36,10 @@ fn check_auth(state: &AppState, headers: &HeaderMap) -> Result<(), AppError> {
 }
 
 fn build_conversation(req: ChatRequest) -> Result<Conversation, AppError> {
-    let mut conversation = Conversation::default();
-    conversation.system = req.system;
+    let mut conversation = Conversation {
+        system: req.system,
+        ..Default::default()
+    };
     for msg in &req.messages {
         let message = match msg.role.as_str() {
             "user" => Message::user(&msg.content),

@@ -24,11 +24,10 @@ pub async fn execute_tool(
         }
     }
 
-    if matches!(name, "file_edit" | "file_write") {
-        if let Some(path) = input.get("file_path").and_then(|v| v.as_str()) {
+    if matches!(name, "file_edit" | "file_write")
+        && let Some(path) = input.get("file_path").and_then(|v| v.as_str()) {
             push_file_state(undo_stack, path).await;
         }
-    }
 
     tool.execute(input.clone()).await
 }

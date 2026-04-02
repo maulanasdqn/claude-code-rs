@@ -64,15 +64,14 @@ impl Tool for GlobTool {
 
         let mut files: Vec<(std::path::PathBuf, std::time::SystemTime)> = Vec::new();
         for entry in entries {
-            if let Ok(path) = entry {
-                if path.is_file() {
+            if let Ok(path) = entry
+                && path.is_file() {
                     let mtime = path
                         .metadata()
                         .and_then(|m| m.modified())
                         .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
                     files.push((path, mtime));
                 }
-            }
         }
 
         files.sort_by(|a, b| b.1.cmp(&a.1));

@@ -12,6 +12,7 @@ use super::terminal::{DIM, RESET};
 
 const TICKS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn run_engine(
     engine: &Arc<QueryEngine>,
     conversation: Conversation,
@@ -94,14 +95,12 @@ pub(super) async fn run_engine(
                 std::thread::sleep(std::time::Duration::from_millis(50));
                 continue;
             }
-            if crossterm::event::poll(std::time::Duration::from_millis(50)).unwrap_or(false) {
-                if let Ok(crossterm::event::Event::Key(k)) = crossterm::event::read() {
-                    if k.code == crossterm::event::KeyCode::Esc {
+            if crossterm::event::poll(std::time::Duration::from_millis(50)).unwrap_or(false)
+                && let Ok(crossterm::event::Event::Key(k)) = crossterm::event::read()
+                    && k.code == crossterm::event::KeyCode::Esc {
                         if let Some(tx) = esc_tx.take() { let _ = tx.send(()); }
                         break;
                     }
-                }
-            }
         }
         crossterm::terminal::disable_raw_mode().ok();
     });

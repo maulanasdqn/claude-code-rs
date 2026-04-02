@@ -10,8 +10,8 @@ pub struct PermissionRule {
 /// Parse a permission rule string like "bash(git *)", "read", "glob".
 pub fn parse_rule(rule: &str) -> PermissionRule {
     let rule = rule.trim();
-    if let Some(paren_start) = rule.find('(') {
-        if rule.ends_with(')') {
+    if let Some(paren_start) = rule.find('(')
+        && rule.ends_with(')') {
             let tool = rule[..paren_start].to_string();
             let pattern = rule[paren_start + 1..rule.len() - 1].to_string();
             return PermissionRule {
@@ -19,7 +19,6 @@ pub fn parse_rule(rule: &str) -> PermissionRule {
                 pattern: Some(pattern),
             };
         }
-    }
     PermissionRule {
         tool: rule.to_string(),
         pattern: None,

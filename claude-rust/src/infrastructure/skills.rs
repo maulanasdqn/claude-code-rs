@@ -93,11 +93,10 @@ fn load_skills_from_dir(dir: &str, skills: &mut Vec<Skill>, skills_dir_only: boo
                     .and_then(|n| n.to_str())
                     .unwrap_or_default()
                     .to_string();
-                if let Some(skill) = parse_skill_file(&file_path, Some(&dir_name)) {
-                    if !skills.iter().any(|s| s.name == skill.name) {
+                if let Some(skill) = parse_skill_file(&file_path, Some(&dir_name))
+                    && !skills.iter().any(|s| s.name == skill.name) {
                         skills.push(skill);
                     }
-                }
             }
             continue;
         }
@@ -105,13 +104,10 @@ fn load_skills_from_dir(dir: &str, skills: &mut Vec<Skill>, skills_dir_only: boo
         // Standalone .md file (legacy commands format only)
         if !skills_dir_only
             && p.extension().and_then(|e| e.to_str()) == Some("md")
-        {
-            if let Some(skill) = parse_skill_file(&p, None) {
-                if !skills.iter().any(|s| s.name == skill.name) {
+            && let Some(skill) = parse_skill_file(&p, None)
+                && !skills.iter().any(|s| s.name == skill.name) {
                     skills.push(skill);
                 }
-            }
-        }
     }
 }
 

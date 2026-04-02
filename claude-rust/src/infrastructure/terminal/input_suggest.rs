@@ -85,15 +85,14 @@ pub(super) fn render_suggestions(
     // Even if at the bottom of the screen, the \n scrolls and the subsequent
     // relative \x1b[A movement always returns to the correct content line.
     for _ in 0..total_lines {
-        print!("\n");
+        println!();
     }
     // Move back up to content line using relative movement (scroll-safe)
     print!("\x1b[{}A", total_lines);
 
     // Draw each suggestion line (cursor-down won't scroll since space was reserved)
-    for i in 0..count {
+    for (i, (cmd, desc)) in suggestions.iter().enumerate().take(count) {
         print!("\x1b[B\r\x1b[2K"); // Move down, clear line
-        let (ref cmd, ref desc) = suggestions[i];
         let is_selected = selected_idx == Some(i);
 
         let line = format!("{cmd}  {desc}");

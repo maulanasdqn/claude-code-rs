@@ -144,16 +144,10 @@ async fn main() {
                 println!("  {DIM}↻ Session resumed ({} messages){RESET}\n", c.messages.len());
                 c
             } else {
-                let mut c = Conversation::default();
-                c.system = Some(system_prompt.clone());
-                c
+                Conversation { system: Some(system_prompt.clone()), ..Default::default() }
             }
         }
-        _ => {
-            let mut c = Conversation::default();
-            c.system = Some(system_prompt.clone());
-            c
-        }
+        _ => Conversation { system: Some(system_prompt.clone()), ..Default::default() },
     };
 
     run_loop(engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
