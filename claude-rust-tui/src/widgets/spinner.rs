@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::theme;
 
-const FRAMES: [char; 10] = [
+pub const FRAMES: [char; 10] = [
     '\u{280B}', '\u{2819}', '\u{2839}', '\u{2838}',
     '\u{283C}', '\u{2834}', '\u{2826}', '\u{2827}',
     '\u{2807}', '\u{280F}',

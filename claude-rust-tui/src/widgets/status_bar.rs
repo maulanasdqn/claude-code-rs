@@ -6,6 +6,7 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
+use crate::widgets::spinner::FRAMES;
 use crate::theme;
 
 pub struct StatusBar<'a> {
@@ -13,11 +14,13 @@ pub struct StatusBar<'a> {
     pub mode: &'a str,
     pub cost: f64,
     pub git_branch: Option<&'a str>,
+    pub is_streaming: bool,
+    pub spinner_frame: usize,
 }
 
 impl<'a> StatusBar<'a> {
-    pub fn new(model: &'a str, mode: &'a str, cost: f64, git_branch: Option<&'a str>) -> Self {
-        Self { model, mode, cost, git_branch }
+    pub fn new(model: &'a str, mode: &'a str, cost: f64, git_branch: Option<&'a str>, is_streaming: bool, spinner_frame: usize) -> Self {
+        Self { model, mode, cost, git_branch, is_streaming, spinner_frame }
     }
 }
 
@@ -29,19 +32,24 @@ impl<'a> Widget for StatusBar<'a> {
 
         let sep = Span::styled("  ·  ", Style::default().fg(theme::HL_HIGH).bg(theme::SURFACE));
 
-        let (mode_icon, mode_color) = match self.mode {
-            "Auto-accept" => ("⚡ ", theme::GOLD),
-            "Plan"        => ("◆ ", theme::IRIS),
-            "Bypass"      => ("⚠ ", theme::LOVE),
-            _             => ("● ", theme::FOAM),
+        let mode_span = if self.is_streaming {
+            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
+            Span::styled(format!("{ch} generating"), Style::default().fg(theme::IRIS).bg(theme::SURFACE).add_modifier(Modifier::ITALIC))
+        } else {
+            let (icon, color) = match self.mode {
+                "Auto-accept" => ("⚡ ", theme::GOLD),
+                "Plan"        => ("◆ ", theme::IRIS),
+                "Bypass"      => ("⚠ ", theme::LOVE),
+                _             => ("● ", theme::FOAM),
+            };
+            Span::styled(format!("{icon}{}", self.mode), Style::default().fg(color).bg(theme::SURFACE))
         };
 
         let mut spans = vec![
             Span::styled(" ", Style::default().bg(theme::SURFACE)),
             Span::styled(self.model, Style::default().fg(theme::FOAM).bg(theme::SURFACE).add_modifier(Modifier::BOLD)),
             sep.clone(),
-            Span::styled(mode_icon, Style::default().fg(mode_color).bg(theme::SURFACE).add_modifier(Modifier::BOLD)),
-            Span::styled(self.mode, Style::default().fg(mode_color).bg(theme::SURFACE)),
+            mode_span,
             sep.clone(),
             Span::styled(format!("${:.4}", self.cost), Style::default().fg(theme::IRIS).bg(theme::SURFACE)),
         ];
