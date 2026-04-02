@@ -51,7 +51,7 @@ pub async fn run_loop(
     let mut bg_count: usize = 0;
 
     loop {
-        let input = match read_user_input(&mode_flag, &prompt_history, &skill_names) {
+        let input = match read_user_input(&mode_flag, &prompt_history, &skill_names, !conversation.messages.is_empty()) {
             Some(s) if s.is_empty() => continue,
             Some(s) => s,
             None => break,

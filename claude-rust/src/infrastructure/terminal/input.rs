@@ -10,29 +10,25 @@ use super::banner::layout_width;
 use super::input_border::{build_status_bar, build_top_border};
 use super::input_raw::read_line_raw;
 
-pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[(String, String)]) -> Option<String> {
+pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[(String, String)], has_history: bool) -> Option<String> {
     if !io::stdin().is_terminal() {
         return read_user_input_simple();
     }
 
     terminal::disable_raw_mode().ok();
 
-    // Ensure clean terminal state before drawing input box
     print!("\x1b[0m\r");
     io::stdout().flush().ok();
 
-    // Pin input box to the bottom of the visible terminal area.
-    // Query cursor position and terminal height; print newlines to push
-    // the 4-line box (top border + input + bottom border + status bar)
-    // to the very bottom so output scrolls above it.
-    if let (Ok((_, cur_row)), Ok((_, rows))) = (cursor::position(), terminal::size()) {
-        let cur_row = cur_row as usize;
-        let rows = rows as usize;
-        // We need 4 lines; target the box to start at rows-5 (leaves 1 spare)
-        let target = rows.saturating_sub(5);
-        if cur_row < target {
-            print!("{}", "\n".repeat(target - cur_row));
-            io::stdout().flush().ok();
+    if has_history {
+        if let (Ok((_, cur_row)), Ok((_, rows))) = (cursor::position(), terminal::size()) {
+            let cur_row = cur_row as usize;
+            let rows = rows as usize;
+            let target = rows.saturating_sub(5);
+            if cur_row < target {
+                print!("{}", "\n".repeat(target - cur_row));
+                io::stdout().flush().ok();
+            }
         }
     }
 
