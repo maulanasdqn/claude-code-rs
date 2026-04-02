@@ -1,10 +1,12 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Widget},
 };
+
+use crate::theme;
 
 pub struct StatusBar<'a> {
     pub model: &'a str,
@@ -15,56 +17,32 @@ pub struct StatusBar<'a> {
 
 impl<'a> StatusBar<'a> {
     pub fn new(model: &'a str, mode: &'a str, cost: f64, git_branch: Option<&'a str>) -> Self {
-        Self {
-            model,
-            mode,
-            cost,
-            git_branch,
-        }
+        Self { model, mode, cost, git_branch }
     }
 }
 
 impl<'a> Widget for StatusBar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // Fill background
         for x in area.x..area.x + area.width {
-            buf[(x, area.y)].set_style(Style::default().bg(Color::DarkGray));
+            buf[(x, area.y)].set_style(Style::default().bg(theme::SURFACE));
         }
 
+        let sep = Span::styled("  ·  ", Style::default().fg(theme::HL_HIGH).bg(theme::SURFACE));
+
         let mut spans = vec![
-            Span::styled(
-                format!(" {} ", self.model),
-                Style::default()
-                    .fg(Color::Cyan)
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                " | ",
-                Style::default().fg(Color::White).bg(Color::DarkGray),
-            ),
-            Span::styled(
-                self.mode,
-                Style::default().fg(Color::Yellow).bg(Color::DarkGray),
-            ),
-            Span::styled(
-                " | ",
-                Style::default().fg(Color::White).bg(Color::DarkGray),
-            ),
-            Span::styled(
-                format!("${:.4}", self.cost),
-                Style::default().fg(Color::Green).bg(Color::DarkGray),
-            ),
+            Span::styled(" ", Style::default().bg(theme::SURFACE)),
+            Span::styled(self.model, Style::default().fg(theme::FOAM).bg(theme::SURFACE).add_modifier(Modifier::BOLD)),
+            sep.clone(),
+            Span::styled(self.mode, Style::default().fg(theme::GOLD).bg(theme::SURFACE)),
+            sep.clone(),
+            Span::styled(format!("${:.4}", self.cost), Style::default().fg(theme::IRIS).bg(theme::SURFACE)),
         ];
 
         if let Some(branch) = self.git_branch {
-            spans.push(Span::styled(
-                " | ",
-                Style::default().fg(Color::White).bg(Color::DarkGray),
-            ));
+            spans.push(sep);
             spans.push(Span::styled(
                 format!("\u{E0A0} {branch}"),
-                Style::default().fg(Color::Magenta).bg(Color::DarkGray),
+                Style::default().fg(theme::PINE).bg(theme::SURFACE),
             ));
         }
 

@@ -11,6 +11,7 @@ pub struct AppState {
     pub git_branch: Option<String>,
     pub is_streaming: bool,
     pub spinner_frame: usize,
+    pub spinner_tick: u8,
     pub total_input: u64,
     pub total_output: u64,
 }
@@ -27,6 +28,7 @@ impl AppState {
             git_branch: None,
             is_streaming: false,
             spinner_frame: 0,
+            spinner_tick: 0,
             total_input: 0,
             total_output: 0,
         }

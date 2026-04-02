@@ -1,8 +1,11 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
+use ratatui::style::Style;
+use ratatui::widgets::Block;
 
 use crate::layout::MainLayout;
 use crate::state::{AppState, ModalKind};
+use crate::theme;
 use crate::widgets::{InputBox, MessageList, PermissionDialog, Spinner, StatusBar};
 
 pub struct Renderer;
@@ -12,6 +15,7 @@ impl Renderer {
 
     pub fn draw(frame: &mut Frame, state: &mut AppState) {
         let full = frame.area();
+        frame.render_widget(Block::default().style(Style::default().bg(theme::BASE)), full);
         let [msg, inp, stat] = MainLayout::split(full);
 
         frame.render_widget(MessageList::new(&mut state.conversation), msg);
