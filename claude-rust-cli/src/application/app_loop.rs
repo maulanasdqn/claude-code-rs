@@ -185,7 +185,7 @@ pub async fn run_loop(ctx: &AppContext, _system_prompt: String, mut conversation
                         }
                         "/version" => {
                             tui.state.push_system_message(format!(
-                                "rusty-claude v{}",
+                                "claude-rust-cli v{}",
                                 env!("CARGO_PKG_VERSION")
                             ));
                         }

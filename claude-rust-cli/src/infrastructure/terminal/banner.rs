@@ -19,7 +19,7 @@ pub fn print_banner(cwd: &str, model_id: &str) {
 
     println!();
     println!(
-        "  {BOLD}{CYAN}◆{RESET}  {BOLD}Rusty Claude{RESET}  {DIM}v{}{RESET}",
+        "  {BOLD}{CYAN}◆{RESET}  {BOLD}Claude Rust CLI{RESET}  {DIM}v{}{RESET}",
         env!("CARGO_PKG_VERSION")
     );
     println!("  {DIM}{}{RESET}", "─".repeat(w));
