@@ -131,6 +131,9 @@ pub(super) fn render_tool_result(tool_name: &str, json: &str, output: &str, is_e
         "glob" | "grep" | "web_fetch" | "web_search" => {
             state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
         }
+        "agent" | "explore" => {
+            state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
+        }
         "todo_write" => {
             state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
             render_task_list(state);
