@@ -40,7 +40,7 @@ pub(super) fn read_line_raw(
     inner_width: usize,
     mode: &Arc<AtomicU8>,
     history: &[String],
-    skill_names: &[String],
+    skill_names: &[(String, String)],
 ) -> (Option<String>, usize) {
     let mut buf = String::new();
     let mut cursor_pos: usize = 0;

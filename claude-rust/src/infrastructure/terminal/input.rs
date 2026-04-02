@@ -10,7 +10,7 @@ use super::banner::layout_width;
 use super::input_border::{build_status_bar, build_top_border};
 use super::input_raw::read_line_raw;
 
-pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[String]) -> Option<String> {
+pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[(String, String)]) -> Option<String> {
     if !io::stdin().is_terminal() {
         return read_user_input_simple();
     }
