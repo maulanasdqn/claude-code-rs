@@ -17,6 +17,10 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
 
     terminal::disable_raw_mode().ok();
 
+    // Ensure clean terminal state before drawing input box
+    print!("\x1b[0m\r");
+    io::stdout().flush().ok();
+
     let w = layout_width();
     let inner = w - 2;
 
@@ -31,8 +35,11 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
         PermissionMode::Bypass => RED,
     };
 
+    print!("\x1b[2K");
     println!("{top}");
+    print!("\x1b[2K");
     println!("  {DIM}│{RESET} {BOLD}{pcolor}❯{RESET} {}{DIM}│{RESET}", " ".repeat(avail));
+    print!("\x1b[2K");
     println!("{bot}");
 
     print!("\x1b[2A\r\x1b[6C");
