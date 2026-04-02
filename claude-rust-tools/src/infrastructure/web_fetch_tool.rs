@@ -34,6 +34,10 @@ impl Tool for WebFetchTool {
         PermissionLevel::Dangerous
     }
 
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn is_concurrent_safe(&self, _input: &Value) -> bool { true }
+    fn is_open_world(&self, _input: &Value) -> bool { true }
+
     async fn execute(&self, input: Value) -> AppResult<String> {
         let url = input
             .get("url")
