@@ -44,7 +44,7 @@ const MAX_VISIBLE: usize = 8;
 
 pub(super) fn get_suggestions(
     input: &str,
-    skill_names: &[String],
+    skill_names: &[(String, String)],
 ) -> Vec<(String, String)> {
     if !input.starts_with('/') || input.contains(' ') {
         return Vec::new();
@@ -58,10 +58,11 @@ pub(super) fn get_suggestions(
         .map(|(cmd, desc)| (cmd.to_string(), desc.to_string()))
         .collect();
 
-    for skill in skill_names {
-        let full = format!("/{skill}");
-        if full.starts_with(&query) {
-            matches.push((full, "Skill".to_string()));
+    for (name, desc) in skill_names {
+        let full = format!("/{name}");
+        if full.to_lowercase().starts_with(&query) {
+            let label = if desc.is_empty() { "Skill".to_string() } else { desc.clone() };
+            matches.push((full, label));
         }
     }
 

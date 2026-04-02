@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust"
-version = "1.4.2"
+version = "1.4.3"
 edition = "2024"
 description = "Interactive CLI for Claude AI"
 license = "MIT"

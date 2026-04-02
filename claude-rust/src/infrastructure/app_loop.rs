@@ -42,9 +42,9 @@ pub async fn run_loop(
     let mut pinned_files: Vec<String> = Vec::new();
     let model_id = provider.model_name();
     set_current_model(&model_id);
-    let skill_names: Vec<String> = skills.iter()
+    let skill_names: Vec<(String, String)> = skills.iter()
         .filter(|s| s.user_invocable)
-        .map(|s| s.name.clone())
+        .map(|s| (s.name.clone(), s.description.clone()))
         .collect();
 
     let (bg_tx, mut bg_rx) = mpsc::unbounded_channel::<Result<Conversation, claude_rust_errors::AppError>>();
@@ -285,7 +285,12 @@ pub async fn run_loop(
                 }
                 Some(CommandAction::Quit) => break,
                 Some(CommandAction::Continue) => continue,
-                None => {}
+                None => {
+                    // Unknown slash command — show hint
+                    let cmd = input.trim().split_whitespace().next().unwrap_or(&input);
+                    println!("  {DIM}Unknown command: {cmd}  (try /help or /skills){RESET}\n");
+                    continue;
+                }
             }
         }
 
