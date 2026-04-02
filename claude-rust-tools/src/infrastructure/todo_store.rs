@@ -8,6 +8,8 @@ pub struct TodoItem {
     pub content: String,
     pub status: String,
     pub priority: String,
+    #[serde(default, rename = "activeForm")]
+    pub active_form: Option<String>,
 }
 
 static TODOS: OnceLock<Mutex<Vec<TodoItem>>> = OnceLock::new();
@@ -22,4 +24,14 @@ pub fn read_todos() -> Vec<TodoItem> {
 
 pub fn write_todos(todos: Vec<TodoItem>) {
     *store().lock().unwrap() = todos;
+}
+
+/// Returns the `active_form` of the first `in_progress` todo item, if any.
+pub fn current_active_form() -> Option<String> {
+    store()
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|t| t.status == "in_progress")
+        .and_then(|t| t.active_form.clone())
 }
