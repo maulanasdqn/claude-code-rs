@@ -3,7 +3,8 @@ use std::time::Duration;
 use indicatif::{ProgressBar, ProgressStyle};
 use claude_rust_engine::EngineEvent;
 
-use super::super::terminal::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, summarize_tool_input, tool_display_name, tool_icon};
+use claude_rust_tools::todo_store;
+use super::super::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, ORANGE, RED, RESET, summarize_tool_input, tool_display_name, tool_icon};
 use super::RenderState;
 use super::render_error::render_error_box;
 use super::render_md::{flush_line_buf, render_md_line};
@@ -129,6 +130,13 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
                             fmt_summary(&summary), count
                         )).ok();
                     }
+                    "todo_write" => {
+                        state.mp.println(format!(
+                            "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}",
+                            fmt_summary(&summary)
+                        )).ok();
+                        render_task_list(state);
+                    }
                     _ => {
                         state.mp.println(format!(
                             "  {CYAN}{icon}{RESET}  {DIM}{display}{RESET}{}",
@@ -175,6 +183,7 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 
         EngineEvent::TurnComplete => {
             stop_thinking(state);
+            clear_task_list(state);
             if state.in_text { flush_line_buf(state); state.in_text = false; }
             if state.turn_input > 0 || state.turn_output > 0 {
                 let i = fmt_tokens(state.turn_input);
@@ -190,6 +199,46 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
             if state.in_text { flush_line_buf(state); state.in_text = false; }
             render_error_box(&msg);
         }
+    }
+}
+
+fn render_task_list(state: &mut RenderState) {
+    // Clear any previous task bars
+    clear_task_list(state);
+
+    let todos = todo_store::read_todos();
+    if todos.is_empty() {
+        return;
+    }
+
+    // Update the thinking spinner with the active_form if available
+    if let Some(active_form) = todo_store::current_active_form() {
+        if let Some(pb) = &state.thinking_pb {
+            pb.set_message(format!("{active_form}…"));
+        }
+    }
+
+    // Render each todo as a static progress bar line
+    for (i, todo) in todos.iter().enumerate() {
+        let (marker, color) = match todo.status.as_str() {
+            "in_progress" => ("■", ORANGE),
+            "completed" => ("✓", GREEN),
+            _ => ("□", DIM), // pending
+        };
+        let connector = if i == 0 { "└─" } else { "  " };
+        let content = truncate(&todo.content, 80);
+        let line = format!("    {DIM}{connector}{RESET} {color}{marker}{RESET}  {DIM}{content}{RESET}");
+
+        let pb = state.mp.add(ProgressBar::new(0));
+        pb.set_style(ProgressStyle::with_template("{msg}").unwrap());
+        pb.set_message(line);
+        state.task_pbs.push(pb);
+    }
+}
+
+fn clear_task_list(state: &mut RenderState) {
+    for pb in state.task_pbs.drain(..) {
+        pb.finish_and_clear();
     }
 }
 

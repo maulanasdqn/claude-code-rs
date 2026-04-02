@@ -6,6 +6,7 @@ use claude_rust_engine::{EngineEvent, QueryEngine};
 use claude_rust_errors::AppError;
 use claude_rust_types::Conversation;
 
+use claude_rust_tools::todo_store;
 use super::event_renderer::{RenderState, render_event};
 use super::terminal::{DIM, RESET};
 
@@ -30,7 +31,10 @@ pub(super) async fn run_engine(
             .unwrap()
             .tick_strings(TICKS),
     );
-    init_pb.set_message("Thinking…");
+    let init_msg = todo_store::current_active_form()
+        .map(|f| format!("{f}…"))
+        .unwrap_or_else(|| "Thinking…".to_string());
+    init_pb.set_message(init_msg);
     init_pb.enable_steady_tick(Duration::from_millis(150));
 
     let mut render_state = RenderState::new(mp);

@@ -10,7 +10,7 @@ use crate::infrastructure::command_extras::{
     handle_review_prompt,
 };
 use crate::infrastructure::skills::Skill;
-use crate::infrastructure::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, RED, RESET, YELLOW};
+use crate::infrastructure::terminal::{BOLD, CYAN, DIM, GREEN, MAGENTA, RED, RESET, YELLOW, select_from_list};
 
 const FAST_MODEL: &str = "claude-haiku-4-5-20251001";
 
@@ -50,14 +50,35 @@ pub async fn handle_slash_command(
 
     if let SlashCommand::Model(ref name) = cmd {
         if name.is_empty() {
-            return Some(CommandAction::Output(format!(
-                "\n  {DIM}Current model:{RESET} {BOLD}{CYAN}{}{RESET}\n",
-                provider.model_name()
-            )));
+            let current = provider.model_name();
+            let items: Vec<(String, String)> = vec![
+                ("claude-sonnet-4-6".into(), "claude-sonnet-4-6".into()),
+                ("claude-opus-4-6".into(), "claude-opus-4-6".into()),
+                ("claude-haiku-4-5-20251001".into(), "claude-haiku-4-5-20251001".into()),
+                ("claude-sonnet-4-5-20250929".into(), "claude-sonnet-4-5-20250929".into()),
+            ];
+
+            match select_from_list("Models", &items, &current) {
+                Some(selected) => {
+                    provider.set_model(&selected);
+                    return Some(CommandAction::Output(format!(
+                        "\n  {DIM}Model →{RESET} {BOLD}{CYAN}{selected}{RESET}\n"
+                    )));
+                }
+                None => return Some(CommandAction::Continue),
+            }
         } else {
-            provider.set_model(name);
+            // Resolve aliases when model name is provided directly
+            let resolved = match name.as_str() {
+                "opus" => "claude-opus-4-6",
+                "sonnet" => "claude-sonnet-4-6",
+                "haiku" => "claude-haiku-4-5-20251001",
+                other => other,
+            };
+
+            provider.set_model(resolved);
             return Some(CommandAction::Output(format!(
-                "\n  {DIM}Model →{RESET} {BOLD}{CYAN}{name}{RESET}\n"
+                "\n  {DIM}Model →{RESET} {BOLD}{CYAN}{resolved}{RESET}\n"
             )));
         }
     }
@@ -130,6 +151,29 @@ pub async fn handle_slash_command(
 
     if matches!(cmd, SlashCommand::Usage) {
         return Some(CommandAction::Output(render_usage(provider).await));
+    }
+
+    if let SlashCommand::Effort(ref level) = cmd {
+        if level.is_empty() {
+            // Show current + options
+            return Some(CommandAction::Output(format!(
+                "\n  {BOLD}{CYAN}Effort Levels{RESET}\n\n\
+                 {DIM}  low{RESET}     Quick, concise responses\n\
+                 {DIM}  medium{RESET}  Balanced (default)\n\
+                 {DIM}  high{RESET}    Thorough, detailed responses\n\
+                 {DIM}  max{RESET}     Maximum depth and analysis\n"
+            )));
+        }
+        let valid = ["low", "medium", "high", "max"];
+        if !valid.contains(&level.as_str()) {
+            return Some(CommandAction::Output(format!(
+                "\n  {DIM}Invalid effort level. Use: low, medium, high, max{RESET}\n"
+            )));
+        }
+        // For now just acknowledge - actual implementation needs provider changes
+        return Some(CommandAction::Output(format!(
+            "\n  {DIM}Effort →{RESET} {BOLD}{CYAN}{level}{RESET}\n"
+        )));
     }
 
     if matches!(cmd, SlashCommand::Plan) {
