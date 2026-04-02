@@ -196,52 +196,74 @@ pub(super) fn read_line_raw(
 fn read_clipboard_image() -> Option<(String, String)> {
     use base64::Engine;
 
-    // Try clipboard tools in order of preference
-    let commands = [
-        // Wayland
-        ("wl-paste", vec!["--type", "image/png", "--no-newline"]),
-        // X11
-        ("xclip", vec!["-selection", "clipboard", "-t", "image/png", "-o"]),
-        // macOS
-        ("osascript", vec![
-            "-e", "set png to (the clipboard as «class PNGf»)",
-            "-e", "return «data PNGf» of png",
-        ]),
-    ];
+    let tmp = std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".to_string());
+    let tmp_path = format!("{}/claude-rust-paste-{}.png", tmp.trim_end_matches('/'), std::process::id());
 
-    for (cmd, args) in &commands {
-        if let Ok(output) = std::process::Command::new(cmd)
-            .args(args)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null())
-            .output()
-        {
-            if output.status.success() && !output.stdout.is_empty() {
-                // For osascript, the output needs special handling
-                // For xclip/wl-paste, output is raw PNG bytes
-                if *cmd == "osascript" {
-                    // osascript returns hex data, skip it and try next
-                    continue;
+    // Wayland
+    if let Ok(out) = std::process::Command::new("wl-paste")
+        .args(["--type", "image/png", "--no-newline"])
+        .stderr(std::process::Stdio::null())
+        .output()
+    {
+        if out.status.success() && !out.stdout.is_empty() {
+            let enc = base64::engine::general_purpose::STANDARD.encode(&out.stdout);
+            return Some(("image/png".to_string(), enc));
+        }
+    }
+
+    // X11
+    if let Ok(out) = std::process::Command::new("xclip")
+        .args(["-selection", "clipboard", "-t", "image/png", "-o"])
+        .stderr(std::process::Stdio::null())
+        .output()
+    {
+        if out.status.success() && !out.stdout.is_empty() {
+            let enc = base64::engine::general_purpose::STANDARD.encode(&out.stdout);
+            return Some(("image/png".to_string(), enc));
+        }
+    }
+
+    // macOS — write clipboard PNG to a temp file via osascript
+    let script = format!(
+        "try\n\
+         set imgData to (the clipboard as «class PNGf»)\n\
+         set fileRef to open for access POSIX file \"{tmp_path}\" with write permission\n\
+         set eof fileRef to 0\n\
+         write imgData to fileRef\n\
+         close access fileRef\n\
+         return \"ok\"\n\
+         on error\n\
+         return \"err\"\n\
+         end try"
+    );
+    if let Ok(out) = std::process::Command::new("osascript")
+        .arg("-e").arg(&script)
+        .stderr(std::process::Stdio::null())
+        .output()
+    {
+        if String::from_utf8_lossy(&out.stdout).trim() == "ok" {
+            if let Ok(data) = std::fs::read(&tmp_path) {
+                let _ = std::fs::remove_file(&tmp_path);
+                if !data.is_empty() {
+                    let enc = base64::engine::general_purpose::STANDARD.encode(&data);
+                    return Some(("image/png".to_string(), enc));
                 }
-                let encoded = base64::engine::general_purpose::STANDARD.encode(&output.stdout);
-                return Some(("image/png".to_string(), encoded));
             }
         }
     }
 
-    // macOS: use pngpaste if available (common homebrew tool)
-    let tmp = std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".to_string());
-    let tmp_path = format!("{}/claude-rust-paste-{}.png", tmp.trim_end_matches('/'), std::process::id());
-    if let Ok(output) = std::process::Command::new("pngpaste")
+    // macOS — pngpaste fallback (brew install pngpaste)
+    if let Ok(out) = std::process::Command::new("pngpaste")
         .arg(&tmp_path)
+        .stderr(std::process::Stdio::null())
         .output()
     {
-        if output.status.success() {
+        if out.status.success() {
             if let Ok(data) = std::fs::read(&tmp_path) {
                 let _ = std::fs::remove_file(&tmp_path);
                 if !data.is_empty() {
-                    let encoded = base64::engine::general_purpose::STANDARD.encode(&data);
-                    return Some(("image/png".to_string(), encoded));
+                    let enc = base64::engine::general_purpose::STANDARD.encode(&data);
+                    return Some(("image/png".to_string(), enc));
                 }
             }
         }
