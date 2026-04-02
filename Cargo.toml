@@ -12,6 +12,8 @@ members = [
     "claude-rust-commands",
     "claude-rust-memory",
     "claude-rust-config",
+    "claude-rust-services",
+    "claude-rust-compact",
 ]
 resolver = "3"
 
@@ -46,3 +48,5 @@ claude-rust-permission = { version = "1.1.0", path = "claude-rust-permission" }
 claude-rust-commands = { version = "1.1.0", path = "claude-rust-commands" }
 claude-rust-memory = { version = "1.1.0", path = "claude-rust-memory" }
 claude-rust-config = { version = "1.1.0", path = "claude-rust-config" }
+claude-rust-services = { version = "1.1.0", path = "claude-rust-services" }
+claude-rust-compact = { version = "1.1.0", path = "claude-rust-compact" }
