@@ -4,7 +4,7 @@ use std::sync::{Arc, atomic::AtomicU8};
 use crossterm::cursor;
 use claude_rust_types::PermissionMode;
 
-use super::{BOLD, CYAN, MAGENTA, RED, RESET, YELLOW};
+use super::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, YELLOW};
 
 pub(super) fn redraw_input(
     buf: &str,
@@ -78,7 +78,8 @@ fn redraw_full_input(
         }
         println!();
     }
-    // No bottom border — just content lines.
+    // Bottom border line
+    print!("\r\x1b[2K  {DIM}{}{RESET}", "─".repeat(inner_width));
 
     let rows_up = extra_lines - cursor_row + 1;
     if rows_up > 0 {

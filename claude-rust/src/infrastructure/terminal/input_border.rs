@@ -41,7 +41,7 @@ pub(super) fn build_status_bar(mode: &Arc<AtomicU8>) -> String {
 pub(super) fn redraw_status_bar(mode: &Arc<AtomicU8>) {
     let bar = build_status_bar(mode);
     print!("\x1b7");        // save cursor
-    print!("\x1b[1B\r");   // move down 1 to status bar line
+    print!("\x1b[2B\r");   // move down 2 (past bottom border to status bar)
     print!("{bar}\x1b[K"); // redraw + clear rest of line
     print!("\x1b8");       // restore cursor
     io::stdout().flush().ok();
