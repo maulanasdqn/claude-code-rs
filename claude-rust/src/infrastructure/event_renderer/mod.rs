@@ -23,6 +23,9 @@ pub struct RenderState {
     pub(super) active_tools: std::collections::VecDeque<(indicatif::ProgressBar, String, String)>,
     pub(super) current_json_buf: String,
     pub(super) thinking_pb: Option<indicatif::ProgressBar>,
+    /// Deduplication for consecutive reads/searches to the same target.
+    /// (display_label, count, lines)
+    pub(super) last_read: Option<(String, usize, usize)>,
 }
 
 impl RenderState {
@@ -41,6 +44,7 @@ impl RenderState {
             active_tools: std::collections::VecDeque::new(),
             current_json_buf: String::new(),
             thinking_pb: None,
+            last_read: None,
         }
     }
 }

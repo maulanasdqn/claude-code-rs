@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-auth"
-version = "1.3.1"
+version = "1.3.2"
 edition = "2024"
 description = "Authentication with API keys and macOS Keychain OAuth"
 license = "MIT"
