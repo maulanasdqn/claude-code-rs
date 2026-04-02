@@ -30,6 +30,20 @@ fn update_suggestion(state: &mut AppState) {
     }
 }
 
+fn scroll_up(state: &mut AppState, n: usize) {
+    state.conversation.auto_scroll = false;
+    state.conversation.scroll_offset = state.conversation.scroll_offset.saturating_sub(n);
+}
+
+fn scroll_down(state: &mut AppState, n: usize) {
+    let next = state.conversation.scroll_offset.saturating_add(n);
+    if next >= state.conversation.total_lines {
+        state.conversation.auto_scroll = true;
+    } else {
+        state.conversation.scroll_offset = next;
+    }
+}
+
 pub struct EventHandler;
 
 impl EventHandler {
@@ -47,7 +61,7 @@ impl EventHandler {
     fn insert_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
-            (KeyCode::Esc, _) => { state.input.mode = InputMode::Normal; UiAction::None }
+            (KeyCode::Esc, _) | (KeyCode::BackTab, _) => { state.input.mode = InputMode::Normal; UiAction::None }
             (KeyCode::Tab, _) => { state.input.complete_suggestion(); UiAction::None }
             (KeyCode::Enter, _) => {
                 let text = state.input.buffer.trim().to_string();
@@ -85,22 +99,24 @@ impl EventHandler {
             (KeyCode::Char('w'), KeyModifiers::CONTROL) => {
                 state.input.move_word_left(); update_suggestion(state); UiAction::None
             }
-            (KeyCode::Up, _) => { state.input.history_prev(); UiAction::None }
-            (KeyCode::Down, _) => { state.input.history_next(); UiAction::None }
-            (KeyCode::PageUp, _) => {
-                state.conversation.auto_scroll = false;
-                state.conversation.scroll_offset = state.conversation.scroll_offset.saturating_sub(20);
-                UiAction::None
-            }
-            (KeyCode::PageDown, _) => {
-                let next = state.conversation.scroll_offset.saturating_add(20);
-                if next >= state.conversation.total_lines {
-                    state.conversation.auto_scroll = true;
+            (KeyCode::Up, _) => {
+                if state.input.buffer.is_empty() {
+                    scroll_up(state, 3);
                 } else {
-                    state.conversation.scroll_offset = next;
+                    state.input.history_prev();
                 }
                 UiAction::None
             }
+            (KeyCode::Down, _) => {
+                if state.input.buffer.is_empty() {
+                    scroll_down(state, 3);
+                } else {
+                    state.input.history_next();
+                }
+                UiAction::None
+            }
+            (KeyCode::PageUp, _) => { scroll_up(state, 20); UiAction::None }
+            (KeyCode::PageDown, _) => { scroll_down(state, 20); UiAction::None }
             (KeyCode::Char(c), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
                 state.input.insert_char(c); update_suggestion(state); UiAction::None
             }
@@ -111,6 +127,7 @@ impl EventHandler {
     fn normal_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
+            (KeyCode::BackTab, _) | (KeyCode::Tab, _) => { state.input.mode = InputMode::Insert; UiAction::None }
             (KeyCode::Char('i'), _) | (KeyCode::Char('a'), _) => {
                 if key.code == KeyCode::Char('a') { state.input.move_cursor_right(); }
                 state.input.mode = InputMode::Insert; UiAction::None
@@ -128,23 +145,14 @@ impl EventHandler {
             (KeyCode::Char('w'), _) => { state.input.move_word_right(); UiAction::None }
             (KeyCode::Char('b'), _) => { state.input.move_word_left(); UiAction::None }
             (KeyCode::Char('x'), _) => { state.input.delete_char_forward(); UiAction::None }
-            (KeyCode::Char('k'), _) | (KeyCode::Up, _) => { state.input.history_prev(); UiAction::None }
-            (KeyCode::Char('j'), _) | (KeyCode::Down, _) => { state.input.history_next(); UiAction::None }
+            (KeyCode::Char('k'), _) | (KeyCode::Up, _) => { scroll_up(state, 3); UiAction::None }
+            (KeyCode::Char('j'), _) | (KeyCode::Down, _) => { scroll_down(state, 3); UiAction::None }
+            (KeyCode::Char('K'), _) => { state.input.history_prev(); UiAction::None }
+            (KeyCode::Char('J'), _) => { state.input.history_next(); UiAction::None }
             (KeyCode::Char('u'), KeyModifiers::CONTROL) => { state.input.clear(); UiAction::None }
-            (KeyCode::PageUp, _) => {
-                state.conversation.auto_scroll = false;
-                state.conversation.scroll_offset = state.conversation.scroll_offset.saturating_sub(20);
-                UiAction::None
-            }
-            (KeyCode::PageDown, _) => {
-                let next = state.conversation.scroll_offset.saturating_add(20);
-                if next >= state.conversation.total_lines {
-                    state.conversation.auto_scroll = true;
-                } else {
-                    state.conversation.scroll_offset = next;
-                }
-                UiAction::None
-            }
+            (KeyCode::Char('d'), KeyModifiers::CONTROL) => { scroll_down(state, 20); UiAction::None }
+            (KeyCode::PageUp, _) => { scroll_up(state, 20); UiAction::None }
+            (KeyCode::PageDown, _) => { scroll_down(state, 20); UiAction::None }
             (KeyCode::Enter, _) => {
                 let text = state.input.buffer.trim().to_string();
                 if text.is_empty() { return UiAction::None; }
