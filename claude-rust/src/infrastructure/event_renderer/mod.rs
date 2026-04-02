@@ -2,7 +2,9 @@ mod render_cost;
 mod render_diff;
 mod render_error;
 mod render_event;
+mod render_event_helpers;
 mod render_md;
+mod render_table;
 pub(super) mod render_syntax;
 
 pub use render_cost::{render_cost, render_exit_summary};
@@ -20,16 +22,11 @@ pub struct RenderState {
     pub(super) turn_output: u64,
     pub(super) highlighter: Option<render_syntax::Highlighter<'static>>,
     pub mp: indicatif::MultiProgress,
-    /// Single persistent spinner for all tool activity — updated in-place, never stacks.
     pub(super) activity_pb: Option<indicatif::ProgressBar>,
-    /// Tool call queue: (name, input_json). No spinner stored here.
     pub(super) active_tools: std::collections::VecDeque<(String, String)>,
     pub(super) current_json_buf: String,
     pub(super) thinking_pb: Option<indicatif::ProgressBar>,
-    /// Deduplication for consecutive reads/searches to the same target.
-    /// (display_label, count, lines)
     pub(super) last_read: Option<(String, usize, usize)>,
-    /// Buffered table rows (non-separator `|` lines) waiting to be rendered.
     pub(super) table_rows: Vec<Vec<String>>,
 }
 

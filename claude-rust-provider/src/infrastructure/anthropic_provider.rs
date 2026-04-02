@@ -38,7 +38,7 @@ pub struct Utilization {
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4-20250514";
 pub(crate) const OAUTH_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 const OPUS_MODEL: &str = "claude-opus-4-6";
-pub(crate) const MAX_TOKENS: u32 = 8192;
+pub(crate) const MAX_TOKENS: u32 = 4096;
 
 pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219,prompt-caching-2024-07-31";
 pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
@@ -190,10 +190,12 @@ impl Provider for AnthropicProvider {
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json");
 
-                if thinking {
-                    rb = rb.header("anthropic-beta", "interleaved-thinking-2025-05-14");
-                }
-
+                let beta = if thinking {
+                    "prompt-caching-2024-07-31,interleaved-thinking-2025-05-14"
+                } else {
+                    "prompt-caching-2024-07-31"
+                };
+                rb = rb.header("anthropic-beta", beta);
                 rb
             }
         };

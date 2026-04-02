@@ -17,8 +17,10 @@ use claude_rust_tools::{
 use claude_rust_types::{Conversation, PermissionMode};
 
 use infrastructure::agent_tool::{AgentTool, ExploreAgentTool};
+use infrastructure::app_display::print_session_history;
 use infrastructure::app_loop::run_loop;
-use infrastructure::conductor::{AgentManager, ListAgentsTool, SpawnAgentTool, WaitAgentTool};
+use infrastructure::conductor::AgentManager;
+use infrastructure::conductor_tools::{ListAgentsTool, SpawnAgentTool, WaitAgentTool};
 use infrastructure::event_renderer::render_error_box;
 use infrastructure::skills::load_skills;
 use infrastructure::terminal::{DIM, RESET, build_env_info, make_system_prompt, print_banner, prompt_resume};
@@ -26,15 +28,10 @@ use infrastructure::terminal::{DIM, RESET, build_env_info, make_system_prompt, p
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "warn".into()),
-        )
-        .with_writer(io::stderr)
-        .init();
+        .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "warn".into()))
+        .with_writer(io::stderr).init();
 
     let config = load_config();
-
     let credential = match claude_rust_auth::resolve_credential() {
         Ok(cred) => cred,
         Err(e) => { render_error_box(&e.to_string()); std::process::exit(1); }
@@ -43,15 +40,9 @@ async fn main() {
     let mode_flag = Arc::new(AtomicU8::new(PermissionMode::Normal as u8));
     let provider = Arc::new(AnthropicProvider::new(credential, mode_flag.clone()));
 
-    if let Some(ref model) = config.model {
-        provider.set_model(model);
-    }
-    if let Ok(model) = std::env::var("MODEL") {
-        provider.set_model(&model);
-    }
-    if let Some(mt) = config.max_tokens {
-        provider.set_max_tokens(mt);
-    }
+    if let Some(ref model) = config.model { provider.set_model(model); }
+    if let Ok(model) = std::env::var("MODEL") { provider.set_model(&model); }
+    if let Some(mt) = config.max_tokens { provider.set_max_tokens(mt); }
 
     let pause_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -69,27 +60,19 @@ async fn main() {
     registry.register(Arc::new(TodoWriteTool));
     registry.register(Arc::new(TodoReadTool));
 
-    let cwd = std::env::current_dir()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| ".".into());
+    let cwd = std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| ".".into());
 
-    for tool in claude_rust_tools::load_mcp_tools(&cwd).await {
-        registry.register(tool);
-    }
+    for tool in claude_rust_tools::load_mcp_tools(&cwd).await { registry.register(tool); }
 
     let permission = Arc::new(ConfigAwarePermissionChecker::new_with_pause(
-        config.permissions.clone(),
-        mode_flag.clone(),
-        pause_flag.clone(),
+        config.permissions.clone(), mode_flag.clone(), pause_flag.clone(),
     ));
 
     let sub_registry = Arc::new(registry.clone_excluding(&["agent", "explore"]));
     let explore_registry = Arc::new(sub_registry.clone_excluding(&[
-        "bash", "file_write", "file_edit", "ask_user_question",
-        "web_fetch", "web_search", "todo_write", "todo_read",
+        "bash", "file_write", "file_edit", "ask_user_question", "web_fetch", "web_search", "todo_write", "todo_read",
     ]));
 
-    // Conductor registry: all sub-agent tools + spawn/wait/list for orchestration
     let agent_manager = AgentManager::new();
     let mut conductor_reg = sub_registry.clone_excluding(&[]);
 
@@ -100,8 +83,7 @@ async fn main() {
         provider.clone(), explore_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(),
     )));
     conductor_reg.register(Arc::new(SpawnAgentTool::new(
-        provider.clone(), sub_registry, permission.clone(),
-        mode_flag.clone(), config.hooks.clone(), agent_manager.clone(),
+        provider.clone(), sub_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(), agent_manager.clone(),
     )));
     conductor_reg.register(Arc::new(WaitAgentTool::new(agent_manager.clone())));
     conductor_reg.register(Arc::new(ListAgentsTool::new(agent_manager)));
@@ -109,7 +91,6 @@ async fn main() {
         provider.clone(), Arc::new(conductor_reg), permission.clone(), mode_flag.clone(), config.hooks.clone(),
     ));
 
-    // Reflection engine: no tools — only evaluates text for self-correction.
     let reflect_engine = Arc::new(QueryEngine::new(
         provider.clone(), Arc::new(ToolRegistry::new()), permission.clone(), mode_flag.clone(), config.hooks.clone(),
     ));
@@ -118,9 +99,7 @@ async fn main() {
     let registry = Arc::new(registry);
     let engine = {
         let mut e = QueryEngine::new(provider.clone(), registry, permission.clone(), mode_flag.clone(), config.hooks.clone());
-        if let Some(mt) = config.max_turns {
-            e = e.with_max_turns(mt);
-        }
+        if let Some(mt) = config.max_turns { e = e.with_max_turns(mt); }
         Arc::new(e)
     };
 
@@ -129,20 +108,14 @@ async fn main() {
             Ok(repo) => Arc::new(repo),
             Err(e) => {
                 tracing::warn!("failed to init session repository: {e}");
-                Arc::new(FileSessionRepository::with_dir(
-                    std::path::PathBuf::from(".claude-code-rs/projects/fallback"),
-                ))
+                Arc::new(FileSessionRepository::with_dir(std::path::PathBuf::from(".claude-code-rs/projects/fallback")))
             }
         };
 
     let session_start_out = run_session_start_hooks(&config.hooks).await;
     let model_id = provider.model_name();
-
     print_banner(&cwd, &model_id);
-
-    if !session_start_out.is_empty() {
-        println!("  {DIM}{session_start_out}{RESET}\n");
-    }
+    if !session_start_out.is_empty() { println!("  {DIM}{session_start_out}{RESET}\n"); }
 
     let env = build_env_info(cwd.clone(), model_id);
     let loaded_skills = load_skills(&cwd);
@@ -157,10 +130,9 @@ async fn main() {
         Ok(Some(prev)) if !prev.messages.is_empty() => {
             if prompt_resume() {
                 let mut c = prev;
-                if c.system.is_none() {
-                    c.system = Some(system_prompt.clone());
-                }
+                if c.system.is_none() { c.system = Some(system_prompt.clone()); }
                 println!("  {DIM}↻ Session resumed ({} messages){RESET}\n", c.messages.len());
+                print_session_history(&c.messages);
                 c
             } else {
                 Conversation { system: Some(system_prompt.clone()), ..Default::default() }

@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-provider"
-version = "1.4.4"
+version = "1.4.5"
 edition = "2024"
 description = "Anthropic API provider with SSE streaming"
 license = "MIT"

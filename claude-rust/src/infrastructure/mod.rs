@@ -1,8 +1,14 @@
 pub mod agent_tool;
+pub mod app_actions;
+pub mod app_display;
+pub mod app_help;
 pub mod app_loop;
 pub mod command_extras;
 pub mod command_handler;
+pub mod command_types;
+pub mod command_usage;
 pub mod conductor;
+pub mod conductor_tools;
 pub mod event_renderer;
 pub mod input_history;
 pub mod run_engine;
