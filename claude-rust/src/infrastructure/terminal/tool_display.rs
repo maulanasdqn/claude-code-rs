@@ -13,6 +13,9 @@ pub fn tool_display_name(name: &str) -> String {
         "exit_plan_mode" => "ExitPlan",
         "agent" => "Agent",
         "explore" => "Explore",
+        "spawn_agent" => "Spawn",
+        "wait_agent" => "Wait",
+        "list_agents" => "Agents",
         "todo_write" => "TodoWrite",
         "todo_read" => "TodoRead",
         other => other,
@@ -72,6 +75,17 @@ pub fn summarize_tool_input(name: &str, json: &str) -> String {
             .map(|s| truncate_str(s, 80))
             .unwrap_or_default(),
         "enter_plan_mode" | "exit_plan_mode" => String::new(),
+        "spawn_agent" => v
+            .get("name")
+            .and_then(|n| n.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_default(),
+        "wait_agent" => v
+            .get("agent_id")
+            .and_then(|a| a.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_default(),
+        "list_agents" => String::new(),
         "agent" | "explore" => v
             .get("task")
             .and_then(|t| t.as_str())
