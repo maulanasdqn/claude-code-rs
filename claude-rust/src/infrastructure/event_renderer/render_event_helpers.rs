@@ -67,19 +67,23 @@ pub(super) fn fmt_tokens(n: u64) -> String {
 pub(super) fn first_line(s: &str) -> &str { s.lines().next().unwrap_or(s) }
 
 pub(super) fn flush_last_read(state: &mut RenderState) {
-    let paths = std::mem::take(&mut state.last_read);
-    if paths.is_empty() { return; }
+    let raw = std::mem::take(&mut state.last_read);
+    if raw.is_empty() { return; }
+    let mut seen = std::collections::HashSet::new();
+    let paths: Vec<String> = raw.into_iter().filter(|p| seen.insert(p.clone())).collect();
     let n = paths.len();
     let noun = if n == 1 { "file" } else { "files" };
     let home = std::env::var("HOME").unwrap_or_default();
-    state.mp.println(format!("  {BOLD}Reading {n} {noun}…{RESET}  {DIM}(ctrl+o to expand){RESET}")).ok();
-    for (i, path) in paths.iter().enumerate() {
-        let short = if !home.is_empty() && path.starts_with(&home) {
-            format!("~{}", &path[home.len()..])
-        } else { path.clone() };
-        let conn = if i + 1 == n { "└" } else { "├" };
-        state.mp.println(format!("  {DIM}{conn}  {short}{RESET}")).ok();
-    }
+    state.mp.suspend(|| {
+        println!("  {BOLD}Reading {n} {noun}…{RESET}  {DIM}(ctrl+o to expand){RESET}");
+        for (i, path) in paths.iter().enumerate() {
+            let short = if !home.is_empty() && path.starts_with(&home) {
+                format!("~{}", &path[home.len()..])
+            } else { path.clone() };
+            let conn = if i + 1 == n { "└" } else { "├" };
+            println!("  {DIM}{conn}  {short}{RESET}");
+        }
+    });
 }
 
 pub(super) fn truncate(s: &str, max: usize) -> String {
@@ -139,17 +143,17 @@ pub(super) fn render_tool_result(tool_name: &str, json: &str, output: &str, is_e
             render_task_list(state);
         }
         _ => {
-            state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
-            if !output.is_empty() && output != "(no output)" {
-                let lines: Vec<&str> = output.lines().collect();
-                let show = lines.len().min(4);
-                for line in &lines[..show] {
-                    state.mp.println(format!("    {DIM}{}{RESET}", truncate(line, 120))).ok();
-                }
-                if lines.len() > show {
-                    state.mp.println(format!("    {DIM}… {} more lines{RESET}", lines.len() - show)).ok();
-                }
-            }
+            let out_lines: Vec<String> = if !output.is_empty() && output != "(no output)" {
+                let ls: Vec<&str> = output.lines().collect();
+                let show = ls.len().min(4);
+                let mut v: Vec<String> = ls[..show].iter().map(|l| format!("    {DIM}{}{RESET}", truncate(l, 120))).collect();
+                if ls.len() > show { v.push(format!("    {DIM}… {} more lines{RESET}", ls.len() - show)); }
+                v
+            } else { vec![] };
+            state.mp.suspend(|| {
+                println!("  {DIM}{display}{arg}{RESET}");
+                for line in &out_lines { println!("{line}"); }
+            });
         }
     }
 }
