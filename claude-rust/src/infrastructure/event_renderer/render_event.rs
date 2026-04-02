@@ -43,7 +43,7 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
         }
 
         EngineEvent::ToolStart { name, .. } => {
-            if !matches!(name.as_str(), "read" | "glob" | "grep" | "web_fetch" | "web_search") {
+            if name != "read" {
                 flush_last_read(state);
             }
             stop_thinking(state);

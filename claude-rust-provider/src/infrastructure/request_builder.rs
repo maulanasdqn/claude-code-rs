@@ -1,5 +1,5 @@
 use claude_rust_auth::Credential;
-use claude_rust_types::{ContentBlock, Conversation};
+use claude_rust_types::{ContentBlock, Conversation, Role};
 use serde_json::{Value, json};
 
 use super::anthropic_provider::BILLING_HEADER_LINE;
@@ -17,7 +17,7 @@ pub fn build_request_body(
         let last_mi = total.saturating_sub(2);
         let last_bi = msg.content.len().saturating_sub(1);
         let content: Vec<Value> = msg.content.iter().enumerate().filter_map(|(bi, block)| {
-            let cache = mi == last_mi && bi == last_bi && total >= 3;
+            let cache = matches!(msg.role, Role::User) && mi == last_mi && bi == last_bi && total >= 3;
             match block {
                 ContentBlock::Text { text } => {
                     let mut v = json!({"type": "text", "text": text});

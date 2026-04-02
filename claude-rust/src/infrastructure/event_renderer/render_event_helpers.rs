@@ -3,7 +3,7 @@ use std::time::Duration;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use claude_rust_tools::todo_store;
-use super::super::terminal::{DIM, GREEN, ORANGE, RED, RESET, summarize_tool_input, tool_display_name};
+use super::super::terminal::{BOLD, DIM, GREEN, ORANGE, RED, RESET, summarize_tool_input, tool_display_name};
 use super::RenderState;
 
 pub(super) const TICKS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -67,10 +67,18 @@ pub(super) fn fmt_tokens(n: u64) -> String {
 pub(super) fn first_line(s: &str) -> &str { s.lines().next().unwrap_or(s) }
 
 pub(super) fn flush_last_read(state: &mut RenderState) {
-    if let Some((label, count, lines)) = state.last_read.take() {
-        let count_tag = if count > 1 { format!("  {DIM}×{count}{RESET}") } else { String::new() };
-        let lines_tag = if lines > 0 { format!("  {DIM}({lines} lines){RESET}") } else { String::new() };
-        state.mp.println(format!("  {DIM}{label}{RESET}{count_tag}{lines_tag}")).ok();
+    let paths = std::mem::take(&mut state.last_read);
+    if paths.is_empty() { return; }
+    let n = paths.len();
+    let noun = if n == 1 { "file" } else { "files" };
+    let home = std::env::var("HOME").unwrap_or_default();
+    state.mp.println(format!("  {BOLD}Reading {n} {noun}…{RESET}  {DIM}(ctrl+o to expand){RESET}")).ok();
+    for (i, path) in paths.iter().enumerate() {
+        let short = if !home.is_empty() && path.starts_with(&home) {
+            format!("~{}", &path[home.len()..])
+        } else { path.clone() };
+        let conn = if i + 1 == n { "└" } else { "├" };
+        state.mp.println(format!("  {DIM}{conn}  {short}{RESET}")).ok();
     }
 }
 
@@ -117,13 +125,11 @@ pub(super) fn render_tool_result(tool_name: &str, json: &str, output: &str, is_e
             state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
             super::render_diff::render_write_preview(json, &state.mp);
         }
-        "read" | "glob" | "grep" | "web_fetch" | "web_search" => {
-            let n = output.lines().count();
-            let label = format!("{display}{arg}");
-            match &mut state.last_read {
-                Some((prev, count, prev_n)) if *prev == label => { *count += 1; *prev_n = n; }
-                _ => { flush_last_read(state); state.last_read = Some((label, 1, n)); }
-            }
+        "read" => {
+            if !summary.is_empty() { state.last_read.push(summary); }
+        }
+        "glob" | "grep" | "web_fetch" | "web_search" => {
+            state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
         }
         "todo_write" => {
             state.mp.println(format!("  {DIM}{display}{arg}{RESET}")).ok();
