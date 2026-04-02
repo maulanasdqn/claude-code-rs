@@ -20,21 +20,6 @@ pub fn tool_display_name(name: &str) -> String {
     .to_string()
 }
 
-pub fn tool_icon(name: &str) -> &'static str {
-    match name {
-        "bash" => "⏺",
-        "read" => "⏺",
-        "file_write" | "file_edit" => "⏺",
-        "glob" | "grep" => "⏺",
-        "web_fetch" | "web_search" => "⏺",
-        "ask_user_question" => "◇",
-        "enter_plan_mode" | "exit_plan_mode" => "◆",
-        "agent" | "explore" => "◈",
-        "todo_write" | "todo_read" => "⏺",
-        n if n.starts_with("mcp__") => "⬡",
-        _ => "⏺",
-    }
-}
 
 pub fn summarize_tool_input(name: &str, json: &str) -> String {
     let v: serde_json::Value = match serde_json::from_str(json) {
