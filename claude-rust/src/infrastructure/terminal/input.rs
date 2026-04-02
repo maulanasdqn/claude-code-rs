@@ -63,14 +63,32 @@ pub fn read_user_input(mode: &Arc<AtomicU8>, history: &[String], skill_names: &[
     io::stdout().flush().ok();
 
     terminal::enable_raw_mode().ok()?;
-    let result = read_line_raw(inner, mode, history, skill_names);
+    let (result, extra_lines) = read_line_raw(inner, mode, history, skill_names);
     terminal::disable_raw_mode().ok();
-    print!("\r");
 
-    // Move past bot + status bar lines so engine output starts below
-    print!("\x1b[3B\r");
+    // Clear the entire input box.
+    // Cursor is currently on the last content line of the input box.
+    // The box has: top_border + (extra_lines+1) content lines + bot_border + status_bar
+    // = extra_lines + 3 lines above and below the last content line.
+    // Move up to top border (extra_lines + 1 lines up), then clear to end of screen.
+    let lines_to_top = extra_lines + 1;
+    print!("\x1b[{}A\r\x1b[J", lines_to_top);
+
+    // For normal text submissions, print the question as a clean single line.
+    // Skip special signals (\x00 prefix) and empty strings.
+    if let Some(ref text) = result {
+        if !text.is_empty() && !text.starts_with('\x00') {
+            let display = if let Some(first) = text.lines().next() {
+                if text.contains('\n') { format!("{first}…") } else { first.to_string() }
+            } else {
+                text.clone()
+            };
+            println!("  {BOLD}{pcolor}❯{RESET}  {DIM}{display}{RESET}");
+            println!();
+        }
+    }
+
     io::stdout().flush().ok();
-
     result
 }
 

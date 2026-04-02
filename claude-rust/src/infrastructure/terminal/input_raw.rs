@@ -32,12 +32,16 @@ pub fn clear_pasted_images() {
     image_store().lock().unwrap().clear();
 }
 
+/// Returns `(result, extra_lines)` where `extra_lines` is the number of
+/// newlines in the buffer at the time of submission (0 for single-line input).
+/// Caller uses this to know how many content lines were rendered so it can
+/// precisely clear the 4-line input box.
 pub(super) fn read_line_raw(
     inner_width: usize,
     mode: &Arc<AtomicU8>,
     history: &[String],
     skill_names: &[String],
-) -> Option<String> {
+) -> (Option<String>, usize) {
     let mut buf = String::new();
     let mut cursor_pos: usize = 0;
     let mut hist_idx: Option<usize> = None;
@@ -59,7 +63,7 @@ pub(super) fn read_line_raw(
         }
         let ev = match event::read() {
             Ok(ev) => ev,
-            Err(_) => return None,
+            Err(_) => return (None, extra_lines),
         };
 
         let old_suggestion_idx = suggestion_idx;
@@ -136,7 +140,7 @@ pub(super) fn read_line_raw(
                 }
             }
 
-            return result;
+            return (result, extra_lines);
         }
 
         // Detect if Esc was pressed to clear suggestions
