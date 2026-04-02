@@ -127,8 +127,9 @@ async fn main() {
 
     let env = build_env_info(cwd.clone(), model_id);
     let loaded_skills = load_skills(&cwd);
-    let skill_pairs: Vec<(String, String)> = loaded_skills.iter()
-        .map(|s| (s.name.clone(), s.description.clone()))
+    let skill_pairs: Vec<(String, String, Option<String>)> = loaded_skills.iter()
+        .filter(|s| s.user_invocable)
+        .map(|s| (s.name.clone(), s.description.clone(), s.when_to_use.clone()))
         .collect();
     let system_prompt = make_system_prompt(&env, &tool_names, &skill_pairs);
     tracing::debug!("system prompt: {} chars", system_prompt.len());
@@ -155,5 +156,5 @@ async fn main() {
         }
     };
 
-    run_loop(engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag).await;
+    run_loop(engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission).await;
 }

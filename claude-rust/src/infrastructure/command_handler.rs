@@ -17,7 +17,8 @@ const FAST_MODEL: &str = "claude-haiku-4-5-20251001";
 pub enum CommandAction {
     Output(String),
     ReplaceConversation(Conversation),
-    SendToEngine(String),
+    /// Send a prompt to the engine, with optional skill-specific allowed tools.
+    SendToEngine(String, Vec<String>),
     Quit,
     Continue,
 }
@@ -43,7 +44,7 @@ pub async fn handle_slash_command(
         let prompt = format!(
             "You are now in plan mode. Use read-only tools to explore the codebase, then write a detailed step-by-step plan for this task:\n\n{task}\n\nPresent the complete plan as text, then call exit_plan_mode to submit it for review."
         );
-        return Some(CommandAction::SendToEngine(prompt));
+        return Some(CommandAction::SendToEngine(prompt, vec![]));
     }
 
     let cmd = parse_command(input)?;
@@ -205,14 +206,14 @@ pub async fn handle_slash_command(
 
     if matches!(cmd, SlashCommand::Review) {
         match handle_review_prompt(cwd) {
-            Some(msg) => return Some(CommandAction::SendToEngine(msg)),
+            Some(msg) => return Some(CommandAction::SendToEngine(msg, vec![])),
             None => return Some(CommandAction::Output(format!("\n  {DIM}No changes to review.{RESET}\n"))),
         }
     }
 
     if matches!(cmd, SlashCommand::Commit) {
         match handle_commit_prompt(cwd) {
-            Some(msg) => return Some(CommandAction::SendToEngine(msg)),
+            Some(msg) => return Some(CommandAction::SendToEngine(msg, vec![])),
             None => return Some(CommandAction::Output(format!("\n  {DIM}No changes to commit.{RESET}\n"))),
         }
     }
@@ -243,7 +244,7 @@ fn try_skill(input: &str, skills: &[Skill]) -> Option<CommandAction> {
             "\n  {RED}Usage: /{cmd_name} {hint}{RESET}\n"
         )));
     }
-    Some(CommandAction::SendToEngine(prompt))
+    Some(CommandAction::SendToEngine(prompt, skill.allowed_tools.clone()))
 }
 
 async fn render_usage(provider: &AnthropicProvider) -> String {
