@@ -52,7 +52,7 @@ pub fn summarize_tool_input(name: &str, json: &str) -> String {
         "glob" => {
             let pat = v.get("pattern").and_then(|p| p.as_str()).unwrap_or("?");
             let base = v.get("path").and_then(|p| p.as_str()).unwrap_or(".");
-            format!("{pat} in {base}")
+            if base == "." { pat.to_string() } else { format!("{pat} in {base}") }
         }
         "grep" => {
             let pat = v.get("pattern").and_then(|p| p.as_str()).unwrap_or("?");
