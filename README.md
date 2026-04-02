@@ -21,6 +21,8 @@ claude-rust-engine      - Agentic tool-use loop with streaming callbacks, retry,
 claude-rust-permission  - Config-aware permission checker with interactive prompts and skill scoping
 claude-rust-memory      - Session persistence (JSON files)
 claude-rust-commands    - Slash commands and @file references
+claude-rust-compact     - 4-stage conversation compaction pipeline (auto, micro, session memory, full)
+claude-rust-services    - Platform services (analytics, notifications, LSP, token estimation, rate limiting, diagnostics)
 claude-rust             - Interactive terminal REPL (the main binary)
 claude-rust-server      - axum HTTP server (POST /chat, GET /health)
 ```
@@ -329,6 +331,27 @@ ANTHROPIC_API_KEY=sk-ant-... claude-rust
 │   └── src/infrastructure/
 │       ├── config_aware_checker.rs     Config + skill-scoped permissions
 │       └── terminal_checker.rs         Interactive y/n prompts
+├── claude-rust-compact/                Conversation compaction pipeline
+│   └── src/
+│       ├── lib.rs                      CompactionPipeline (4-stage)
+│       ├── auto_compact.rs             Token threshold check
+│       ├── micro_compact.rs            Truncate oversized tool results
+│       ├── session_memory_compact.rs   Extract key memories before discard
+│       ├── full_compact.rs             Provider-based summarization
+│       ├── grouping.rs                 MessageGroup utilities
+│       └── prompt.rs                   Compaction prompt templates
+├── claude-rust-services/               Platform services
+│   └── src/
+│       ├── analytics/                  Usage analytics
+│       ├── notifications/              System notifications
+│       ├── lsp/                        LSP integration
+│       ├── token_estimation/           Token counting utilities
+│       ├── tool_use_summary/           Tool call summarization
+│       ├── rate_limit/                 API rate limiting
+│       ├── prevent_sleep/              System sleep prevention
+│       ├── plugin_registry/            Plugin management
+│       ├── session_memory/             In-memory session state
+│       └── diagnostics/               Health diagnostics
 ├── claude-rust-memory/
 │   └── src/
 │       ├── domain/session_repository.rs
@@ -363,6 +386,8 @@ claude-rust-errors
        <- claude-rust-provider
   <- claude-rust-config
   <- claude-rust-memory
+  <- claude-rust-compact
+  <- claude-rust-services
   <- claude-rust-commands
             <- claude-rust-engine
                  <- claude-rust (CLI)
