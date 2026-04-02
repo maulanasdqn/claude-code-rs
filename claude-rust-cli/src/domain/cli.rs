@@ -2,14 +2,14 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "rusty-claude",
+    name = "claude-rust-cli",
     about = "Lightweight CLI for Claude AI",
     version,
     after_help = "EXAMPLES:\n  \
-        rusty-claude                     Interactive REPL\n  \
-        rusty-claude -p 'explain this'   One-shot query\n  \
-        cat file.rs | rusty-claude       Pipe mode\n  \
-        rusty-claude --json              JSON output mode"
+        claude-rust-cli                     Interactive REPL\n  \
+        claude-rust-cli -p 'explain this'   One-shot query\n  \
+        cat file.rs | claude-rust-cli       Pipe mode\n  \
+        claude-rust-cli --json              JSON output mode"
 )]
 pub struct Cli {
     #[arg(short, long, help = "One-shot prompt to send")]
