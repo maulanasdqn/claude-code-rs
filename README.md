@@ -255,6 +255,120 @@ ANTHROPIC_API_KEY=sk-ant-... claude-rust
 | `Tab` | Accept autocomplete suggestion |
 | `Esc` | Dismiss suggestions |
 
+## Project Structure
+
+```
+.
+├── Cargo.toml                          Workspace root
+├── claude-rust/                        CLI binary
+│   └── src/
+│       ├── main.rs
+│       └── infrastructure/
+│           ├── app_loop.rs             Main REPL loop
+│           ├── skills.rs               Skill/command loader
+│           ├── command_handler.rs       Slash command dispatcher
+│           ├── command_extras/          Review, commit, export, memory
+│           ├── run_engine.rs            Engine runner with progress display
+│           ├── event_renderer/          Streaming event rendering
+│           └── terminal/
+│               ├── input.rs            Input box rendering
+│               ├── input_raw.rs        Raw mode input + clipboard
+│               ├── input_handler.rs    Key event processing + vi mode
+│               ├── input_suggest.rs    Command autocomplete
+│               ├── input_search.rs     History search (Ctrl+R)
+│               ├── input_select.rs     Interactive list picker
+│               ├── banner.rs           Startup banner
+│               └── system_prompt.rs    System prompt builder
+├── claude-rust-auth/                   Credential resolution
+│   └── src/
+│       ├── domain/credential.rs
+│       ├── application/resolve_credential.rs
+│       └── infrastructure/keychain_provider.rs
+├── claude-rust-config/                 Settings loading + merging
+│   └── src/
+│       ├── domain/config.rs            Settings, Hooks, Permissions structs
+│       └── application/load_config.rs  Global + project merge
+├── claude-rust-errors/
+│   └── src/lib.rs                      AppError, IntoResponse
+├── claude-rust-types/
+│   └── src/domain/
+│       ├── message.rs                  Message, ContentBlock, Conversation
+│       ├── tool.rs                     Tool trait, PermissionLevel
+│       ├── provider.rs                 Provider trait, StreamEvent
+│       └── permission.rs              PermissionChecker trait, AllowAll
+├── claude-rust-tools/
+│   └── src/
+│       ├── application/registry.rs     ToolRegistry
+│       └── infrastructure/
+│           ├── bash_tool.rs            Shell execution
+│           ├── read_tool.rs            File reading
+│           ├── file_write_tool.rs      File creation
+│           ├── file_edit_tool.rs       Find-and-replace editing
+│           ├── glob_tool.rs            File pattern matching
+│           ├── grep_tool.rs            Content search
+│           ├── web_fetch_tool.rs       URL fetching
+│           ├── web_search_tool.rs      Web search
+│           ├── ask_user_tool.rs        Interactive questions
+│           ├── todo_write_tool.rs      Task management
+│           ├── todo_read_tool.rs       Task reading
+│           ├── plan_mode_tool.rs       Plan mode enter/exit
+│           ├── mcp_tool.rs             MCP external tools
+│           └── todo_store.rs           Task state store
+├── claude-rust-provider/
+│   └── src/infrastructure/
+│       ├── anthropic_provider.rs       Streaming client + thinking
+│       ├── request_builder.rs          API request serialization
+│       └── sse_parser.rs              Server-sent events parser
+├── claude-rust-engine/
+│   └── src/application/
+│       ├── query_engine.rs             Agentic tool-use loop
+│       ├── tool_executor.rs            Permission-checked execution
+│       ├── hook_runner.rs              Pre/Post tool hooks
+│       └── undo.rs                     File edit undo stack
+├── claude-rust-permission/
+│   └── src/infrastructure/
+│       ├── config_aware_checker.rs     Config + skill-scoped permissions
+│       └── terminal_checker.rs         Interactive y/n prompts
+├── claude-rust-memory/
+│   └── src/
+│       ├── domain/session_repository.rs
+│       ├── application/{save,load}_session.rs
+│       └── infrastructure/file_session_repository.rs
+├── claude-rust-commands/
+│   └── src/
+│       ├── domain/command.rs           SlashCommand enum
+│       ├── application/
+│       │   ├── parse_command.rs
+│       │   ├── execute_command.rs
+│       │   └── expand_references.rs    @file and image expansion
+│       ├── infrastructure/handlers/
+│       └── tests/
+└── claude-rust-server/
+    └── src/
+        ├── main.rs
+        └── infrastructure/http/
+            ├── routes.rs
+            ├── handlers.rs
+            └── dto.rs
+```
+
+### Dependency DAG
+
+```
+claude-rust-errors
+  <- claude-rust-types
+       <- claude-rust-tools
+       <- claude-rust-permission
+  <- claude-rust-auth
+       <- claude-rust-provider
+  <- claude-rust-config
+  <- claude-rust-memory
+  <- claude-rust-commands
+            <- claude-rust-engine
+                 <- claude-rust (CLI)
+                 <- claude-rust-server
+```
+
 ## Building
 
 ```bash
