@@ -2,21 +2,15 @@ use std::io::{self, Write};
 
 use claude_rust_types::EngineEvent;
 
-const RESET: &str = "\x1b[0m";
-const BOLD: &str = "\x1b[1m";
-const DIM: &str = "\x1b[2m";
-const YELLOW: &str = "\x1b[33m";
-const RED: &str = "\x1b[31m";
-const GREEN: &str = "\x1b[32m";
+use super::super::terminal::{BOLD, DIM, GREEN, RED, RESET, YELLOW};
 
-pub fn render_event(event: &EngineEvent, json_mode: bool) {
+pub fn render_stream_event(event: &EngineEvent, json_mode: bool) {
     match event {
         EngineEvent::TextDelta(text) => {
-            if json_mode {
-                return;
+            if !json_mode {
+                print!("{text}");
+                io::stdout().flush().ok();
             }
-            print!("{text}");
-            io::stdout().flush().ok();
         }
         EngineEvent::ThinkingDelta(_) => {}
         EngineEvent::ToolStart { name, .. } => {

@@ -2,14 +2,14 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "claude-rust-cli",
-    about = "Lightweight CLI for Claude AI",
+    name = "claude-rust",
+    about = "Interactive CLI for Claude AI",
     version,
     after_help = "EXAMPLES:\n  \
-        claude-rust-cli                     Interactive REPL\n  \
-        claude-rust-cli -p 'explain this'   One-shot query\n  \
-        cat file.rs | claude-rust-cli       Pipe mode\n  \
-        claude-rust-cli --json              JSON output mode"
+        claude-rust                          Interactive TUI\n  \
+        claude-rust -p 'explain this'        One-shot query\n  \
+        cat file.rs | claude-rust            Pipe mode\n  \
+        claude-rust --json -p 'list files'   JSON output mode"
 )]
 pub struct Cli {
     #[arg(short, long, help = "One-shot prompt to send")]
@@ -21,8 +21,8 @@ pub struct Cli {
     #[arg(long, help = "Output JSON instead of plain text")]
     pub json: bool,
 
-    #[arg(long, help = "Maximum agentic turns", default_value = "20")]
-    pub max_turns: usize,
+    #[arg(long, help = "Maximum agentic turns")]
+    pub max_turns: Option<usize>,
 
     #[arg(long, help = "System prompt override")]
     pub system: Option<String>,

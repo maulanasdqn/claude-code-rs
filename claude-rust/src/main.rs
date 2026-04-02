@@ -4,6 +4,8 @@ use std::io;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
+use clap::Parser;
+
 use claude_rust_config::load_config;
 use claude_rust_engine::{QueryEngine, run_session_start_hooks};
 use claude_rust_memory::FileSessionRepository;
@@ -19,14 +21,19 @@ use claude_rust_types::{Conversation, PermissionMode};
 use infrastructure::agent_tool::{AgentTool, ExploreAgentTool};
 use infrastructure::app_display::print_session_history;
 use infrastructure::app_loop::run_loop;
+use infrastructure::cli::Cli;
 use infrastructure::conductor::AgentManager;
 use infrastructure::conductor_tools::{ListAgentsTool, SpawnAgentTool, WaitAgentTool};
 use infrastructure::event_renderer::render_error_box;
+use infrastructure::oneshot::run_oneshot;
+use infrastructure::pipe::run_pipe;
 use infrastructure::skills::load_skills;
 use infrastructure::terminal::{DIM, RESET, build_env_info, make_system_prompt, print_banner, prompt_resume};
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "warn".into()))
         .with_writer(io::stderr).init();
@@ -40,7 +47,8 @@ async fn main() {
     let mode_flag = Arc::new(AtomicU8::new(PermissionMode::Normal as u8));
     let provider = Arc::new(AnthropicProvider::new(credential, mode_flag.clone()));
 
-    if let Some(ref model) = config.model { provider.set_model(model); }
+    if let Some(ref model) = cli.model { provider.set_model(model); }
+    else if let Some(ref model) = config.model { provider.set_model(model); }
     if let Ok(model) = std::env::var("MODEL") { provider.set_model(&model); }
     if let Some(mt) = config.max_tokens { provider.set_max_tokens(mt); }
 
@@ -99,9 +107,35 @@ async fn main() {
     let registry = Arc::new(registry);
     let engine = {
         let mut e = QueryEngine::new(provider.clone(), registry, permission.clone(), mode_flag.clone(), config.hooks.clone());
-        if let Some(mt) = config.max_turns { e = e.with_max_turns(mt); }
+        if let Some(mt) = cli.max_turns { e = e.with_max_turns(mt); }
+        else if let Some(mt) = config.max_turns { e = e.with_max_turns(mt); }
         Arc::new(e)
     };
+
+    let env = build_env_info(cwd.clone(), provider.model_name());
+    let loaded_skills = load_skills(&cwd);
+    let skill_pairs: Vec<(String, String, Option<String>)> = loaded_skills.iter()
+        .filter(|s| s.user_invocable)
+        .map(|s| (s.name.clone(), s.description.clone(), s.when_to_use.clone()))
+        .collect();
+
+    let system_prompt = cli.system.clone().unwrap_or_else(|| make_system_prompt(&env, &tool_names, &skill_pairs));
+
+    if Cli::is_piped() {
+        if let Err(e) = run_pipe(&engine, system_prompt, cli.prompt.as_deref(), cli.json).await {
+            render_error_box(&e);
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    if let Some(ref prompt) = cli.prompt {
+        if let Err(e) = run_oneshot(&engine, system_prompt, prompt, cli.json).await {
+            render_error_box(&e);
+            std::process::exit(1);
+        }
+        return;
+    }
 
     let session_repo: Arc<dyn claude_rust_memory::SessionRepository> =
         match FileSessionRepository::new(&cwd) {
@@ -117,13 +151,6 @@ async fn main() {
     print_banner(&cwd, &model_id);
     if !session_start_out.is_empty() { println!("  {DIM}{session_start_out}{RESET}\n"); }
 
-    let env = build_env_info(cwd.clone(), model_id);
-    let loaded_skills = load_skills(&cwd);
-    let skill_pairs: Vec<(String, String, Option<String>)> = loaded_skills.iter()
-        .filter(|s| s.user_invocable)
-        .map(|s| (s.name.clone(), s.description.clone(), s.when_to_use.clone()))
-        .collect();
-    let system_prompt = make_system_prompt(&env, &tool_names, &skill_pairs);
     tracing::debug!("system prompt: {} chars", system_prompt.len());
 
     let conversation = match claude_rust_memory::load_session(&session_repo).await {

@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use claude_rust_commands::expand_message_content;
-use claude_rust_types::{Conversation, ContentBlock, EngineEvent, Message, Role};
+use claude_rust_engine::QueryEngine;
+use claude_rust_types::{ContentBlock, Conversation, EngineEvent, Message, Role};
 
-use crate::domain::AppContext;
-use crate::infrastructure::event_renderer::render_event;
+use super::event_renderer::render_stream_event;
 
 pub async fn run_oneshot(
-    ctx: &AppContext,
+    engine: &Arc<QueryEngine>,
     system_prompt: String,
     prompt: &str,
     json_mode: bool,
@@ -24,20 +24,14 @@ pub async fn run_oneshot(
 
     let ti = total_input.clone();
     let to = total_output.clone();
-    let mut collected_text = String::new();
-    let text_ref = &mut collected_text;
 
-    let result = ctx
-        .engine
+    let result = engine
         .run(conversation, move |event| {
-            if let EngineEvent::TextDelta(ref t) = event {
-                text_ref.push_str(t);
-            }
             if let EngineEvent::Usage { input_tokens, output_tokens } = &event {
                 if *input_tokens > 0 { ti.fetch_add(*input_tokens, Ordering::Relaxed); }
                 if *output_tokens > 0 { to.fetch_add(*output_tokens, Ordering::Relaxed); }
             }
-            render_event(&event, json_mode);
+            render_stream_event(&event, json_mode);
         })
         .await
         .map_err(|e| e.to_string())?;
