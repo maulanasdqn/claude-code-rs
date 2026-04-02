@@ -1,4 +1,4 @@
-use std::sync::{Arc, atomic::{AtomicBool, AtomicU8}};
+use std::sync::{Arc, RwLock, atomic::{AtomicBool, AtomicU8}};
 
 use claude_rust_config::PermissionSettings;
 use claude_rust_errors::AppResult;
@@ -12,19 +12,32 @@ pub struct ConfigAwarePermissionChecker {
     settings: PermissionSettings,
     interactive: InteractivePermissionChecker,
     mode: Arc<AtomicU8>,
+    /// Temporary allow rules from skill `allowed-tools` frontmatter.
+    skill_allow_rules: RwLock<Vec<String>>,
 }
 
 impl ConfigAwarePermissionChecker {
     pub fn new(settings: PermissionSettings, mode: Arc<AtomicU8>) -> Self {
-        Self { settings, interactive: InteractivePermissionChecker::new(), mode }
+        Self { settings, interactive: InteractivePermissionChecker::new(), mode, skill_allow_rules: RwLock::new(Vec::new()) }
     }
 
     pub fn new_with_pause(settings: PermissionSettings, mode: Arc<AtomicU8>, paused: Arc<AtomicBool>) -> Self {
-        Self { settings, interactive: InteractivePermissionChecker::with_flag(paused), mode }
+        Self { settings, interactive: InteractivePermissionChecker::with_flag(paused), mode, skill_allow_rules: RwLock::new(Vec::new()) }
     }
 
     pub fn pause_flag(&self) -> Arc<AtomicBool> {
         self.interactive.pause_flag()
+    }
+
+    /// Set skill-specific allow rules (from `allowed-tools` frontmatter).
+    /// These are checked in addition to config-level allow rules.
+    pub fn set_skill_allow_rules(&self, rules: Vec<String>) {
+        *self.skill_allow_rules.write().unwrap() = rules;
+    }
+
+    /// Clear skill-specific allow rules (call after skill execution completes).
+    pub fn clear_skill_allow_rules(&self) {
+        self.skill_allow_rules.write().unwrap().clear();
     }
 }
 
@@ -46,6 +59,15 @@ impl PermissionChecker for ConfigAwarePermissionChecker {
         for rule_str in &self.settings.allow {
             if rule_matches(&parse_rule(rule_str), tool_name, input) {
                 return Ok(PermissionDecision::Allow);
+            }
+        }
+        // Check skill-specific allow rules
+        {
+            let skill_rules = self.skill_allow_rules.read().unwrap();
+            for rule_str in skill_rules.iter() {
+                if rule_matches(&parse_rule(rule_str), tool_name, input) {
+                    return Ok(PermissionDecision::Allow);
+                }
             }
         }
         self.interactive.check(tool_name, input).await
