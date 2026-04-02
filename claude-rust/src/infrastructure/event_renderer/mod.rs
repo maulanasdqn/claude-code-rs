@@ -20,7 +20,10 @@ pub struct RenderState {
     pub(super) turn_output: u64,
     pub(super) highlighter: Option<render_syntax::Highlighter<'static>>,
     pub mp: indicatif::MultiProgress,
-    pub(super) active_tools: std::collections::VecDeque<(indicatif::ProgressBar, String, String)>,
+    /// Single persistent spinner for all tool activity — updated in-place, never stacks.
+    pub(super) activity_pb: Option<indicatif::ProgressBar>,
+    /// Tool call queue: (name, input_json). No spinner stored here.
+    pub(super) active_tools: std::collections::VecDeque<(String, String)>,
     pub(super) current_json_buf: String,
     pub(super) thinking_pb: Option<indicatif::ProgressBar>,
     /// Deduplication for consecutive reads/searches to the same target.
@@ -41,6 +44,7 @@ impl RenderState {
             turn_output: 0,
             highlighter: None,
             mp,
+            activity_pb: None,
             active_tools: std::collections::VecDeque::new(),
             current_json_buf: String::new(),
             thinking_pb: None,
