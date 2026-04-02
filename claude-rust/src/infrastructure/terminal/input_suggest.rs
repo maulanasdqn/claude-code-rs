@@ -95,34 +95,36 @@ pub(super) fn render_suggestions(
         print!("\x1b[B\r\x1b[2K"); // Move down, clear line
         let is_selected = selected_idx == Some(i);
 
-        let line = format!("{cmd}  {desc}");
-        let truncated = if line.len() > avail {
-            format!("{}...", &line[..avail.saturating_sub(3)])
+        let cmd_part = format!("{cmd}");
+        let desc_part = format!("  {desc}");
+        let line_len = cmd_part.len() + desc_part.len();
+        let truncated_desc = if line_len > avail {
+            let spare = avail.saturating_sub(cmd_part.len() + 2);
+            if spare > 3 {
+                format!("  {}…", &desc[..spare.saturating_sub(1).min(desc.len())])
+            } else {
+                String::new()
+            }
         } else {
-            line
+            desc_part
         };
-        let pad = avail.saturating_sub(truncated.len());
 
         if is_selected {
-            print!("  {DIM}│{RESET} {CYAN}{BOLD}{truncated}{RESET}{}{DIM}│{RESET}",
-                " ".repeat(pad));
+            print!("  {CYAN}{BOLD}{cmd_part}{RESET}{DIM}{truncated_desc}{RESET}");
         } else {
-            print!("  {DIM}│ {truncated}{}│{RESET}",
-                " ".repeat(pad));
+            print!("  {DIM}{cmd_part}{truncated_desc}{RESET}");
         }
     }
 
     if has_more {
         print!("\x1b[B\r\x1b[2K"); // Move down, clear line
         let more = suggestions.len() - MAX_VISIBLE;
-        let msg = format!("  ... +{more} more");
-        let pad = avail.saturating_sub(msg.len());
-        print!("  {DIM}│{msg}{}│{RESET}", " ".repeat(pad));
+        print!("  {DIM}  … +{more} more{RESET}");
     }
 
-    // Bottom border for suggestion box
+    // Bottom separator (flat, matching input box style)
     print!("\x1b[B\r\x1b[2K"); // Move down, clear line
-    print!("  {DIM}╰{}╯{RESET}", "─".repeat(inner_width));
+    print!("  {DIM}{}{RESET}", "─".repeat(inner_width));
 
     // Move back up to content line using relative movement (scroll-safe)
     print!("\x1b[{}A", total_lines);
@@ -149,7 +151,7 @@ pub(super) fn clear_suggestions(prev_count: usize, inner_width: usize) {
     print!("\x1b[{}A", total_lines);
 
     // Redraw the original input bottom border (1 line below content)
-    print!("\x1b[B\r\x1b[2K  {DIM}╰{}╯{RESET}", "─".repeat(inner_width));
+    print!("\x1b[B\r\x1b[2K  {DIM}{}{RESET}", "─".repeat(inner_width));
     print!("\x1b[1A"); // Back to content line
 
     io::stdout().flush().ok();

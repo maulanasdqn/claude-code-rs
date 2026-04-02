@@ -93,6 +93,17 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
 
         EngineEvent::ToolInput { json_chunk } => {
             state.current_json_buf.push_str(&json_chunk);
+            // Update spinner with live partial arg preview
+            if let Some((pb, tool_name, _)) = state.active_tools.back() {
+                let partial = summarize_tool_input(tool_name, &state.current_json_buf);
+                let display = tool_display_name(tool_name);
+                let msg = if partial.is_empty() {
+                    format!("{display}…")
+                } else {
+                    format!("{display}({partial})…")
+                };
+                pb.set_message(msg);
+            }
         }
 
         EngineEvent::ToolResult { name, output, is_error } => {
@@ -195,7 +206,16 @@ pub fn render_event(event: EngineEvent, state: &mut RenderState) {
             if state.turn_input > 0 || state.turn_output > 0 {
                 let i = fmt_tokens(state.turn_input);
                 let o = fmt_tokens(state.turn_output);
-                state.mp.println(format!("\n  {DIM}∙  {i} in  ·  {o} out{RESET}")).ok();
+                let cost_val = state.turn_input as f64 * 3.0 / 1_000_000.0
+                    + state.turn_output as f64 * 15.0 / 1_000_000.0;
+                let cost = if cost_val < 0.0001 {
+                    format!("<$0.0001")
+                } else if cost_val > 0.50 {
+                    format!("${cost_val:.2}")
+                } else {
+                    format!("${cost_val:.4}")
+                };
+                state.mp.println(format!("\n  {DIM}∙  {i} in  ·  {o} out  ·  {cost}{RESET}")).ok();
                 state.turn_input = 0;
                 state.turn_output = 0;
             }
