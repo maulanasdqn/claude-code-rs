@@ -10,11 +10,11 @@ pub struct Renderer;
 impl Renderer {
     pub fn new() -> Self { Self }
 
-    pub fn draw(frame: &mut Frame, state: &AppState) {
+    pub fn draw(frame: &mut Frame, state: &mut AppState) {
         let full = frame.area();
         let [msg, inp, stat] = MainLayout::split(full);
 
-        frame.render_widget(MessageList::new(&state.conversation), msg);
+        frame.render_widget(MessageList::new(&mut state.conversation), msg);
 
         if state.is_streaming {
             let chunks = Layout::horizontal([

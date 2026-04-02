@@ -7,6 +7,29 @@ pub enum UiAction {
     None,
 }
 
+const COMMANDS: &[&str] = &[
+    "/add", "/commit", "/config", "/copy", "/effort", "/exit",
+    "/export", "/fast", "/files", "/help", "/memory", "/mode",
+    "/model", "/permissions", "/plan", "/quit", "/rewind",
+    "/review", "/skills", "/think", "/usage", "/version",
+];
+
+fn update_suggestion(state: &mut AppState) {
+    let buf = &state.input.buffer;
+    if buf.starts_with('/') && !buf.contains(' ') {
+        let matched: Vec<&str> = COMMANDS.iter().copied()
+            .filter(|c| c.starts_with(buf.as_str()) && *c != buf.as_str())
+            .collect();
+        state.input.suggestion = if matched.len() == 1 {
+            matched[0][buf.len()..].to_string()
+        } else {
+            String::new()
+        };
+    } else {
+        state.input.suggestion = String::new();
+    }
+}
+
 pub struct EventHandler;
 
 impl EventHandler {
@@ -25,6 +48,7 @@ impl EventHandler {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
             (KeyCode::Esc, _) => { state.input.mode = InputMode::Normal; UiAction::None }
+            (KeyCode::Tab, _) => { state.input.complete_suggestion(); UiAction::None }
             (KeyCode::Enter, _) => {
                 let text = state.input.buffer.trim().to_string();
                 if text.is_empty() { return UiAction::None; }
@@ -32,20 +56,35 @@ impl EventHandler {
                 state.input.clear();
                 UiAction::Submit(text)
             }
-            (KeyCode::Backspace, _) => { state.input.delete_char(); UiAction::None }
-            (KeyCode::Delete, _) => { state.input.delete_char_forward(); UiAction::None }
+            (KeyCode::Backspace, _) => {
+                state.input.delete_char(); update_suggestion(state); UiAction::None
+            }
+            (KeyCode::Delete, _) => {
+                state.input.delete_char_forward(); update_suggestion(state); UiAction::None
+            }
             (KeyCode::Left, KeyModifiers::ALT) => { state.input.move_word_left(); UiAction::None }
             (KeyCode::Right, KeyModifiers::ALT) => { state.input.move_word_right(); UiAction::None }
             (KeyCode::Left, _) => { state.input.move_cursor_left(); UiAction::None }
-            (KeyCode::Right, _) => { state.input.move_cursor_right(); UiAction::None }
+            (KeyCode::Right, _) => {
+                if state.input.cursor_pos == state.input.buffer.len() && !state.input.suggestion.is_empty() {
+                    state.input.complete_suggestion();
+                } else {
+                    state.input.move_cursor_right();
+                }
+                UiAction::None
+            }
             (KeyCode::Home, _) | (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                 state.input.cursor_pos = 0; UiAction::None
             }
             (KeyCode::End, _) | (KeyCode::Char('e'), KeyModifiers::CONTROL) => {
                 state.input.cursor_pos = state.input.buffer.len(); UiAction::None
             }
-            (KeyCode::Char('u'), KeyModifiers::CONTROL) => { state.input.clear(); UiAction::None }
-            (KeyCode::Char('w'), KeyModifiers::CONTROL) => { state.input.move_word_left(); UiAction::None }
+            (KeyCode::Char('u'), KeyModifiers::CONTROL) => {
+                state.input.clear(); update_suggestion(state); UiAction::None
+            }
+            (KeyCode::Char('w'), KeyModifiers::CONTROL) => {
+                state.input.move_word_left(); update_suggestion(state); UiAction::None
+            }
             (KeyCode::Up, _) => { state.input.history_prev(); UiAction::None }
             (KeyCode::Down, _) => { state.input.history_next(); UiAction::None }
             (KeyCode::PageUp, _) => {
@@ -54,11 +93,16 @@ impl EventHandler {
                 UiAction::None
             }
             (KeyCode::PageDown, _) => {
-                state.conversation.scroll_offset = state.conversation.scroll_offset.saturating_add(20);
+                let next = state.conversation.scroll_offset.saturating_add(20);
+                if next >= state.conversation.total_lines {
+                    state.conversation.auto_scroll = true;
+                } else {
+                    state.conversation.scroll_offset = next;
+                }
                 UiAction::None
             }
             (KeyCode::Char(c), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
-                state.input.insert_char(c); UiAction::None
+                state.input.insert_char(c); update_suggestion(state); UiAction::None
             }
             _ => UiAction::None,
         }
@@ -93,7 +137,12 @@ impl EventHandler {
                 UiAction::None
             }
             (KeyCode::PageDown, _) => {
-                state.conversation.scroll_offset = state.conversation.scroll_offset.saturating_add(20);
+                let next = state.conversation.scroll_offset.saturating_add(20);
+                if next >= state.conversation.total_lines {
+                    state.conversation.auto_scroll = true;
+                } else {
+                    state.conversation.scroll_offset = next;
+                }
                 UiAction::None
             }
             (KeyCode::Enter, _) => {
