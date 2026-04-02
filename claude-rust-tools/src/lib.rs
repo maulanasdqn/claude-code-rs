@@ -4,9 +4,15 @@ pub mod infrastructure;
 
 pub use application::ToolRegistry;
 pub use infrastructure::{
-    AskUserTool, BashTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
-    GlobTool, GrepTool, ReadTool, TodoReadTool, TodoWriteTool, WebFetchTool, WebSearchTool,
-    todo_store,
+    AskUserTool, BashTool, BriefTool, ConfigTool, CronCreateTool, CronDeleteTool,
+    EnterPlanModeTool, EnterWorktreeTool, ExitPlanModeTool, ExitWorktreeTool,
+    FileEditTool, FileWriteTool, GlobTool, GrepTool, LSPTool, ListMcpResourcesTool,
+    NotebookEditTool, PowerShellTool, REPLTool, ReadMcpResourceTool, ReadTool,
+    RemoteTriggerTool, SendMessageTool, SkillTool, SleepTool, SyntheticOutputTool,
+    TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool, TaskUpdateTool,
+    TeamCreateTool, TeamDeleteTool, TodoReadTool, TodoWriteTool, ToolSearchTool,
+    WebFetchTool, WebSearchTool,
+    task_manager, todo_store,
 };
 
 pub async fn load_mcp_tools(cwd: &str) -> Vec<std::sync::Arc<dyn claude_rust_types::Tool>> {
