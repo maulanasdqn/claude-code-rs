@@ -98,13 +98,8 @@ fn prompt_interactive(question: &str) -> AppResult<String> {
     terminal::disable_raw_mode().ok();
 
     let lines_to_clear = q_lines.len() + 4;
-    if result.is_ok() {
-        let _ = write!(out, "\x1b[{}B\r\x1b[J", lines_to_clear.saturating_sub(1));
-        let _ = out.flush();
-    } else {
-        let _ = write!(out, "\x1b[{}B\r\x1b[J", lines_to_clear.saturating_sub(1));
-        let _ = out.flush();
-    }
+    let _ = write!(out, "\x1b[{}B\r\x1b[J", lines_to_clear.saturating_sub(1));
+    let _ = out.flush();
 
     result
 }
@@ -120,30 +115,27 @@ fn read_answer(max_len: usize) -> AppResult<String> {
         if !event::poll(std::time::Duration::from_millis(50)).unwrap_or(false) {
             continue;
         }
-        match event::read().map_err(|e| AppError::Tool(e.to_string()))? {
-            event::Event::Key(k) => match (k.code, k.modifiers) {
-                (KeyCode::Enter, _) => break,
-                (KeyCode::Esc, _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                    return Err(AppError::Interrupted);
-                }
-                (KeyCode::Backspace, _) => {
-                    if buf.pop().is_some() {
-                        let visible = buf.chars().take(max_len).collect::<String>();
-                        let pad = max_len.saturating_sub(visible.len());
-                        let _ = write!(out, "\r\x1b[6C{visible}{} \r\x1b[{}C",
-                            " ".repeat(pad), 6 + visible.len());
-                        let _ = out.flush();
-                    }
-                }
-                (KeyCode::Char(c), _) if buf.len() < max_len => {
-                    buf.push(c);
-                    let _ = write!(out, "{c}");
+        if let event::Event::Key(k) = event::read().map_err(|e| AppError::Tool(e.to_string()))? { match (k.code, k.modifiers) {
+            (KeyCode::Enter, _) => break,
+            (KeyCode::Esc, _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                return Err(AppError::Interrupted);
+            }
+            (KeyCode::Backspace, _) => {
+                if buf.pop().is_some() {
+                    let visible = buf.chars().take(max_len).collect::<String>();
+                    let pad = max_len.saturating_sub(visible.len());
+                    let _ = write!(out, "\r\x1b[6C{visible}{} \r\x1b[{}C",
+                        " ".repeat(pad), 6 + visible.len());
                     let _ = out.flush();
                 }
-                _ => {}
-            },
+            }
+            (KeyCode::Char(c), _) if buf.len() < max_len => {
+                buf.push(c);
+                let _ = write!(out, "{c}");
+                let _ = out.flush();
+            }
             _ => {}
-        }
+        } }
     }
     Ok(buf)
 }

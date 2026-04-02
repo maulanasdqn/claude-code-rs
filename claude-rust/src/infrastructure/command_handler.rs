@@ -23,6 +23,7 @@ pub enum CommandAction {
     Continue,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_slash_command(
     input: &str,
     provider: &AnthropicProvider,
@@ -309,8 +310,8 @@ async fn render_usage(provider: &AnthropicProvider) -> String {
         render_limit(&mut out, "Sonnet limit (7 days)", l);
     }
 
-    if let Some(ref extra) = utilization.extra_usage {
-        if extra.is_enabled {
+    if let Some(ref extra) = utilization.extra_usage
+        && extra.is_enabled {
             out.push_str(&format!("  {BOLD}Extra usage{RESET}\n"));
             if let (Some(used), Some(limit)) = (extra.used_credits, extra.monthly_limit) {
                 out.push_str(&format!(
@@ -322,7 +323,6 @@ async fn render_usage(provider: &AnthropicProvider) -> String {
             }
             out.push('\n');
         }
-    }
 
     if utilization.five_hour.is_none()
         && utilization.seven_day.is_none()

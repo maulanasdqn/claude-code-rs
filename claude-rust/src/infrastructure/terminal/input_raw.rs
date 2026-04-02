@@ -204,24 +204,20 @@ fn read_clipboard_image() -> Option<(String, String)> {
         .args(["--type", "image/png", "--no-newline"])
         .stderr(std::process::Stdio::null())
         .output()
-    {
-        if out.status.success() && !out.stdout.is_empty() {
+        && out.status.success() && !out.stdout.is_empty() {
             let enc = base64::engine::general_purpose::STANDARD.encode(&out.stdout);
             return Some(("image/png".to_string(), enc));
         }
-    }
 
     // X11
     if let Ok(out) = std::process::Command::new("xclip")
         .args(["-selection", "clipboard", "-t", "image/png", "-o"])
         .stderr(std::process::Stdio::null())
         .output()
-    {
-        if out.status.success() && !out.stdout.is_empty() {
+        && out.status.success() && !out.stdout.is_empty() {
             let enc = base64::engine::general_purpose::STANDARD.encode(&out.stdout);
             return Some(("image/png".to_string(), enc));
         }
-    }
 
     // macOS — write clipboard PNG to a temp file via osascript
     let script = format!(
@@ -240,34 +236,28 @@ fn read_clipboard_image() -> Option<(String, String)> {
         .arg("-e").arg(&script)
         .stderr(std::process::Stdio::null())
         .output()
-    {
-        if String::from_utf8_lossy(&out.stdout).trim() == "ok" {
-            if let Ok(data) = std::fs::read(&tmp_path) {
+        && String::from_utf8_lossy(&out.stdout).trim() == "ok"
+            && let Ok(data) = std::fs::read(&tmp_path) {
                 let _ = std::fs::remove_file(&tmp_path);
                 if !data.is_empty() {
                     let enc = base64::engine::general_purpose::STANDARD.encode(&data);
                     return Some(("image/png".to_string(), enc));
                 }
             }
-        }
-    }
 
     // macOS — pngpaste fallback (brew install pngpaste)
     if let Ok(out) = std::process::Command::new("pngpaste")
         .arg(&tmp_path)
         .stderr(std::process::Stdio::null())
         .output()
-    {
-        if out.status.success() {
-            if let Ok(data) = std::fs::read(&tmp_path) {
+        && out.status.success()
+            && let Ok(data) = std::fs::read(&tmp_path) {
                 let _ = std::fs::remove_file(&tmp_path);
                 if !data.is_empty() {
                     let enc = base64::engine::general_purpose::STANDARD.encode(&data);
                     return Some(("image/png".to_string(), enc));
                 }
             }
-        }
-    }
 
     None
 }

@@ -30,7 +30,7 @@ fn today_date() -> String {
 }
 
 fn is_leap(y: u32) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+    (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400)
 }
 
 /// Skill info for system prompt: (name, description, when_to_use)
@@ -51,13 +51,11 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
         sections.push(rust_section());
     }
 
-    sections.push(format!(
-        "# Session-specific guidance\n \
+    sections.push("# Session-specific guidance\n \
          - If you need the user to run a shell command themselves (e.g., an interactive login like `gcloud auth login`), suggest they type `! <command>` in the prompt — the `!` prefix runs the command in this session so its output lands directly in the conversation.\n \
          - Use the `agent` tool to delegate complex, independent subtasks to a sub-agent that has access to all tools. The sub-agent runs autonomously and returns its final response.\n \
          - Use the `explore` tool to spawn a read-only sub-agent specialized for codebase exploration (glob, grep, read). Use this when you need to research code without making changes.\n \
-         - Sub-agents cannot spawn further sub-agents. Keep sub-agent tasks focused and self-contained."
-    ));
+         - Sub-agents cannot spawn further sub-agents. Keep sub-agent tasks focused and self-contained.".to_string());
 
     if !skills.is_empty() {
         let mut skill_section = "# User-defined Skills\nThe following custom skills are available as slash commands:\n".to_string();
@@ -120,11 +118,10 @@ fn is_rust_project(cwd: &str) -> bool {
     if cwd_path.join("Cargo.toml").exists() {
         return true;
     }
-    if let Some(parent) = cwd_path.parent() {
-        if parent.join("Cargo.toml").exists() {
+    if let Some(parent) = cwd_path.parent()
+        && parent.join("Cargo.toml").exists() {
             return true;
         }
-    }
     false
 }
 
@@ -137,19 +134,17 @@ fn load_claude_md(cwd: &str) -> String {
     while let Some(d) = dir {
         for name in &["CLAUDE.md", "MEMORY.md"] {
             let candidate = d.join(name);
-            if candidate.is_file() {
-                if let Ok(text) = std::fs::read_to_string(&candidate) {
+            if candidate.is_file()
+                && let Ok(text) = std::fs::read_to_string(&candidate) {
                     contents.push(text);
                 }
-            }
         }
         for name in &["CLAUDE.md", "MEMORY.md"] {
             let dotclaude = d.join(".claude").join(name);
-            if dotclaude.is_file() {
-                if let Ok(text) = std::fs::read_to_string(&dotclaude) {
+            if dotclaude.is_file()
+                && let Ok(text) = std::fs::read_to_string(&dotclaude) {
                     contents.push(text);
                 }
-            }
         }
         if d == home.as_path() {
             break;
@@ -160,13 +155,11 @@ fn load_claude_md(cwd: &str) -> String {
     let home_dotclaude_claude = home.join(".claude").join("CLAUDE.md");
     let home_dotclaude_memory = home.join(".claude").join("MEMORY.md");
     for path in [home_dotclaude_claude, home_dotclaude_memory] {
-        if path.is_file() {
-            if let Ok(text) = std::fs::read_to_string(&path) {
-                if !contents.iter().any(|c| c == &text) {
+        if path.is_file()
+            && let Ok(text) = std::fs::read_to_string(&path)
+                && !contents.iter().any(|c| c == &text) {
                     contents.push(text);
                 }
-            }
-        }
     }
 
     contents.join("\n\n---\n\n")

@@ -75,27 +75,24 @@ fn confirm_exit_plan() -> AppResult<String> {
         if !event::poll(std::time::Duration::from_millis(100)).unwrap_or(false) {
             continue;
         }
-        match event::read().map_err(|e| AppError::Tool(e.to_string()))? {
-            event::Event::Key(k) => match (k.code, k.modifiers) {
-                (KeyCode::Char('y'), _) | (KeyCode::Char('Y'), _) | (KeyCode::Enter, _) => {
-                    let _ = writeln!(out, "\r  \x1b[35m\x1b[1m◆  Plan approved\x1b[0m\n");
-                    let _ = out.flush();
-                    break Ok(String::new());
-                }
-                (KeyCode::Char('n'), _) | (KeyCode::Char('N'), _) | (KeyCode::Esc, _) => {
-                    let _ = writeln!(out, "\r  \x1b[2m◆  Plan rejected — continue refining\x1b[0m\n");
-                    let _ = out.flush();
-                    break Err(AppError::Tool(
-                        "Plan rejected by user. Refine your plan and call exit_plan_mode again when ready.".into(),
-                    ));
-                }
-                (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                    break Err(AppError::Interrupted);
-                }
-                _ => {}
-            },
+        if let event::Event::Key(k) = event::read().map_err(|e| AppError::Tool(e.to_string()))? { match (k.code, k.modifiers) {
+            (KeyCode::Char('y'), _) | (KeyCode::Char('Y'), _) | (KeyCode::Enter, _) => {
+                let _ = writeln!(out, "\r  \x1b[35m\x1b[1m◆  Plan approved\x1b[0m\n");
+                let _ = out.flush();
+                break Ok(String::new());
+            }
+            (KeyCode::Char('n'), _) | (KeyCode::Char('N'), _) | (KeyCode::Esc, _) => {
+                let _ = writeln!(out, "\r  \x1b[2m◆  Plan rejected — continue refining\x1b[0m\n");
+                let _ = out.flush();
+                break Err(AppError::Tool(
+                    "Plan rejected by user. Refine your plan and call exit_plan_mode again when ready.".into(),
+                ));
+            }
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                break Err(AppError::Interrupted);
+            }
             _ => {}
-        }
+        } }
     };
 
     terminal::disable_raw_mode().ok();

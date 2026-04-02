@@ -63,10 +63,10 @@ where
         summary_request
     };
 
-    let mut summary_conv = Conversation::default();
-    summary_conv.system = Some(
-        "You are a summarization assistant. Provide a concise summary of the conversation.".into(),
-    );
+    let mut summary_conv = Conversation {
+        system: Some("You are a summarization assistant. Provide a concise summary of the conversation.".into()),
+        ..Default::default()
+    };
     summary_conv.push(Message::user(&summary_request));
 
     let tools: Vec<serde_json::Value> = vec![];
@@ -82,8 +82,10 @@ where
         }
         Err(e) => {
             on_event(EngineEvent::Error(format!("compact failed: {e}")));
-            let mut compacted = Conversation::default();
-            compacted.system = conversation.system;
+            let mut compacted = Conversation {
+                system: conversation.system,
+                ..Default::default()
+            };
             let keep = conversation.messages.len().min(4);
             let start = conversation.messages.len() - keep;
             for msg in &conversation.messages[start..] {
@@ -97,9 +99,11 @@ where
         summary_text = "Previous conversation context was compacted.".into();
     }
 
-    let mut compacted = Conversation::default();
-    compacted.system = conversation.system;
-    compacted.push(Message::user(&format!(
+    let mut compacted = Conversation {
+        system: conversation.system,
+        ..Default::default()
+    };
+    compacted.push(Message::user(format!(
         "[Context from previous conversation]\n{summary_text}"
     )));
     compacted.push(Message::assistant(vec![ContentBlock::Text {

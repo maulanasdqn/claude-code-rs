@@ -133,36 +133,33 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
             continue;
         }
         use event::{Event, KeyCode, KeyModifiers};
-        match event::read().map_err(|e| AppError::Tool(e.to_string()))? {
-            Event::Key(k) => match (k.code, k.modifiers) {
-                (KeyCode::Up, _) => {
-                    selected = selected.checked_sub(1).unwrap_or(n - 1);
-                    clear(&mut out).ok();
-                    draw(&mut out, selected).ok();
-                }
-                (KeyCode::Down, _) => {
-                    selected = (selected + 1) % n;
-                    clear(&mut out).ok();
-                    draw(&mut out, selected).ok();
-                }
-                (KeyCode::Enter, _) => break Ok(options[selected].1),
-                (KeyCode::Char('y'), KeyModifiers::NONE) | (KeyCode::Char('Y'), KeyModifiers::NONE) => {
-                    break Ok(SelectResult::AllowOnce);
-                }
-                (KeyCode::Char('a'), KeyModifiers::NONE) | (KeyCode::Char('A'), KeyModifiers::NONE) => {
-                    break Ok(SelectResult::AllowAlways);
-                }
-                (KeyCode::Char('n'), KeyModifiers::NONE) | (KeyCode::Char('N'), KeyModifiers::NONE)
-                | (KeyCode::Esc, _) => {
-                    break Ok(SelectResult::Deny);
-                }
-                (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                    break Err(AppError::Interrupted);
-                }
-                _ => {}
-            },
+        if let Event::Key(k) = event::read().map_err(|e| AppError::Tool(e.to_string()))? { match (k.code, k.modifiers) {
+            (KeyCode::Up, _) => {
+                selected = selected.checked_sub(1).unwrap_or(n - 1);
+                clear(&mut out).ok();
+                draw(&mut out, selected).ok();
+            }
+            (KeyCode::Down, _) => {
+                selected = (selected + 1) % n;
+                clear(&mut out).ok();
+                draw(&mut out, selected).ok();
+            }
+            (KeyCode::Enter, _) => break Ok(options[selected].1),
+            (KeyCode::Char('y'), KeyModifiers::NONE) | (KeyCode::Char('Y'), KeyModifiers::NONE) => {
+                break Ok(SelectResult::AllowOnce);
+            }
+            (KeyCode::Char('a'), KeyModifiers::NONE) | (KeyCode::Char('A'), KeyModifiers::NONE) => {
+                break Ok(SelectResult::AllowAlways);
+            }
+            (KeyCode::Char('n'), KeyModifiers::NONE) | (KeyCode::Char('N'), KeyModifiers::NONE)
+            | (KeyCode::Esc, _) => {
+                break Ok(SelectResult::Deny);
+            }
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                break Err(AppError::Interrupted);
+            }
             _ => {}
-        }
+        } }
     };
 
     terminal::disable_raw_mode().ok();

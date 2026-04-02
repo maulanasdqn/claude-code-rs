@@ -13,7 +13,7 @@ pub fn load_history(project: &str) -> Vec<String> {
     let Ok(file) = std::fs::File::open(&path) else { return Vec::new() };
     let reader = std::io::BufReader::new(file);
     let mut entries: Vec<(u64, String)> = Vec::new();
-    for line in reader.lines().flatten() {
+    for line in reader.lines().map_while(|l| l.ok()) {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
             let proj = val["project"].as_str().unwrap_or("");
             if proj != project {

@@ -93,7 +93,7 @@ pub(super) fn history_search(
 
 fn find_match(history: &[String], query: &str, skip: usize) -> Option<String> {
     if query.is_empty() {
-        return history.last().map(|s| s.clone());
+        return history.last().cloned();
     }
     let lower_query = query.to_lowercase();
     history
@@ -162,7 +162,7 @@ fn clear_search(inner_width: usize) {
 
     // Redraw the bottom border on line 1 (right below content)
     print!("\x1b[2A");
-    print!("\x1b[B\r\x1b[2K  {DIM}\u{2570}{}{}\u{256F}{RESET}", "\u{2500}".repeat(inner_width), "");
+    print!("\x1b[B\r\x1b[2K  {DIM}\u{2570}{}\u{256F}{RESET}", "\u{2500}".repeat(inner_width));
     print!("\x1b[1A");
 
     io::stdout().flush().ok();

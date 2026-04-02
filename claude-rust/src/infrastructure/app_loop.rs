@@ -15,6 +15,7 @@ use super::run_engine::run_engine;
 use super::skills::Skill;
 use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, print_banner, read_user_input, take_pasted_images};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_loop(
     engine: Arc<QueryEngine>,
     session_repo: Arc<dyn claude_rust_memory::SessionRepository>,
@@ -405,7 +406,7 @@ fn show_todos(cwd: &str) {
                             "in_progress" | "active" => "\x1b[33m●\x1b[0m",
                             _ => "\x1b[2m○\x1b[0m",
                         };
-                        println!("  {icon} {}{BOLD}{}{RESET}", format!("{}. ", i + 1), content);
+                        println!("  {icon} {}. {BOLD}{content}{RESET}", i + 1);
                     }
                     println!();
                 } else if let Some(obj) = todos.as_object() {
@@ -433,6 +434,7 @@ fn show_todos(cwd: &str) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_init(
     engine: &Arc<QueryEngine>,
     conversation: &mut Conversation,
