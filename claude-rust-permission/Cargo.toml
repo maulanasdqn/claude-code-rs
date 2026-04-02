@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-permission"
-version = "1.1.4"
+version = "1.1.5"
 edition = "2024"
 description = "Interactive terminal permission checker"
 license = "MIT"

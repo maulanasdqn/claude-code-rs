@@ -8,13 +8,22 @@ pub fn render_cost(input_tokens: u64, output_tokens: u64) {
     println!();
 }
 
-pub fn render_exit_summary(input_tokens: u64, output_tokens: u64) {
+pub fn render_exit_summary(input_tokens: u64, output_tokens: u64, elapsed: std::time::Duration) {
     let w = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80).saturating_sub(4).max(10);
     let total_tokens = input_tokens + output_tokens;
     let total_cost = cost(input_tokens, output_tokens);
+    let secs = elapsed.as_secs();
+    let time_str = if secs >= 3600 {
+        format!("{}h {}m", secs / 3600, (secs % 3600) / 60)
+    } else if secs >= 60 {
+        format!("{}m {}s", secs / 60, secs % 60)
+    } else {
+        format!("{secs}s")
+    };
     println!();
     println!("  {DIM}{}{RESET}", "─".repeat(w));
-    println!("  {DIM}Total:{RESET} {BOLD}{}{RESET} {DIM}tokens  ·  {RESET}{GREEN}${total_cost}{RESET}", fmt_tokens(total_tokens));
+    println!("  {DIM}Tokens:{RESET} {BOLD}{}{RESET}  {DIM}({input_tokens} in · {output_tokens} out){RESET}  {GREEN}${total_cost}{RESET}", fmt_tokens(total_tokens));
+    println!("  {DIM}Time:  {time_str}{RESET}");
     println!("  {DIM}Goodbye!{RESET}");
     println!();
 }

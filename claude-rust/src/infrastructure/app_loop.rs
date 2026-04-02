@@ -13,7 +13,7 @@ use super::event_renderer::{render_cost, render_error_box, render_exit_summary};
 use super::input_history::{append_history, load_history};
 use super::run_engine::run_engine;
 use super::skills::Skill;
-use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, print_banner, read_user_input, take_pasted_images};
+use super::terminal::{BOLD, CYAN, DIM, RESET, clear_pasted_images, layout_width, print_banner, read_user_input, set_current_model, take_pasted_images};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn run_loop(
@@ -29,12 +29,14 @@ pub async fn run_loop(
     pause_flag: Arc<AtomicBool>,
     permission: Arc<ConfigAwarePermissionChecker>,
 ) {
+    let session_start = std::time::Instant::now();
     let total_input = Arc::new(AtomicU64::new(0));
     let total_output = Arc::new(AtomicU64::new(0));
     let undo_stack = engine.undo_stack();
     let mut prompt_history: Vec<String> = load_history(&cwd);
     let mut pinned_files: Vec<String> = Vec::new();
     let model_id = provider.model_name();
+    set_current_model(&model_id);
     let skill_names: Vec<String> = skills.iter()
         .filter(|s| s.user_invocable)
         .map(|s| s.name.clone())
@@ -106,6 +108,11 @@ pub async fn run_loop(
                 "todos" => { show_todos(&cwd); continue; }
                 _ => continue,
             }
+        }
+
+        if input.trim() == "/help" {
+            print_help(&skills, &cwd);
+            continue;
         }
 
         if input.trim() == "/cost" { render_cost(total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed)); continue; }
@@ -212,12 +219,19 @@ pub async fn run_loop(
 
         if input.starts_with('/') {
             match handle_slash_command(&input, &provider, &config, &mode_flag, &system_prompt, &cwd, &conversation, &skills).await {
-                Some(CommandAction::Output(text)) => { print!("{text}"); continue; }
+                Some(CommandAction::Output(text)) => {
+                    print!("{text}");
+                    // Refresh model in status bar in case /model or /fast changed it
+                    set_current_model(&provider.model_name());
+                    continue;
+                }
                 Some(CommandAction::ReplaceConversation(c)) => {
                     let msg_count = c.messages.len();
                     conversation = c;
+                    let current_model = provider.model_name();
+                    set_current_model(&current_model);
                     print!("\x1b[2J\x1b[H");
-                    print_banner(&cwd, &model_id);
+                    print_banner(&cwd, &current_model);
                     println!("  {DIM}✓ {msg_count} messages kept.{RESET}\n");
                     continue;
                 }
@@ -268,7 +282,7 @@ pub async fn run_loop(
     }
 
     save_session(&session_repo, &conversation).await;
-    render_exit_summary(total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
+    render_exit_summary(total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed), session_start.elapsed());
 }
 
 fn run_shell(shell_cmd: &str) {
@@ -462,4 +476,97 @@ async fn handle_init(
         Err(e) if !e.is_interrupted() => render_error_box(&e.to_string()),
         _ => {}
     }
+}
+
+fn print_help(skills: &[Skill], _cwd: &str) {
+    let w = layout_width().min(72);
+
+    println!();
+    println!("  {BOLD}{CYAN}Slash Commands{RESET}");
+    println!("  {DIM}{}{RESET}", "─".repeat(w));
+
+    let cmds: &[(&str, &str)] = &[
+        ("/help",        "Show this help"),
+        ("/clear",       "Clear conversation history"),
+        ("/compact",     "Compact context to save tokens"),
+        ("/cost",        "Show token usage and cost"),
+        ("/usage",       "Show plan usage limits (OAuth only)"),
+        ("/model [name]","Switch model  (aliases: opus/sonnet/haiku)"),
+        ("/fast",        "Toggle fast mode (haiku)"),
+        ("/think",       "Toggle extended thinking"),
+        ("/effort",      "Set effort level (low/medium/high/max)"),
+        ("/mode",        "Cycle permission mode"),
+        ("/plan [task]", "Toggle plan mode, or plan a task"),
+        ("/diff",        "Show git diff"),
+        ("/status",      "Show git status"),
+        ("/review",      "Review current git diff"),
+        ("/commit",      "Generate a commit message"),
+        ("/memory",      "Show CLAUDE.md"),
+        ("/init",        "Create/update CLAUDE.md for this project"),
+        ("/add <path>",  "Pin a file to every message"),
+        ("/files",       "List pinned files"),
+        ("/skills",      "List available skills"),
+        ("/session",     "List or load previous sessions"),
+        ("/rewind [n]",  "Remove last n exchanges (default 1)"),
+        ("/export",      "Export conversation to markdown"),
+        ("/copy",        "Copy last response to clipboard"),
+        ("/undo [n]",    "Restore last n file edits"),
+        ("/config",      "Show merged config"),
+        ("/permissions", "Show allow/deny rules"),
+        ("/version",     "Show version"),
+        ("/vim",         "Vim mode status"),
+        ("/login",       "Authentication instructions"),
+        ("/logout",      "Clear stored credentials"),
+        ("/quit",        "Exit session"),
+    ];
+
+    for (cmd, desc) in cmds {
+        println!("  {CYAN}{cmd:<22}{RESET}  {DIM}{desc}{RESET}");
+    }
+
+    if !skills.is_empty() {
+        println!();
+        println!("  {BOLD}{CYAN}Skills{RESET}");
+        println!("  {DIM}{}{RESET}", "─".repeat(w));
+        for s in skills {
+            if s.user_invocable {
+                let hint = s.argument_hint.as_deref().map(|h| format!(" {h}")).unwrap_or_default();
+                println!("  {CYAN}/{:<22}{RESET}  {DIM}{}{RESET}", format!("{}{hint}", s.name), s.description);
+            }
+        }
+    }
+
+    println!();
+    println!("  {BOLD}{CYAN}Keyboard Shortcuts{RESET}");
+    println!("  {DIM}{}{RESET}", "─".repeat(w));
+
+    let shortcuts: &[(&str, &str)] = &[
+        ("Enter",       "Submit message"),
+        ("Alt+Enter",   "Insert newline"),
+        ("Shift+Tab",   "Cycle permission mode"),
+        ("Ctrl+C / Esc","Interrupt current operation"),
+        ("Ctrl+R",      "History search"),
+        ("Ctrl+G",      "Open message in $EDITOR"),
+        ("Ctrl+V",      "Paste image from clipboard"),
+        ("Ctrl+B",      "Send to background task"),
+        ("Ctrl+S",      "Stash / restore input buffer"),
+        ("Ctrl+L",      "Clear screen"),
+        ("Ctrl+U",      "Clear input line"),
+        ("Ctrl+W",      "Delete previous word"),
+        ("Ctrl+A / Home","Move to start of line"),
+        ("Ctrl+E / End","Move to end of line"),
+        ("Ctrl+O",      "Show transcript"),
+        ("Ctrl+T",      "Show todos"),
+        ("Alt+P",       "Model picker"),
+        ("Alt+O",       "Toggle fast mode"),
+        ("Alt+T",       "Toggle thinking"),
+        ("Esc",         "Enter vim normal mode"),
+        ("!<command>",  "Run shell command"),
+    ];
+
+    for (key, desc) in shortcuts {
+        println!("  {CYAN}{key:<24}{RESET}  {DIM}{desc}{RESET}");
+    }
+
+    println!();
 }
