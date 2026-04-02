@@ -33,7 +33,8 @@ fn is_leap(y: u32) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
 
-pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(String, String)]) -> String {
+/// Skill info for system prompt: (name, description, when_to_use)
+pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(String, String, Option<String>)]) -> String {
     let today = today_date();
 
     let mut sections = vec![
@@ -60,8 +61,11 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
 
     if !skills.is_empty() {
         let mut skill_section = "# User-defined Skills\nThe following custom skills are available as slash commands:\n".to_string();
-        for (name, desc) in skills {
+        for (name, desc, when_to_use) in skills {
             skill_section.push_str(&format!(" - /{name}: {desc}\n"));
+            if let Some(wtu) = when_to_use {
+                skill_section.push_str(&format!("   When to use: {wtu}\n"));
+            }
         }
         skill_section.push_str("\nWhen a task matches a skill's purpose, suggest the user invoke it with the slash command.");
         sections.push(skill_section);
