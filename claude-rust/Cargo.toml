@@ -25,3 +25,4 @@ crossterm = { workspace = true }
 indicatif = { workspace = true }
 syntect = { workspace = true }
 async-trait = { workspace = true }
+base64 = { workspace = true }
