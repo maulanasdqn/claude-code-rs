@@ -9,7 +9,7 @@ pub(super) mod mcp_config;
 pub(super) mod mcp_tool;
 mod plan_mode_tool;
 mod read_tool;
-pub(super) mod todo_store;
+pub mod todo_store;
 mod todo_read_tool;
 mod todo_write_tool;
 mod web_fetch_tool;

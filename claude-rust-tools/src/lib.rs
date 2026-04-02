@@ -6,6 +6,7 @@ pub use application::ToolRegistry;
 pub use infrastructure::{
     AskUserTool, BashTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
     GlobTool, GrepTool, ReadTool, TodoReadTool, TodoWriteTool, WebFetchTool, WebSearchTool,
+    todo_store,
 };
 
 pub async fn load_mcp_tools(cwd: &str) -> Vec<std::sync::Arc<dyn claude_rust_types::Tool>> {

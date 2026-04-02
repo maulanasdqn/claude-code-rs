@@ -43,6 +43,10 @@ impl Tool for TodoWriteTool {
                                 "type": "string",
                                 "enum": ["high", "medium", "low"],
                                 "description": "Priority level of the task"
+                            },
+                            "activeForm": {
+                                "type": "string",
+                                "description": "Present continuous form for spinner display (e.g., 'Implementing feature')"
                             }
                         },
                         "required": ["id", "content", "status", "priority"]
