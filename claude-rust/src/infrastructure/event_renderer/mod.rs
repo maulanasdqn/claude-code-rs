@@ -29,6 +29,8 @@ pub struct RenderState {
     /// Deduplication for consecutive reads/searches to the same target.
     /// (display_label, count, lines)
     pub(super) last_read: Option<(String, usize, usize)>,
+    /// Buffered table rows (non-separator `|` lines) waiting to be rendered.
+    pub(super) table_rows: Vec<Vec<String>>,
 }
 
 impl RenderState {
@@ -49,6 +51,7 @@ impl RenderState {
             current_json_buf: String::new(),
             thinking_pb: None,
             last_read: None,
+            table_rows: Vec::new(),
         }
     }
 }
