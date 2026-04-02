@@ -10,7 +10,7 @@ use claude_rust_tools::todo_store;
 use super::event_renderer::{RenderState, render_event};
 use super::terminal::{DIM, RESET};
 
-const TICKS: &[&str] = &["·", "✢", "✳", "✶", "✻", "✽"];
+const TICKS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 pub(super) async fn run_engine(
     engine: &Arc<QueryEngine>,
@@ -25,6 +25,7 @@ pub(super) async fn run_engine(
     let _ = (mode_flag, model_id, cwd);
 
     let mp = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
+    let mp_for_pause = mp.clone();
     let init_pb = mp.add(ProgressBar::new_spinner());
     init_pb.set_style(
         ProgressStyle::with_template("  {spinner:.dim}  {msg:.dim}  {elapsed:.dim}")
@@ -58,7 +59,31 @@ pub(super) async fn run_engine(
     let (esc_tx, esc_rx) = tokio::sync::oneshot::channel::<()>();
     let stop = Arc::new(AtomicBool::new(false));
     let stop2 = stop.clone();
+    let stop3 = stop.clone();
     let paused2 = perm_paused.clone();
+    let paused3 = perm_paused.clone();
+
+    let pause_handle = tokio::task::spawn_blocking(move || {
+        let mp_clone = mp_for_pause;
+        let mut hidden = false;
+        loop {
+            if stop3.load(Ordering::Relaxed) {
+                if hidden {
+                    mp_clone.set_draw_target(ProgressDrawTarget::stdout());
+                }
+                break;
+            }
+            let is_paused = paused3.load(Ordering::Relaxed);
+            if is_paused && !hidden {
+                mp_clone.set_draw_target(ProgressDrawTarget::hidden());
+                hidden = true;
+            } else if !is_paused && hidden {
+                mp_clone.set_draw_target(ProgressDrawTarget::stdout());
+                hidden = false;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    });
 
     let esc_handle = tokio::task::spawn_blocking(move || {
         crossterm::terminal::enable_raw_mode().ok();
@@ -92,6 +117,7 @@ pub(super) async fn run_engine(
 
     stop.store(true, Ordering::Relaxed);
     esc_handle.await.ok();
+    pause_handle.await.ok();
     crossterm::terminal::disable_raw_mode().ok();
 
     match outcome {

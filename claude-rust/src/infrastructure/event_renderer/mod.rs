@@ -12,6 +12,7 @@ pub use render_event::render_event;
 pub struct RenderState {
     pub in_text: bool,
     pub in_thinking: bool,
+    pub(super) text_started: bool,
     pub(super) line_buf: String,
     pub(super) in_code_block: bool,
     pub(super) code_block_lang: String,
@@ -30,6 +31,7 @@ impl RenderState {
         Self {
             in_text: false,
             in_thinking: false,
+            text_started: false,
             line_buf: String::new(),
             in_code_block: false,
             code_block_lang: String::new(),

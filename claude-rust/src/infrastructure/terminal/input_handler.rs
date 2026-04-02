@@ -3,7 +3,7 @@ use std::sync::{Arc, atomic::AtomicU8};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use claude_rust_types::PermissionMode;
 
-use super::input_border::redraw_top_border;
+use super::input_border::redraw_status_bar;
 use super::input_draw::{redraw_input, redraw_input_line};
 use super::input_vim::process_vim_char;
 
@@ -264,7 +264,7 @@ pub(super) fn process_key(
         Event::Key(KeyEvent { code: KeyCode::BackTab, .. }) => {
             let current = PermissionMode::load(mode);
             current.next().store(mode);
-            redraw_top_border(inner_width, mode);
+            redraw_status_bar(mode);
             redraw_input(buf, *cursor_pos, *extra_lines, inner_width, mode);
         }
 
