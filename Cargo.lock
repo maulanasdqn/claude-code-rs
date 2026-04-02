@@ -1820,6 +1820,7 @@ dependencies = [
  "claude-rust-permission",
  "claude-rust-provider",
  "claude-rust-tools",
+ "claude-rust-tui",
  "claude-rust-types",
  "crossterm",
  "serde_json",
