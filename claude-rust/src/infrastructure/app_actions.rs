@@ -1,25 +1,9 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 
-use claude_rust_engine::{QueryEngine, UndoStack, restore_undo};
-use claude_rust_types::{Conversation, Message, Role};
+use claude_rust_types::{Conversation, Role};
 
 use super::skills::Skill;
 use super::terminal::{BOLD, CYAN, DIM, RESET};
-
-pub fn run_shell(shell_cmd: &str) {
-    let shell_cmd = shell_cmd.trim();
-    match std::process::Command::new("sh").arg("-c").arg(shell_cmd).output() {
-        Ok(out) => {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            if !stdout.is_empty() { print!("{stdout}"); }
-            if !stderr.is_empty() { eprint!("{stderr}"); }
-            if !out.status.success() { println!("  {DIM}exit {}{RESET}", out.status.code().unwrap_or(-1)); }
-        }
-        Err(e) => println!("  {DIM}error: {e}{RESET}"),
-    }
-}
 
 pub fn expand_with_pins(input: &str, pinned_files: &[String]) -> String {
     let mut s = super::command_extras::expand_at_mentions(input);
@@ -31,28 +15,10 @@ pub fn expand_with_pins(input: &str, pinned_files: &[String]) -> String {
     s
 }
 
-pub async fn do_undo(stack: &Arc<UndoStack>, n: usize) -> String {
-    let results = restore_undo(stack, n).await;
-    if results.is_empty() { return format!("\n  {DIM}Nothing to undo.{RESET}\n"); }
-    let mut out = String::new();
-    for (path, ok) in &results { out.push_str(&format!("\n  {DIM}{} Restored {path}{RESET}", if *ok { "✓" } else { "✗" })); }
-    out.push('\n');
-    out
-}
-
 pub async fn save_session(repo: &Arc<dyn claude_rust_memory::SessionRepository>, c: &Conversation) {
     if let Err(e) = claude_rust_memory::save_session(repo, c).await {
         tracing::warn!("failed to save session: {e}");
     }
-}
-
-pub fn dirs_or_home() -> std::path::PathBuf {
-    std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))
-        .map(std::path::PathBuf::from).unwrap_or_else(|_| std::path::PathBuf::from("."))
-}
-
-pub fn toggle_reflect(reflect_enabled: &Arc<AtomicBool>) -> bool {
-    reflect_enabled.fetch_xor(true, Ordering::Relaxed)
 }
 
 pub fn show_skills(skills: &[Skill]) {
@@ -106,40 +72,5 @@ pub fn copy_last_response(conversation: &Conversation) {
         }
     } else {
         println!("  {DIM}No response to copy.{RESET}\n");
-    }
-}
-
-pub fn handle_logout() {
-    let path = dirs_or_home().join(".claude").join(".credentials.json");
-    if path.exists() {
-        if let Err(e) = std::fs::remove_file(&path) { println!("  {DIM}✗ Failed to remove credentials: {e}{RESET}\n"); }
-        else { println!("  {DIM}✓ Credentials removed. Restart to take effect.{RESET}\n"); }
-    } else { println!("  {DIM}No credentials file found.{RESET}\n"); }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn handle_init(
-    engine: &Arc<QueryEngine>,
-    conversation: &mut Conversation,
-    session_repo: &Arc<dyn claude_rust_memory::SessionRepository>,
-    total_input: &Arc<AtomicU64>,
-    total_output: &Arc<AtomicU64>,
-    mode_flag: &Arc<AtomicU8>,
-    cwd: &str,
-    model_id: &str,
-    pause_flag: &Arc<AtomicBool>,
-) {
-    use claude_rust_commands::expand_message_content;
-    use super::run_engine::run_engine;
-    use super::event_renderer::render_error_box;
-    let note = if std::path::Path::new(&format!("{cwd}/CLAUDE.md")).exists() { " (will update existing CLAUDE.md)" } else { "" };
-    println!("  {DIM}Initializing CLAUDE.md{note}{RESET}\n");
-    let msg = format!("Analyze this project at `{cwd}` and create a CLAUDE.md file using the file_write tool. First explore the project structure with glob and read key files. The CLAUDE.md should contain: project overview (1-2 sentences), essential commands (build, test, lint, format), code style rules, and any important architectural patterns. Keep it concise (under 100 lines).");
-    let mut init_conv = conversation.clone();
-    init_conv.push(Message { role: Role::User, content: expand_message_content(&msg) });
-    match run_engine(engine, init_conv, total_input, total_output, mode_flag, model_id, cwd, pause_flag).await {
-        Ok(updated) => { *conversation = updated; save_session(session_repo, conversation).await; }
-        Err(e) if !e.is_interrupted() => render_error_box(&e.to_string()),
-        _ => {}
     }
 }

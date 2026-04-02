@@ -10,8 +10,6 @@ pub mod command_usage;
 pub mod conductor;
 pub mod conductor_tools;
 pub mod event_renderer;
-pub mod input_history;
 pub mod run_engine;
-pub mod self_correct;
 pub mod skills;
 pub mod terminal;
