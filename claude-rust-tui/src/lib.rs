@@ -38,8 +38,8 @@ impl TuiApp {
     }
 
     pub fn draw(&mut self) -> io::Result<()> {
-        let state = &self.state;
-        self.terminal.draw(|frame| Renderer::draw(frame, state))?;
+        let Self { terminal, state, .. } = self;
+        terminal.draw(|frame| Renderer::draw(frame, state))?;
         Ok(())
     }
 

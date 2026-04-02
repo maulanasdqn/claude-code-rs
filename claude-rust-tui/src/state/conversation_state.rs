@@ -25,6 +25,7 @@ pub struct ConversationState {
     pub messages: Vec<DisplayMessage>,
     pub scroll_offset: usize,
     pub auto_scroll: bool,
+    pub total_lines: usize,
 }
 
 impl ConversationState {
@@ -33,6 +34,7 @@ impl ConversationState {
             messages: Vec::new(),
             scroll_offset: 0,
             auto_scroll: true,
+            total_lines: 0,
         }
     }
 }

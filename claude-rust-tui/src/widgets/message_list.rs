@@ -9,11 +9,11 @@ use ratatui::{
 use crate::state::{ConversationState, ToolUseStatus};
 
 pub struct MessageList<'a> {
-    pub state: &'a ConversationState,
+    pub state: &'a mut ConversationState,
 }
 
 impl<'a> MessageList<'a> {
-    pub fn new(state: &'a ConversationState) -> Self { Self { state } }
+    pub fn new(state: &'a mut ConversationState) -> Self { Self { state } }
 }
 
 fn parse_inline(text: &str) -> Vec<Span<'static>> {
@@ -79,6 +79,7 @@ fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
 
 impl<'a> Widget for MessageList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let area = Rect { y: area.y + 1, height: area.height.saturating_sub(1), ..area };
         let mut lines: Vec<Line<'static>> = Vec::new();
 
         for msg in &self.state.messages {
@@ -119,7 +120,7 @@ impl<'a> Widget for MessageList<'a> {
                     lines.push(render_md_line(raw, in_code));
                 }
             }
-            in_code = false;
+            let _ = in_code;
 
             for tool in &msg.tool_uses {
                 let (icon, col) = match tool.status {
@@ -134,7 +135,6 @@ impl<'a> Widget for MessageList<'a> {
                     Span::styled(tool.name.clone(), Style::default().fg(Color::DarkGray)),
                     Span::styled(preview, Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
                 ]));
-                let _ = in_code;
             }
 
             lines.push(Line::from(""));
@@ -142,7 +142,14 @@ impl<'a> Widget for MessageList<'a> {
 
         let total = lines.len();
         let visible = area.height as usize;
-        let offset = if self.state.auto_scroll { total.saturating_sub(visible) } else { self.state.scroll_offset };
+        self.state.total_lines = total;
+        let offset = if self.state.auto_scroll {
+            let off = total.saturating_sub(visible);
+            self.state.scroll_offset = off;
+            off
+        } else {
+            self.state.scroll_offset
+        };
 
         Paragraph::new(lines).scroll((offset as u16, 0)).wrap(Wrap { trim: false }).render(area, buf);
     }

@@ -10,6 +10,7 @@ pub struct InputState {
     pub mode: InputMode,
     pub history: Vec<String>,
     pub history_index: Option<usize>,
+    pub suggestion: String,
 }
 
 impl InputState {
@@ -20,6 +21,15 @@ impl InputState {
             mode: InputMode::Insert,
             history: Vec::new(),
             history_index: None,
+            suggestion: String::new(),
+        }
+    }
+
+    pub fn complete_suggestion(&mut self) {
+        if !self.suggestion.is_empty() {
+            self.buffer.push_str(&self.suggestion);
+            self.cursor_pos = self.buffer.len();
+            self.suggestion.clear();
         }
     }
 

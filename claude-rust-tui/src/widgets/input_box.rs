@@ -38,13 +38,15 @@ impl<'a> Widget for InputBox<'a> {
             .title(mode_label);
 
         let display = self.state.get_display_text();
-        let text = if display.is_empty() {
-            Line::from(Span::styled(
-                "Type a message...",
-                Style::default().fg(Color::DarkGray),
-            ))
-        } else {
+        let text = if display.is_empty() && self.state.suggestion.is_empty() {
+            Line::from(Span::styled("Type a message...", Style::default().fg(Color::DarkGray)))
+        } else if self.state.suggestion.is_empty() {
             Line::from(Span::raw(display))
+        } else {
+            Line::from(vec![
+                Span::raw(display),
+                Span::styled(self.state.suggestion.clone(), Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+            ])
         };
 
         let paragraph = Paragraph::new(text)
