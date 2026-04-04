@@ -45,16 +45,16 @@ impl ConfigAwarePermissionChecker {
 impl PermissionChecker for ConfigAwarePermissionChecker {
     async fn check(&self, tool_name: &str, input: &Value) -> AppResult<PermissionDecision> {
         let mode = PermissionMode::load(&self.mode);
+        for rule_str in &self.settings.deny {
+            if rule_matches(&parse_rule(rule_str), tool_name, input) {
+                return Ok(PermissionDecision::Deny(format!("denied by config rule: {rule_str}")));
+            }
+        }
         if mode == PermissionMode::AutoAccept || mode == PermissionMode::Bypass {
             return Ok(PermissionDecision::Allow);
         }
         if mode == PermissionMode::Plan {
             return Ok(PermissionDecision::Deny("plan mode: only read-only tools allowed".into()));
-        }
-        for rule_str in &self.settings.deny {
-            if rule_matches(&parse_rule(rule_str), tool_name, input) {
-                return Ok(PermissionDecision::Deny(format!("denied by config rule: {rule_str}")));
-            }
         }
         for rule_str in &self.settings.allow {
             if rule_matches(&parse_rule(rule_str), tool_name, input) {
