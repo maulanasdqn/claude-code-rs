@@ -39,7 +39,7 @@ fn parse_inline(text: &str) -> Vec<Span<'static>> {
             if !buf.is_empty() { spans.push(Span::raw(std::mem::take(&mut buf))); }
             i += 1;
             while i < chars.len() && chars[i] != '`' { buf.push(chars[i]); i += 1; }
-            spans.push(Span::styled(std::mem::take(&mut buf), Style::default().fg(theme::FOAM)));
+            spans.push(Span::styled(std::mem::take(&mut buf), Style::default().fg(theme::FOAM).add_modifier(Modifier::BOLD)));
             if i < chars.len() { i += 1; }
         } else if chars[i] == '*' || chars[i] == '_' {
             let delim = chars[i];
@@ -56,10 +56,57 @@ fn parse_inline(text: &str) -> Vec<Span<'static>> {
     spans
 }
 
+fn is_hr(s: &str) -> bool {
+    let t = s.trim();
+    (t.starts_with("---") || t.starts_with("===") || t.starts_with("***"))
+        && t.chars().collect::<std::collections::HashSet<_>>().len() == 1
+}
+
+fn is_table_row(s: &str) -> bool {
+    let t = s.trim();
+    t.starts_with('|') && t.ends_with('|')
+}
+
+fn is_table_sep(s: &str) -> bool {
+    let t = s.trim();
+    is_table_row(t) && t.chars().all(|c| c == '|' || c == '-' || c == ':' || c == ' ')
+}
+
+fn render_table_row(raw: &str) -> Line<'static> {
+    let cells: Vec<&str> = raw.trim().trim_matches('|').split('|').collect();
+    let mut spans = vec![Span::styled("  ", Style::default())];
+    for (i, cell) in cells.iter().enumerate() {
+        if i > 0 {
+            spans.push(Span::styled(" │ ", Style::default().fg(theme::OVERLAY)));
+        }
+        let trimmed = cell.trim().to_string();
+        spans.push(Span::styled(trimmed, Style::default().fg(theme::TEXT)));
+    }
+    Line::from(spans)
+}
+
 fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
     let trimmed = raw.trim_end();
     if in_code {
-        return Line::from(Span::styled(format!("  {trimmed}"), Style::default().fg(theme::MUTED)));
+        return Line::from(vec![
+            Span::styled("  │ ", Style::default().fg(theme::OVERLAY)),
+            Span::styled(trimmed.to_string(), Style::default().fg(theme::GOLD)),
+        ]);
+    }
+    if is_hr(trimmed) {
+        return Line::from(Span::styled(
+            "  ────────────────────────────────────────",
+            Style::default().fg(theme::OVERLAY),
+        ));
+    }
+    if is_table_sep(trimmed) {
+        return Line::from(Span::styled(
+            "  ─────────────────────────────────────────",
+            Style::default().fg(theme::OVERLAY).add_modifier(Modifier::DIM),
+        ));
+    }
+    if is_table_row(trimmed) {
+        return render_table_row(trimmed);
     }
     if let Some(r) = trimmed.strip_prefix("### ") {
         return Line::from(Span::styled(format!("  {r}"), Style::default().fg(theme::FOAM).add_modifier(Modifier::BOLD)));
@@ -74,6 +121,8 @@ fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
         ("  • ".to_string(), r)
     } else if let Some(r) = trimmed.strip_prefix("  - ").or_else(|| trimmed.strip_prefix("  * ")) {
         ("    ◦ ".to_string(), r)
+    } else if let Some(r) = trimmed.strip_prefix("    - ").or_else(|| trimmed.strip_prefix("    * ")) {
+        ("      · ".to_string(), r)
     } else {
         ("  ".to_string(), trimmed)
     };
@@ -139,8 +188,18 @@ impl<'a> Widget for MessageList<'a> {
                     }
                     let mut in_code = false;
                     let mut in_mermaid = false;
+                    let mut prev_blank = false;
                     for raw in msg.content.lines() {
                         let trimmed_start = raw.trim_start();
+                        let is_blank = raw.trim().is_empty();
+
+                        if is_blank {
+                            if !prev_blank { lines.push(Line::from("")); }
+                            prev_blank = true;
+                            continue;
+                        }
+                        prev_blank = false;
+
                         if trimmed_start.starts_with("```mermaid") {
                             in_mermaid = true; in_code = true;
                             lines.push(Line::from(Span::styled("  ╭─ mermaid ", Style::default().fg(theme::IRIS).add_modifier(Modifier::BOLD))));
@@ -153,8 +212,15 @@ impl<'a> Widget for MessageList<'a> {
                                 Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::GOLD)),
                             ]));
                         } else if trimmed_start.starts_with("```") {
-                            in_code = !in_code;
-                            lines.push(Line::from(Span::styled(format!("  {}", raw.trim_end()), Style::default().fg(theme::OVERLAY))));
+                            if in_code {
+                                in_code = false;
+                                lines.push(Line::from(Span::styled("  ╰──", Style::default().fg(theme::OVERLAY))));
+                            } else {
+                                in_code = true;
+                                let lang = trimmed_start.trim_start_matches('`').trim();
+                                let label = if lang.is_empty() { "  ╭─ code".to_string() } else { format!("  ╭─ {lang}") };
+                                lines.push(Line::from(Span::styled(label, Style::default().fg(theme::OVERLAY).add_modifier(Modifier::DIM))));
+                            }
                         } else {
                             lines.push(render_md_line(raw, in_code));
                         }
