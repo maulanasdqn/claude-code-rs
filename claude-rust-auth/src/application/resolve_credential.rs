@@ -51,7 +51,7 @@ pub fn resolve_credential() -> AppResult<Credential> {
     }
 
     Err(AppError::Provider(
-        "no credentials found. Set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or log in with `claude`"
+        "no credentials found. Set ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN (from settings.json), OPENROUTER_API_KEY, or log in with `claude`"
             .to_string(),
     ))
 }
