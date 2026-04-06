@@ -179,6 +179,20 @@ impl Provider for AnthropicProvider {
                     .header("x-app", "cli")
                     .header("content-type", "application/json")
             }
+            Credential::AuthToken { token, .. } => {
+                let url = format!("{base_url}/v1/messages?beta=true");
+                tracing::debug!(model = %model_display, url = %url, "sending AuthToken request");
+
+                self.client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {token}"))
+                    .header("anthropic-version", "2023-06-01")
+                    .header("anthropic-beta", OAUTH_BETA_HEADER)
+                    .header("anthropic-dangerous-direct-browser-access", "true")
+                    .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
+                    .header("x-app", "cli")
+                    .header("content-type", "application/json")
+            }
             Credential::ApiKey { api_key, .. } => {
                 let url = format!("{base_url}/v1/messages");
                 tracing::debug!(model = %model_display, url = %url, "sending API key request");
