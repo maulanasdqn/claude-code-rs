@@ -1,7 +1,7 @@
 use claude_rust_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
-use crate::infrastructure::{resolve_file_oauth, resolve_keychain_oauth};
+use crate::infrastructure::{resolve_file_oauth, resolve_keychain_oauth, resolve_settings_json};
 
 pub fn resolve_credential() -> AppResult<Credential> {
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
@@ -29,6 +29,16 @@ pub fn resolve_credential() -> AppResult<Credential> {
         }
         Err(e) => {
             tracing::debug!("file OAuth not available: {e}");
+        }
+    }
+
+    match resolve_settings_json() {
+        Ok(cred) => {
+            tracing::info!("using Claude Code auth from settings.json");
+            return Ok(cred);
+        }
+        Err(e) => {
+            tracing::debug!("settings.json not available: {e}");
         }
     }
 
