@@ -81,13 +81,12 @@ pub fn resolve_settings_json() -> AppResult<Credential> {
     let base_url = env
         .get("ANTHROPIC_BASE_URL")
         .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
         .unwrap_or("https://api.anthropic.com")
         .to_string();
 
-    tracing::info!(
-        "using ANTHROPIC_AUTH_TOKEN from settings.json, base_url: {}",
-        base_url
-    );
+    tracing::debug!("using ANTHROPIC_AUTH_TOKEN from settings.json");
 
     Ok(Credential::AuthToken { token, base_url })
 }

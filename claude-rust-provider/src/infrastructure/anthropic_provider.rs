@@ -165,27 +165,13 @@ impl Provider for AnthropicProvider {
         let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens);
 
         let request = match &self.credential {
-            Credential::ClaudeCodeOAuth { access_token, .. } => {
+            Credential::ClaudeCodeOAuth { access_token, .. } | Credential::AuthToken { token: access_token, .. } => {
                 let url = format!("{base_url}/v1/messages?beta=true");
                 tracing::debug!(model = %model_display, url = %url, "sending OAuth request");
 
                 self.client
                     .post(&url)
                     .header("Authorization", format!("Bearer {access_token}"))
-                    .header("anthropic-version", "2023-06-01")
-                    .header("anthropic-beta", OAUTH_BETA_HEADER)
-                    .header("anthropic-dangerous-direct-browser-access", "true")
-                    .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
-                    .header("x-app", "cli")
-                    .header("content-type", "application/json")
-            }
-            Credential::AuthToken { token, .. } => {
-                let url = format!("{base_url}/v1/messages?beta=true");
-                tracing::debug!(model = %model_display, url = %url, "sending AuthToken request");
-
-                self.client
-                    .post(&url)
-                    .header("Authorization", format!("Bearer {token}"))
                     .header("anthropic-version", "2023-06-01")
                     .header("anthropic-beta", OAUTH_BETA_HEADER)
                     .header("anthropic-dangerous-direct-browser-access", "true")

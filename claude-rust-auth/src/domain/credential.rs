@@ -48,6 +48,9 @@ impl Credential {
     }
 
     pub fn is_oauth(&self) -> bool {
-        matches!(self, Credential::ClaudeCodeOAuth { .. })
+        matches!(
+            self,
+            Credential::ClaudeCodeOAuth { .. } | Credential::AuthToken { .. }
+        )
     }
 }
