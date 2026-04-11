@@ -33,7 +33,7 @@ jobs:
       - name: Wait for crates.io index
         run: sleep 30
 
-      # Tier 1: depends on errors/config
+      # Tier 1: depends on errors only
       - name: Publish claude-rust-types
         run: cargo publish -p claude-rust-types --no-verify || echo "Already published, skipping"
         env:
@@ -47,7 +47,7 @@ jobs:
       - name: Wait for crates.io index
         run: sleep 30
 
-      # Tier 2: depends on types/errors/config
+      # Tier 2: depends on errors + config + types (and optionally auth)
       - name: Publish claude-rust-tools
         run: cargo publish -p claude-rust-tools --no-verify || echo "Already published, skipping"
         env:
@@ -103,20 +103,24 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Wait for crates.io index
-        run: sleep 30
-
-      # Tier 3: depends on provider/engine/server
       - name: Publish claude-rust-provider
         run: cargo publish -p claude-rust-provider --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      # Tier 3: depends on tools
       - name: Publish claude-rust-engine
         run: cargo publish -p claude-rust-engine --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      # Tier 4: depends on provider + engine + tools
       - name: Publish claude-rust-server
         run: cargo publish -p claude-rust-server --no-verify || echo "Already published, skipping"
         env:
@@ -125,7 +129,7 @@ jobs:
       - name: Wait for crates.io index
         run: sleep 30
 
-      # Tier 4: binary crate (depends on everything)
+      # Tier 5: binary crate (depends on everything)
       - name: Publish claude-rust (binary)
         run: cargo publish -p claude-rust --no-verify || echo "Already published, skipping"
         env:
