@@ -122,6 +122,109 @@ pub fn build_request_body(
     body
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use claude_rust_types::{Conversation, Message, ContentBlock, Role};
+
+    fn api_key_credential() -> Credential {
+        Credential::ApiKey {
+            api_key: "test-key".into(),
+            base_url: "https://api.anthropic.com".into(),
+        }
+    }
+
+    fn simple_conversation() -> Conversation {
+        Conversation {
+            system: Some("You are helpful.".into()),
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentBlock::Text { text: "hello".into() }],
+            }],
+        }
+    }
+
+    #[test]
+    fn test_effort_sets_output_config() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-sonnet-4-6", &simple_conversation(),
+            &[], false, 4096, None, Some("high"),
+        );
+        assert_eq!(body["output_config"]["effort"], "high");
+    }
+
+    #[test]
+    fn test_effort_max_sets_output_config() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-opus-4-6", &simple_conversation(),
+            &[], true, 64000, None, Some("max"),
+        );
+        assert_eq!(body["output_config"]["effort"], "max");
+        // Adaptive thinking should also be present
+        assert_eq!(body["thinking"]["type"], "adaptive");
+    }
+
+    #[test]
+    fn test_no_effort_omits_output_config() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-sonnet-4-6", &simple_conversation(),
+            &[], false, 4096, None, None,
+        );
+        assert!(body.get("output_config").is_none());
+    }
+
+    #[test]
+    fn test_adaptive_thinking_for_opus() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-opus-4-6", &simple_conversation(),
+            &[], true, 16000, None, None,
+        );
+        assert_eq!(body["thinking"]["type"], "adaptive");
+        assert!(body["thinking"].get("budget_tokens").is_none());
+    }
+
+    #[test]
+    fn test_adaptive_thinking_for_sonnet_4_6() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-sonnet-4-6", &simple_conversation(),
+            &[], true, 16000, None, None,
+        );
+        assert_eq!(body["thinking"]["type"], "adaptive");
+    }
+
+    #[test]
+    fn test_budget_thinking_for_older_model() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-haiku-4-5-20251001", &simple_conversation(),
+            &[], true, 16000, None, None,
+        );
+        assert_eq!(body["thinking"]["type"], "enabled");
+        assert_eq!(body["thinking"]["budget_tokens"], 5000);
+    }
+
+    #[test]
+    fn test_custom_thinking_budget() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-haiku-4-5-20251001", &simple_conversation(),
+            &[], true, 4096, Some(10000), None,
+        );
+        assert_eq!(body["thinking"]["type"], "enabled");
+        // effective_max = max(4096, 10000+16384) = 26384
+        // effective_budget = min(10000, 26384-1) = 10000
+        assert_eq!(body["thinking"]["budget_tokens"], 10000);
+        assert_eq!(body["max_tokens"], 26384);
+    }
+
+    #[test]
+    fn test_thinking_disabled_no_thinking_block() {
+        let body = build_request_body(
+            &api_key_credential(), "claude-opus-4-6", &simple_conversation(),
+            &[], false, 4096, None, None,
+        );
+        assert!(body.get("thinking").is_none());
+    }
+}
+
 fn sanitize_messages(mut messages: Vec<Value>) -> Vec<Value> {
     let mut i = 0;
     while i < messages.len() {
