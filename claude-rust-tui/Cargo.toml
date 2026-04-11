@@ -1,7 +1,11 @@
 [package]
 name = "claude-rust-tui"
-version = "2.0.0"
+version = "2.0.2"
 edition = "2024"
+description = "Terminal user interface with ratatui for interactive sessions"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-rust"
+readme = "../README.md"
 
 [dependencies]
 claude-rust-errors = { workspace = true }
@@ -14,5 +18,5 @@ async-trait = { workspace = true }
 tracing = { workspace = true }
 crossterm = { workspace = true }
 syntect = { workspace = true }
-ratatui = "0.29"
-unicode-width = "0.2"
+ratatui = { workspace = true }
+unicode-width = { workspace = true }

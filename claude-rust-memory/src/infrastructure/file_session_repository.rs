@@ -13,10 +13,10 @@ pub struct FileSessionRepository {
 
 impl FileSessionRepository {
     pub fn new(cwd: &str) -> AppResult<Self> {
-        let home = std::env::var("HOME")
-            .map_err(|_| AppError::Internal(anyhow::anyhow!("HOME not set")))?;
+        let home = claude_rust_config::home_dir()
+            .ok_or_else(|| AppError::Internal(anyhow::anyhow!("cannot determine home directory")))?;
         let slug = project_slug(cwd);
-        let project_dir = PathBuf::from(home)
+        let project_dir = home
             .join(".claude-code-rs")
             .join("projects")
             .join(slug);
@@ -37,7 +37,13 @@ impl FileSessionRepository {
 }
 
 fn project_slug(cwd: &str) -> String {
-    cwd.trim_start_matches('/')
+    // Strip leading `/` (Unix) or drive prefix like `C:\` (Windows)
+    let stripped = cwd
+        .trim_start_matches('/')
+        .trim_start_matches(|c: char| c.is_ascii_alphabetic())
+        .trim_start_matches(':')
+        .trim_start_matches(['/', '\\']);
+    stripped
         .chars()
         .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
         .take(80)

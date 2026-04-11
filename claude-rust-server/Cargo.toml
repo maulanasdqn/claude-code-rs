@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-server"
-version = "2.0.0"
+version = "2.0.2"
 edition = "2024"
 description = "HTTP server with chat and health endpoints"
 license = "MIT"

@@ -278,7 +278,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "claude-rust"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "base64",
@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-auth"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "base64",
  "claude-rust-errors",
@@ -319,7 +319,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-bridge"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -334,9 +334,10 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-commands"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "base64",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "regex",
@@ -345,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-compact"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "claude-rust-errors",
@@ -360,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-config"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -368,9 +369,10 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-coordinator"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "serde",
@@ -381,7 +383,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-engine"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "claude-rust-config",
  "claude-rust-errors",
@@ -395,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-errors"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "axum",
@@ -407,10 +409,11 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-memory"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "serde",
@@ -420,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-permission"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "claude-rust-config",
@@ -433,10 +436,11 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-plugins"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "serde",
@@ -447,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-provider"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "claude-rust-auth",
@@ -462,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-server"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "axum",
  "claude-rust-auth",
@@ -482,10 +486,11 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-services"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "serde",
@@ -496,10 +501,11 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-skills"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "regex",
@@ -511,9 +517,10 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-tools"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
+ "claude-rust-config",
  "claude-rust-errors",
  "claude-rust-types",
  "crossterm",
@@ -528,7 +535,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-tui"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "claude-rust-config",
@@ -546,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "claude-rust-types"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "claude-rust-errors",

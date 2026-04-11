@@ -66,9 +66,8 @@ fn plugins_base_dir() -> AppResult<std::path::PathBuf> {
 }
 
 fn dirs_home() -> AppResult<std::path::PathBuf> {
-    std::env::var("HOME")
-        .map(std::path::PathBuf::from)
-        .map_err(|_| AppError::Internal(anyhow::anyhow!("HOME environment variable not set")))
+    claude_rust_config::home_dir()
+        .ok_or_else(|| AppError::Internal(anyhow::anyhow!("cannot determine home directory")))
 }
 
 async fn copy_dir_all(src: &Path, dst: &Path) -> AppResult<()> {

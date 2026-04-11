@@ -150,28 +150,44 @@ fn load_claude_md(cwd: &str) -> String {
 }
 
 fn dirs_or_home() -> std::path::PathBuf {
-    std::env::var("HOME")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("/"))
+    claude_rust_config::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }
 
 pub fn build_env_info(cwd: String, model_id: String) -> EnvInfo {
     use super::git::{git_status_snapshot, is_git_repo};
 
     let platform = std::env::consts::OS.to_string();
-    let shell = std::env::var("SHELL")
-        .map(|s| {
-            if s.contains("zsh") { "zsh".to_string() }
-            else if s.contains("bash") { "bash".to_string() }
-            else { s }
-        })
-        .unwrap_or_else(|_| "unknown".to_string());
 
-    let os_version = std::process::Command::new("uname")
-        .args(["-sr"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| platform.clone());
+    let shell = if cfg!(windows) {
+        if std::env::var("PSModulePath").is_ok() {
+            "powershell".to_string()
+        } else {
+            std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
+        }
+    } else {
+        std::env::var("SHELL")
+            .map(|s| {
+                if s.contains("zsh") { "zsh".to_string() }
+                else if s.contains("bash") { "bash".to_string() }
+                else { s }
+            })
+            .unwrap_or_else(|_| "unknown".to_string())
+    };
+
+    let os_version = if cfg!(windows) {
+        std::process::Command::new("cmd")
+            .args(["/C", "ver"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| platform.clone())
+    } else {
+        std::process::Command::new("uname")
+            .args(["-sr"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| platform.clone())
+    };
 
     let is_git = is_git_repo(&cwd);
     let git_status = if is_git { git_status_snapshot(&cwd) } else { None };

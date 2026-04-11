@@ -8,8 +8,9 @@ struct Outcome {
 }
 
 async fn run_cmd(command: &str, env_vars: &[(&str, &str)]) -> Outcome {
-    let mut cmd = Command::new("sh");
-    cmd.arg("-c").arg(command);
+    let (shell, flag) = claude_rust_config::shell_command();
+    let mut cmd = Command::new(shell);
+    cmd.arg(flag).arg(command);
     for (k, v) in env_vars {
         cmd.env(k, v);
     }

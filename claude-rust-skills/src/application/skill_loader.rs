@@ -62,7 +62,9 @@ impl SkillLoader {
 
     /// Load all skills: user skills, project skills, legacy commands, and bundled.
     pub fn load_all(&self) -> AppResult<Vec<Skill>> {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+        let home = claude_rust_config::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| ".".to_string());
         let mut all: Vec<Skill> = Vec::new();
 
         let dirs: Vec<(PathBuf, bool)> = vec![

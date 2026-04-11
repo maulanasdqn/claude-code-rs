@@ -7,9 +7,10 @@ use std::path::{Path, PathBuf};
 ///   2. `.claude/skills/`
 ///   3. `.claude/commands/`
 pub fn scan_skill_directories() -> Vec<PathBuf> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let home = claude_rust_config::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."));
     vec![
-        PathBuf::from(format!("{home}/.claude/skills")),
+        home.join(".claude").join("skills"),
         PathBuf::from(".claude/skills"),
         PathBuf::from(".claude/commands"),
     ]

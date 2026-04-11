@@ -40,23 +40,27 @@ crossterm = "0.28"
 indicatif = "0.17"
 syntect = { version = "5", default-features = false, features = ["default-themes", "default-syntaxes", "regex-fancy"] }
 base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+sha2 = "0.10"
+ratatui = "0.29"
+unicode-width = "0.2"
 
-claude-rust-errors = { version = "2.0.0", path = "claude-rust-errors" }
-claude-rust-types = { version = "2.0.0", path = "claude-rust-types" }
-claude-rust-tools = { version = "2.0.0", path = "claude-rust-tools" }
-claude-rust-provider = { version = "2.0.0", path = "claude-rust-provider" }
-claude-rust-engine = { version = "2.0.0", path = "claude-rust-engine" }
-claude-rust-server = { version = "2.0.0", path = "claude-rust-server" }
-claude-rust = { version = "2.0.0", path = "claude-rust" }
-claude-rust-auth = { version = "2.0.0", path = "claude-rust-auth" }
-claude-rust-permission = { version = "2.0.0", path = "claude-rust-permission" }
-claude-rust-commands = { version = "2.0.0", path = "claude-rust-commands" }
-claude-rust-memory = { version = "2.0.0", path = "claude-rust-memory" }
-claude-rust-config = { version = "2.0.0", path = "claude-rust-config" }
-claude-rust-services = { version = "2.0.0", path = "claude-rust-services" }
-claude-rust-compact = { version = "2.0.0", path = "claude-rust-compact" }
-claude-rust-coordinator = { version = "2.0.0", path = "claude-rust-coordinator" }
-claude-rust-bridge = { version = "2.0.0", path = "claude-rust-bridge" }
-claude-rust-plugins = { version = "2.0.0", path = "claude-rust-plugins" }
-claude-rust-skills = { version = "2.0.0", path = "claude-rust-skills" }
-claude-rust-tui = { version = "2.0.0", path = "claude-rust-tui" }
+claude-rust-errors = { version = "2.0.2", path = "claude-rust-errors" }
+claude-rust-types = { version = "2.0.2", path = "claude-rust-types" }
+claude-rust-tools = { version = "2.0.2", path = "claude-rust-tools" }
+claude-rust-provider = { version = "2.0.2", path = "claude-rust-provider" }
+claude-rust-engine = { version = "2.0.2", path = "claude-rust-engine" }
+claude-rust-server = { version = "2.0.2", path = "claude-rust-server" }
+claude-rust = { version = "2.0.2", path = "claude-rust" }
+claude-rust-auth = { version = "2.0.2", path = "claude-rust-auth" }
+claude-rust-permission = { version = "2.0.2", path = "claude-rust-permission" }
+claude-rust-commands = { version = "2.0.2", path = "claude-rust-commands" }
+claude-rust-memory = { version = "2.0.2", path = "claude-rust-memory" }
+claude-rust-config = { version = "2.0.2", path = "claude-rust-config" }
+claude-rust-services = { version = "2.0.2", path = "claude-rust-services" }
+claude-rust-compact = { version = "2.0.2", path = "claude-rust-compact" }
+claude-rust-coordinator = { version = "2.0.2", path = "claude-rust-coordinator" }
+claude-rust-bridge = { version = "2.0.2", path = "claude-rust-bridge" }
+claude-rust-plugins = { version = "2.0.2", path = "claude-rust-plugins" }
+claude-rust-skills = { version = "2.0.2", path = "claude-rust-skills" }
+claude-rust-tui = { version = "2.0.2", path = "claude-rust-tui" }

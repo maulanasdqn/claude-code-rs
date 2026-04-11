@@ -17,7 +17,9 @@ pub struct McpServerEntry {
 }
 
 pub fn load_mcp_configs(cwd: &str) -> Vec<(String, McpServerEntry)> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/".into());
+    let home = claude_rust_config::home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".to_string());
     let paths = [
         format!("{cwd}/.mcp.json"),
         format!("{cwd}/.claude/mcp.json"),

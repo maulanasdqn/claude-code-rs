@@ -30,8 +30,8 @@ pub async fn handle_doctor() -> CommandResult {
     output.push_str(&format_check("credentials", &cred_ok));
 
     // Check config files
-    let home = std::env::var("HOME").unwrap_or_default();
-    let global_config = std::path::Path::new(&home).join(".claude").join("settings.json");
+    let home = claude_rust_config::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    let global_config = home.join(".claude").join("settings.json");
     let project_config = std::env::current_dir()
         .unwrap_or_default()
         .join(".claude")

@@ -56,9 +56,10 @@ pub fn load_skills(cwd: &str) -> Vec<Skill> {
     skills
 }
 
-/// Get the user's home directory (Linux + macOS compatible).
 fn home_dir() -> String {
-    std::env::var("HOME").unwrap_or_else(|_| "/".to_string())
+    claude_rust_config::home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".to_string())
 }
 
 /// Load skills from a directory.

@@ -1,9 +1,14 @@
 [package]
 name = "claude-rust-plugins"
-version = "2.0.0"
+version = "2.0.2"
 edition = "2024"
+description = "Plugin system for extending tool and provider capabilities"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/claude-rust"
+readme = "../README.md"
 
 [dependencies]
+claude-rust-config = { workspace = true }
 claude-rust-errors = { workspace = true }
 claude-rust-types = { workspace = true }
 serde = { workspace = true }

@@ -128,22 +128,24 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     let mut out = std::io::stdout();
 
     let draw = |out: &mut dyn Write, sel: usize| -> std::io::Result<()> {
+        // Use \r\n so redraws in raw mode return to column 0 (raw mode
+        // does not translate \n → \r\n, causing horizontal "sliding").
         // Blank line + title separator
-        writeln!(out, "\n  \x1b[33m\x1b[1m{title_prefix}{}\x1b[0m", "─".repeat(title_fill))?;
+        write!(out, "\r\n  \x1b[33m\x1b[1m{title_prefix}{}\x1b[0m\r\n", "─".repeat(title_fill))?;
         // Detail lines (dim, code-style)
         for line in &detail_lines {
-            writeln!(out, "  \x1b[2m{line}\x1b[0m")?;
+            write!(out, "  \x1b[2m{line}\x1b[0m\r\n")?;
         }
         // Bottom separator
-        writeln!(out, "  \x1b[2m{}\x1b[0m", "─".repeat(inner))?;
+        write!(out, "  \x1b[2m{}\x1b[0m\r\n", "─".repeat(inner))?;
         // Blank line before options
-        writeln!(out)?;
+        write!(out, "\r\n")?;
         // Options
         for (i, (label, _)) in options.iter().enumerate() {
             if i == sel {
-                writeln!(out, "  \x1b[33m\x1b[1m❯\x1b[0m \x1b[1m{label}\x1b[0m")?;
+                write!(out, "  \x1b[33m\x1b[1m❯\x1b[0m \x1b[1m{label}\x1b[0m\r\n")?;
             } else {
-                writeln!(out, "    \x1b[2m{label}\x1b[0m")?;
+                write!(out, "    \x1b[2m{label}\x1b[0m\r\n")?;
             }
         }
         out.flush()

@@ -65,7 +65,6 @@ pub fn load_plugin_configs() -> Vec<PluginInfo> {
 }
 
 fn plugins_base_dir() -> Option<PathBuf> {
-    std::env::var("HOME")
-        .ok()
-        .map(|h| PathBuf::from(h).join(".claude").join("plugins"))
+    claude_rust_config::home_dir()
+        .map(|h| h.join(".claude").join("plugins"))
 }

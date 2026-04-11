@@ -56,8 +56,8 @@ pub async fn handle_session(arg: &str) -> CommandResult {
 }
 
 fn session_directory() -> std::path::PathBuf {
-    let home = std::env::var("HOME")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("/"));
-    home.join(".claude-code-rs").join("sessions")
+    claude_rust_config::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".claude-code-rs")
+        .join("sessions")
 }

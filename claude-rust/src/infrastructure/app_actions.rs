@@ -58,17 +58,31 @@ pub fn copy_last_response(conversation: &Conversation) {
             _ => None,
         }).collect::<Vec<_>>().join("\n"));
     if let Some(text) = last_text {
-        let mut child = std::process::Command::new("sh")
-            .arg("-c")
-            .arg("xclip -selection clipboard 2>/dev/null || xsel --clipboard 2>/dev/null || pbcopy 2>/dev/null")
-            .stdin(std::process::Stdio::piped()).spawn();
+        let mut child = if cfg!(windows) {
+            std::process::Command::new("powershell")
+                .args(["-NoProfile", "-Command", "Set-Clipboard -Value $input"])
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+        } else {
+            std::process::Command::new("sh")
+                .arg("-c")
+                .arg("xclip -selection clipboard 2>/dev/null || xsel --clipboard 2>/dev/null || pbcopy 2>/dev/null")
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+        };
         match child {
             Ok(ref mut c) => {
                 if let Some(ref mut stdin) = c.stdin { let _ = stdin.write_all(text.as_bytes()); }
                 let _ = c.wait();
                 println!("  {DIM}✓ Copied to clipboard{RESET}\n");
             }
-            Err(_) => println!("  {DIM}✗ Install xclip or xsel for clipboard support{RESET}\n"),
+            Err(_) => {
+                if cfg!(windows) {
+                    println!("  {DIM}✗ Failed to copy (powershell not available){RESET}\n");
+                } else {
+                    println!("  {DIM}✗ Install xclip or xsel for clipboard support{RESET}\n");
+                }
+            }
         }
     } else {
         println!("  {DIM}No response to copy.{RESET}\n");

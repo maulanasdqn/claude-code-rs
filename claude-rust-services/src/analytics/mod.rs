@@ -34,8 +34,9 @@ impl LocalAnalytics {
 }
 
 fn home_claude_dir() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".claude")
+    claude_rust_config::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".claude")
 }
 
 fn now_secs() -> u64 {

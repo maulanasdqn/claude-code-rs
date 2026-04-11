@@ -1,6 +1,6 @@
 [package]
 name = "claude-rust-tools"
-version = "2.0.0"
+version = "2.0.2"
 edition = "2024"
 description = "Tool implementations for bash and file operations"
 license = "MIT"
@@ -8,6 +8,7 @@ repository = "https://github.com/maulanasdqn/claude-rust"
 readme = "../README.md"
 
 [dependencies]
+claude-rust-config = { workspace = true }
 claude-rust-errors = { workspace = true }
 claude-rust-types = { workspace = true }
 async-trait = { workspace = true }

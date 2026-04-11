@@ -62,8 +62,9 @@ impl Tool for SkillTool {
 
         tracing::info!(skill, args, "invoking skill");
 
-        let home = std::env::var("HOME")
-            .map_err(|_| claude_rust_errors::AppError::Tool("HOME env var not set".into()))?;
+        let home = claude_rust_config::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .ok_or_else(|| claude_rust_errors::AppError::Tool("cannot determine home directory".into()))?;
 
         let skill_path = format!("{home}/.claude/skills/{skill}/SKILL.md");
 
