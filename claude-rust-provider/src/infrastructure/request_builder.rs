@@ -11,6 +11,8 @@ pub fn build_request_body(
     tools: &[Value],
     thinking: bool,
     max_tokens: u32,
+    thinking_budget: Option<u32>,
+    effort: Option<&str>,
 ) -> Value {
     let total = conversation.messages.len();
     let messages: Vec<Value> = conversation.messages.iter().enumerate().map(|(mi, msg)| {
@@ -81,9 +83,32 @@ pub fn build_request_body(
     }
 
     if thinking {
-        let budget = 5000u32;
-        if max_tokens <= budget { body["max_tokens"] = json!(budget + 4096); }
-        body["thinking"] = json!({"type": "enabled", "budget_tokens": budget});
+        let model_lower = model.to_lowercase();
+        let supports_adaptive = model_lower.contains("opus-4-6") || model_lower.contains("sonnet-4-6");
+
+        if supports_adaptive {
+            // Models that support adaptive thinking: let the model decide how much to think
+            body["thinking"] = json!({"type": "adaptive"});
+        } else {
+            match thinking_budget {
+                Some(budget) => {
+                    let effective_max = max_tokens.max(budget + 16384);
+                    body["max_tokens"] = json!(effective_max);
+                    let effective_budget = budget.min(effective_max - 1);
+                    body["thinking"] = json!({"type": "enabled", "budget_tokens": effective_budget});
+                }
+                None => {
+                    let budget = 5000u32;
+                    if max_tokens <= budget { body["max_tokens"] = json!(budget + 4096); }
+                    body["thinking"] = json!({"type": "enabled", "budget_tokens": budget});
+                }
+            }
+        }
+    }
+
+    // Effort level (max/high/medium/low)
+    if let Some(eff) = effort {
+        body["output_config"] = json!({"effort": eff});
     }
 
     if !tools.is_empty() {

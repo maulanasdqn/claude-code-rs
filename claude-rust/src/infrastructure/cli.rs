@@ -29,6 +29,12 @@ pub struct Cli {
 
     #[arg(long, help = "Enable verbose logging")]
     pub verbose: bool,
+
+    #[arg(long, help = "Thinking budget tokens (also sets max_tokens, thinking uses max_tokens - 16384)")]
+    pub thinking_budget: Option<u32>,
+
+    #[arg(long, help = "Effort level: max, high, medium, low (enables thinking + effort)")]
+    pub effort: Option<String>,
 }
 
 impl Cli {

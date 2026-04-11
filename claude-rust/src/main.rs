@@ -51,6 +51,25 @@ async fn main() {
     else if let Some(ref model) = config.model { provider.set_model(model); }
     if let Ok(model) = std::env::var("MODEL") { provider.set_model(&model); }
     if let Some(mt) = config.max_tokens { provider.set_max_tokens(mt); }
+    if let Some(total) = cli.thinking_budget {
+        provider.set_max_tokens(total);
+        let budget = total.saturating_sub(16384);
+        provider.set_thinking_budget(budget);
+    }
+
+    // Effort: env > CLI > settings
+    let effort_value = std::env::var("CLAUDE_CODE_EFFORT_LEVEL").ok()
+        .or_else(|| cli.effort.clone())
+        .or_else(|| config.effort.clone());
+    if let Some(ref effort) = effort_value {
+        let level = effort.to_lowercase();
+        if ["low", "medium", "high", "max"].contains(&level.as_str()) {
+            provider.set_effort(&level);
+            if level == "max" && cli.thinking_budget.is_none() {
+                provider.set_max_tokens(64000);
+            }
+        }
+    }
 
     let pause_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
