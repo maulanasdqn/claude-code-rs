@@ -1,7 +1,7 @@
 use claude_rust_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
-use crate::infrastructure::{resolve_file_oauth, resolve_keychain_oauth};
+use crate::infrastructure::{resolve_file_oauth, resolve_keychain_oauth, resolve_settings_json};
 
 pub fn resolve_credential() -> AppResult<Credential> {
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
@@ -32,6 +32,16 @@ pub fn resolve_credential() -> AppResult<Credential> {
         }
     }
 
+    match resolve_settings_json() {
+        Ok(cred) => {
+            tracing::info!("using Claude Code auth from settings.json");
+            return Ok(cred);
+        }
+        Err(e) => {
+            tracing::debug!("settings.json not available: {e}");
+        }
+    }
+
     if let Ok(key) = std::env::var("OPENROUTER_API_KEY") {
         tracing::info!("using OpenRouter");
         return Ok(Credential::ApiKey {
@@ -41,7 +51,7 @@ pub fn resolve_credential() -> AppResult<Credential> {
     }
 
     Err(AppError::Provider(
-        "no credentials found. Set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or log in with `claude`"
+        "no credentials found. Set ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN (from settings.json), OPENROUTER_API_KEY, or log in with `claude`"
             .to_string(),
     ))
 }

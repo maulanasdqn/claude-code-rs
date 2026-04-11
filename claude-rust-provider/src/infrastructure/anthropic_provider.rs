@@ -165,7 +165,7 @@ impl Provider for AnthropicProvider {
         let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens);
 
         let request = match &self.credential {
-            Credential::ClaudeCodeOAuth { access_token, .. } => {
+            Credential::ClaudeCodeOAuth { access_token, .. } | Credential::AuthToken { token: access_token, .. } => {
                 let url = format!("{base_url}/v1/messages?beta=true");
                 tracing::debug!(model = %model_display, url = %url, "sending OAuth request");
 

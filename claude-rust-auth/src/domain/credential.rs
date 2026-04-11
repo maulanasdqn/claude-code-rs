@@ -6,6 +6,10 @@ pub enum Credential {
         api_key: String,
         base_url: String,
     },
+    AuthToken {
+        token: String,
+        base_url: String,
+    },
     ClaudeCodeOAuth {
         access_token: String,
         expires_at: u64,
@@ -18,6 +22,11 @@ impl fmt::Debug for Credential {
             Credential::ApiKey { base_url, .. } => f
                 .debug_struct("ApiKey")
                 .field("api_key", &"[redacted]")
+                .field("base_url", base_url)
+                .finish(),
+            Credential::AuthToken { base_url, .. } => f
+                .debug_struct("AuthToken")
+                .field("token", &"[redacted]")
                 .field("base_url", base_url)
                 .finish(),
             Credential::ClaudeCodeOAuth { expires_at, .. } => f
@@ -33,11 +42,15 @@ impl Credential {
     pub fn base_url(&self) -> &str {
         match self {
             Credential::ApiKey { base_url, .. } => base_url,
+            Credential::AuthToken { base_url, .. } => base_url,
             Credential::ClaudeCodeOAuth { .. } => "https://api.anthropic.com",
         }
     }
 
     pub fn is_oauth(&self) -> bool {
-        matches!(self, Credential::ClaudeCodeOAuth { .. })
+        matches!(
+            self,
+            Credential::ClaudeCodeOAuth { .. } | Credential::AuthToken { .. }
+        )
     }
 }
