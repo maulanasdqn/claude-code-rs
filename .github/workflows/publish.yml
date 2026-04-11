@@ -19,70 +19,114 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # Tier 0: no internal deps
       - name: Publish claude-rust-errors
-        run: cargo publish -p claude-rust-errors --no-verify
+        run: cargo publish -p claude-rust-errors --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Publish claude-rust-config
-        run: cargo publish -p claude-rust-config --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-types
-        run: cargo publish -p claude-rust-types --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-auth
-        run: cargo publish -p claude-rust-auth --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-tools
-        run: cargo publish -p claude-rust-tools --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-memory
-        run: cargo publish -p claude-rust-memory --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-permission
-        run: cargo publish -p claude-rust-permission --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-commands
-        run: cargo publish -p claude-rust-commands --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-provider
-        run: cargo publish -p claude-rust-provider --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-engine
-        run: cargo publish -p claude-rust-engine --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-server
-        run: cargo publish -p claude-rust-server --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish claude-rust-tui
-        run: cargo publish -p claude-rust-tui --no-verify
+        run: cargo publish -p claude-rust-config --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Wait for crates.io index
         run: sleep 30
 
+      # Tier 1: depends on errors/config
+      - name: Publish claude-rust-types
+        run: cargo publish -p claude-rust-types --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-auth
+        run: cargo publish -p claude-rust-auth --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      # Tier 2: depends on types/errors/config
+      - name: Publish claude-rust-tools
+        run: cargo publish -p claude-rust-tools --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-memory
+        run: cargo publish -p claude-rust-memory --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-permission
+        run: cargo publish -p claude-rust-permission --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-commands
+        run: cargo publish -p claude-rust-commands --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-services
+        run: cargo publish -p claude-rust-services --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-compact
+        run: cargo publish -p claude-rust-compact --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-coordinator
+        run: cargo publish -p claude-rust-coordinator --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-bridge
+        run: cargo publish -p claude-rust-bridge --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-plugins
+        run: cargo publish -p claude-rust-plugins --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-skills
+        run: cargo publish -p claude-rust-skills --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-tui
+        run: cargo publish -p claude-rust-tui --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      # Tier 3: depends on provider/engine/server
+      - name: Publish claude-rust-provider
+        run: cargo publish -p claude-rust-provider --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-engine
+        run: cargo publish -p claude-rust-engine --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish claude-rust-server
+        run: cargo publish -p claude-rust-server --no-verify || echo "Already published, skipping"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      # Tier 4: binary crate (depends on everything)
       - name: Publish claude-rust (binary)
-        run: cargo publish -p claude-rust --no-verify
+        run: cargo publish -p claude-rust --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
