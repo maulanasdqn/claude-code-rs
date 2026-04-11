@@ -140,18 +140,28 @@ pub fn handle_model_cmd(name: &str, provider: &AnthropicProvider, mode_flag: &st
     }
 }
 
-pub fn handle_effort_cmd(level: &str) -> CommandAction {
+pub fn handle_effort_cmd(level: &str, provider: &AnthropicProvider) -> CommandAction {
     if level.is_empty() {
+        let current = provider.get_effort().unwrap_or_else(|| "auto".to_string());
         return CommandAction::Output(format!(
-            "\n  {BOLD}{CYAN}Effort Levels{RESET}\n\n\
+            "\n  {BOLD}{CYAN}Effort Levels{RESET}  {DIM}(current: {current}){RESET}\n\n\
              {DIM}  low{RESET}     Quick, concise responses\n\
              {DIM}  medium{RESET}  Balanced (default)\n\
              {DIM}  high{RESET}    Thorough, detailed responses\n\
-             {DIM}  max{RESET}     Maximum depth and analysis\n"
+             {DIM}  max{RESET}     Maximum depth and analysis\n\
+             {DIM}  auto{RESET}    Clear effort override\n"
         ));
     }
+    if level == "auto" {
+        provider.clear_effort();
+        return CommandAction::Output(format!("\n  {DIM}Effort → auto (cleared){RESET}\n"));
+    }
     if !["low", "medium", "high", "max"].contains(&level) {
-        return CommandAction::Output(format!("\n  {DIM}Invalid effort level. Use: low, medium, high, max{RESET}\n"));
+        return CommandAction::Output(format!("\n  {DIM}Invalid effort level. Use: low, medium, high, max, auto{RESET}\n"));
+    }
+    provider.set_effort(level);
+    if level == "max" {
+        provider.set_max_tokens(64000);
     }
     CommandAction::Output(format!("\n  {DIM}Effort →{RESET} {BOLD}{CYAN}{level}{RESET}\n"))
 }

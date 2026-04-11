@@ -94,7 +94,7 @@ pub async fn handle_slash_command(
 
     if matches!(cmd, SlashCommand::Usage) { return Some(CommandAction::Output(render_usage(provider).await)); }
 
-    if let SlashCommand::Effort(ref level) = cmd { return Some(handle_effort_cmd(level)); }
+    if let SlashCommand::Effort(ref level) = cmd { return Some(handle_effort_cmd(level, provider)); }
 
     if matches!(cmd, SlashCommand::Plan) {
         let current = PermissionMode::load(mode_flag);

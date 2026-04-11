@@ -50,6 +50,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
         hooks: crate::domain::config::HooksConfig { pre_tool_use, post_tool_use, stop, session_start },
         max_turns: project.max_turns.or(global.max_turns),
         max_tokens: project.max_tokens.or(global.max_tokens),
+        effort: project.effort.or(global.effort),
     }
 }
 
