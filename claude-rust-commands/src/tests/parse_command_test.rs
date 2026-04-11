@@ -38,3 +38,27 @@ fn parse_unknown() {
     assert!(parse_command("/unknown").is_none());
     assert!(parse_command("hello").is_none());
 }
+
+#[test]
+fn parse_effort_no_args() {
+    match parse_command("/effort") {
+        Some(SlashCommand::Effort(level)) => assert_eq!(level, ""),
+        _ => panic!("expected Effort variant with empty string"),
+    }
+}
+
+#[test]
+fn parse_effort_with_level() {
+    match parse_command("/effort high") {
+        Some(SlashCommand::Effort(level)) => assert_eq!(level, "high"),
+        _ => panic!("expected Effort variant"),
+    }
+}
+
+#[test]
+fn parse_effort_max() {
+    match parse_command("/effort max") {
+        Some(SlashCommand::Effort(level)) => assert_eq!(level, "max"),
+        _ => panic!("expected Effort variant"),
+    }
+}
