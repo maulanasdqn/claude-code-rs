@@ -49,6 +49,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
         hooks: crate::domain::config::HooksConfig { pre_tool_use, post_tool_use, stop, session_start },
         max_turns: project.max_turns.or(global.max_turns),
         max_tokens: project.max_tokens.or(global.max_tokens),
+        effort: project.effort.or(global.effort),
     }
 }
 
@@ -93,5 +94,36 @@ mod tests {
         };
         let merged = merge(global, project);
         assert_eq!(merged.model, Some("project-model".into()));
+    }
+
+    #[test]
+    fn test_merge_effort_project_overrides_global() {
+        let global = Settings {
+            effort: Some("medium".into()),
+            ..Default::default()
+        };
+        let project = Settings {
+            effort: Some("high".into()),
+            ..Default::default()
+        };
+        let merged = merge(global, project);
+        assert_eq!(merged.effort, Some("high".into()));
+    }
+
+    #[test]
+    fn test_merge_effort_falls_back_to_global() {
+        let global = Settings {
+            effort: Some("low".into()),
+            ..Default::default()
+        };
+        let project = Settings::default();
+        let merged = merge(global, project);
+        assert_eq!(merged.effort, Some("low".into()));
+    }
+
+    #[test]
+    fn test_merge_effort_none_when_both_unset() {
+        let merged = merge(Settings::default(), Settings::default());
+        assert_eq!(merged.effort, None);
     }
 }

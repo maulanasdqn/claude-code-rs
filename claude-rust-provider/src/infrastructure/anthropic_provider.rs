@@ -41,6 +41,7 @@ const OPUS_MODEL: &str = "claude-opus-4-6";
 pub(crate) const MAX_TOKENS: u32 = 4096;
 
 pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinking-2025-05-14,claude-code-20250219,prompt-caching-2024-07-31";
+pub(crate) const EFFORT_BETA_HEADER: &str = "effort-2025-11-24";
 pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
 
 pub struct AnthropicProvider {
@@ -50,6 +51,8 @@ pub struct AnthropicProvider {
     mode: Arc<AtomicU8>,
     thinking: Arc<AtomicBool>,
     max_tokens: AtomicU32,
+    thinking_budget: std::sync::Mutex<Option<u32>>,
+    effort: std::sync::Mutex<Option<String>>,
 }
 
 impl AnthropicProvider {
@@ -67,6 +70,8 @@ impl AnthropicProvider {
             mode,
             thinking: Arc::new(AtomicBool::new(false)), // off by default; enable with /think
             max_tokens: AtomicU32::new(MAX_TOKENS),
+            thinking_budget: std::sync::Mutex::new(None),
+            effort: std::sync::Mutex::new(None),
         }
     }
 
@@ -78,6 +83,24 @@ impl AnthropicProvider {
 
     pub fn set_max_tokens(&self, n: u32) {
         self.max_tokens.store(n, Ordering::Relaxed);
+    }
+
+    pub fn set_thinking_budget(&self, budget: u32) {
+        self.thinking.store(true, Ordering::Relaxed);
+        *self.thinking_budget.lock().unwrap() = Some(budget);
+    }
+
+    pub fn set_effort(&self, effort: &str) {
+        self.thinking.store(true, Ordering::Relaxed);
+        *self.effort.lock().unwrap() = Some(effort.to_string());
+    }
+
+    pub fn get_effort(&self) -> Option<String> {
+        self.effort.lock().ok().and_then(|g| g.clone())
+    }
+
+    pub fn clear_effort(&self) {
+        *self.effort.lock().unwrap() = None;
     }
 
     pub fn model_name(&self) -> String {
@@ -162,18 +185,26 @@ impl Provider for AnthropicProvider {
         let model_display = self.effective_model();
         let thinking = self.thinking.load(Ordering::Relaxed);
         let max_tokens = self.max_tokens.load(Ordering::Relaxed);
-        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens);
+        let thinking_budget = *self.thinking_budget.lock().unwrap();
+        let effort = self.effort.lock().unwrap().clone();
+        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens, thinking_budget, effort.as_deref());
 
         let request = match &self.credential {
             Credential::ClaudeCodeOAuth { access_token, .. } | Credential::AuthToken { token: access_token, .. } => {
                 let url = format!("{base_url}/v1/messages?beta=true");
                 tracing::debug!(model = %model_display, url = %url, "sending OAuth request");
 
+                let mut beta = OAUTH_BETA_HEADER.to_string();
+                if effort.is_some() {
+                    beta.push(',');
+                    beta.push_str(EFFORT_BETA_HEADER);
+                }
+
                 self.client
                     .post(&url)
                     .header("Authorization", format!("Bearer {access_token}"))
                     .header("anthropic-version", "2023-06-01")
-                    .header("anthropic-beta", OAUTH_BETA_HEADER)
+                    .header("anthropic-beta", beta)
                     .header("anthropic-dangerous-direct-browser-access", "true")
                     .header("User-Agent", "claude-cli/2.1.87 (external, cli)")
                     .header("x-app", "cli")
@@ -190,11 +221,15 @@ impl Provider for AnthropicProvider {
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json");
 
-                let beta = if thinking {
-                    "prompt-caching-2024-07-31,interleaved-thinking-2025-05-14"
+                let mut beta = if thinking {
+                    "prompt-caching-2024-07-31,interleaved-thinking-2025-05-14".to_string()
                 } else {
-                    "prompt-caching-2024-07-31"
+                    "prompt-caching-2024-07-31".to_string()
                 };
+                if effort.is_some() {
+                    beta.push(',');
+                    beta.push_str(EFFORT_BETA_HEADER);
+                }
                 rb = rb.header("anthropic-beta", beta);
                 rb
             }

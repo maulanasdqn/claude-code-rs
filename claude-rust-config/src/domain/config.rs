@@ -12,6 +12,8 @@ pub struct Settings {
     pub max_turns: Option<usize>,
     #[serde(default)]
     pub max_tokens: Option<u32>,
+    #[serde(default)]
+    pub effort: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
