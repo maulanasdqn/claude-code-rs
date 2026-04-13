@@ -394,6 +394,30 @@ claude-rust-errors
                  <- claude-rust-server
 ```
 
+## Roadmap
+
+### `/intern` — Multi-Model Orchestration
+
+We're building an `/intern` command that lets you bring in other AI models (OpenAI, Gemini, local LLMs, etc.) to assist with tasks — while Claude remains the maestro directing the work.
+
+Why "intern"? Because these external models act as interns: they do the legwork (research, drafting, grunt work) under Claude's supervision. Claude orchestrates, reviews, and makes the final calls. Think of it as a conductor leading an orchestra — the interns play their parts, but the maestro shapes the performance.
+
+**Planned capabilities:**
+
+- **Multi-provider support** — plug in OpenAI, Gemini, Mistral, Ollama, or any OpenAI-compatible API
+- **Task delegation** — Claude breaks down work and assigns sub-tasks to intern models
+- **Quality gate** — Claude reviews intern output before accepting it into the conversation
+- **Cost optimization** — route simple tasks to cheaper/faster models, reserve Claude for complex reasoning
+- **Configurable routing** — define which models handle which task types via settings
+
+```
+/intern openai "research the latest changes in the Rust borrow checker"
+/intern gemini "generate test cases for this function"
+/intern ollama:codellama "write boilerplate CRUD handlers"
+```
+
+Claude evaluates the results, requests revisions if needed, and integrates the final output — maintaining quality while leveraging the strengths of different models.
+
 ## Building
 
 ```bash
