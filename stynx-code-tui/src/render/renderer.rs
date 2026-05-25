@@ -5,7 +5,7 @@ use ratatui::widgets::Block;
 use crate::layout::MainLayout;
 use crate::state::{AppState, ModalKind};
 use crate::theme;
-use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, Sidebar, SlashPopover, ToastStack};
+use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, Sidebar, SlashPopover, ThinkingPanel, ToastStack};
 
 pub struct Renderer;
 
@@ -19,7 +19,22 @@ impl Renderer {
             full,
         );
 
-        let layout = MainLayout::split(full, state.sidebar.visible, state.input.line_count());
+        let thinking_lines = if state.is_streaming && !state.live_thinking.trim().is_empty() {
+            state
+                .live_thinking
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .count()
+        } else {
+            0
+        };
+
+        let layout = MainLayout::split(
+            full,
+            state.sidebar.visible,
+            state.input.line_count(),
+            thinking_lines,
+        );
 
         if let Some(sidebar_area) = layout.sidebar {
             frame.render_widget(Sidebar::new(&state.sidebar), sidebar_area);
@@ -30,6 +45,12 @@ impl Renderer {
                 .with_tool_details(state.tool_details),
             layout.messages,
         );
+        if let Some(thinking_area) = layout.thinking {
+            frame.render_widget(
+                ThinkingPanel::new(&state.live_thinking, state.spinner_frame),
+                thinking_area,
+            );
+        }
         frame.render_widget(InputBox::new(&state.input, !state.is_streaming), layout.input);
         if !state.input.slash_matches.is_empty() {
             frame.render_widget(SlashPopover::new(&state.input, layout.input), full);

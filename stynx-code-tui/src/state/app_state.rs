@@ -51,6 +51,10 @@ pub struct AppState {
     pub total_output: u64,
     pub recent_models: Vec<String>,
     pub tool_details: bool,
+    /// Live thinking text for the in-flight turn. Rendered in a dedicated
+    /// panel just above the input; archived into the last assistant message
+    /// once the turn completes.
+    pub live_thinking: String,
 }
 
 impl AppState {
@@ -94,6 +98,7 @@ impl AppState {
             total_output: 0,
             recent_models: Vec::new(),
             tool_details: true,
+            live_thinking: String::new(),
         }
     }
 
@@ -133,13 +138,7 @@ impl AppState {
             }
             EngineEvent::ThinkingDelta(text) => {
                 self.is_streaming = true;
-                match self.conversation.messages.last_mut() {
-                    Some(m) if m.role == "assistant" && m.is_streaming => m.thinking.push_str(&text),
-                    _ => self.conversation.messages.push(DisplayMessage {
-                        role: "assistant".to_string(), content: String::new(),
-                        thinking: text, tool_uses: Vec::new(), is_streaming: true,
-                    }),
-                }
+                self.live_thinking.push_str(&text);
             }
             EngineEvent::ToolStart { name, .. } => {
                 self.is_streaming = true;
@@ -199,7 +198,18 @@ impl AppState {
             }
             EngineEvent::TurnComplete => {
                 self.is_streaming = false;
-                if let Some(m) = self.conversation.messages.last_mut() { m.is_streaming = false; }
+                if let Some(m) = self.conversation.messages.last_mut() {
+                    m.is_streaming = false;
+                    if !self.live_thinking.is_empty() && m.role == "assistant" {
+                        if m.thinking.is_empty() {
+                            m.thinking = std::mem::take(&mut self.live_thinking);
+                        } else {
+                            m.thinking.push_str(&self.live_thinking);
+                            self.live_thinking.clear();
+                        }
+                    }
+                }
+                self.live_thinking.clear();
             }
             EngineEvent::Usage { input_tokens, output_tokens } => {
                 if input_tokens > 0 { self.total_input += input_tokens; }

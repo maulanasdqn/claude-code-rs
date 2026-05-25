@@ -14,6 +14,7 @@ pub mod sidebar;
 pub mod slash_popover;
 pub mod spinner;
 pub mod status_bar;
+pub mod thinking_panel;
 pub mod toast;
 pub mod tool_progress;
 
@@ -28,4 +29,5 @@ pub use sidebar::Sidebar;
 pub use slash_popover::SlashPopover;
 pub use spinner::Spinner;
 pub use status_bar::StatusBar;
+pub use thinking_panel::ThinkingPanel;
 pub use toast::ToastStack;

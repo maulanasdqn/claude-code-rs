@@ -193,18 +193,14 @@ impl<'a> Widget for MessageList<'a> {
                     }
                 }
                 _ => {
-                    if !msg.thinking.is_empty() {
-                        let think_lines: Vec<&str> = msg.thinking.lines().collect();
-                        let show_lines = if msg.is_streaming {
-                            &think_lines[think_lines.len().saturating_sub(3)..]
-                        } else {
-                            &think_lines[..]
-                        };
-                        let label = if msg.is_streaming { "  ◈ thinking..." } else { "  ◈ thinking" };
-                        lines.push(Line::from(Span::styled(label, Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC))));
-                        for raw in show_lines {
-                            lines.push(Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::MUTED()).add_modifier(Modifier::DIM))));
-                        }
+                    if !msg.thinking.is_empty() && !msg.is_streaming {
+                        let lc = msg.thinking.lines().count();
+                        lines.push(Line::from(Span::styled(
+                            format!("  ◈ thinking · {lc} lines"),
+                            Style::default()
+                                .fg(theme::MUTED())
+                                .add_modifier(Modifier::ITALIC | Modifier::DIM),
+                        )));
                     }
                     let mut in_code = false;
                     let mut in_mermaid = false;
@@ -328,14 +324,24 @@ impl<'a> Widget for MessageList<'a> {
                             tool.output_excerpt.as_slice()
                         };
 
+                        // Width available for the body text after the "      ┊ " prefix.
+                        let body_width = (area.width as usize).saturating_sub(10).max(20);
                         for body in body_lines {
+                            let cleaned = clean_tool_body_line(&tool.name, body);
+                            let truncated = if cleaned.chars().count() > body_width {
+                                let mut s: String = cleaned.chars().take(body_width - 1).collect();
+                                s.push('…');
+                                s
+                            } else {
+                                cleaned
+                            };
                             lines.push(Line::from(vec![
                                 Span::styled(
                                     "      ┊ ",
                                     Style::default().fg(theme::OVERLAY()),
                                 ),
                                 Span::styled(
-                                    body.clone(),
+                                    truncated,
                                     Style::default()
                                         .fg(theme::MUTED())
                                         .add_modifier(Modifier::DIM),
@@ -374,6 +380,38 @@ impl<'a> Widget for MessageList<'a> {
 
         Paragraph::new(lines).scroll((offset as u16, 0)).wrap(Wrap { trim: false }).render(area, buf);
     }
+}
+
+/// Per-tool cleanup of body excerpt lines before they hit the renderer.
+fn clean_tool_body_line(tool: &str, raw: &str) -> String {
+    let line = raw.trim_end();
+    if tool == "read" {
+        // The read tool emits "  <line>\t<content>". Strip the prefix so the
+        // body reads as code.
+        if let Some(rest) = strip_read_prefix(line) {
+            return rest.to_string();
+        }
+    }
+    line.to_string()
+}
+
+fn strip_read_prefix(s: &str) -> Option<&str> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() && bytes[i] == b' ' { i += 1; }
+    let digits_start = i;
+    while i < bytes.len() && bytes[i].is_ascii_digit() { i += 1; }
+    if i == digits_start { return None; }
+    if i >= bytes.len() { return None; }
+    if bytes[i] == b'\t' { return Some(&s[i + 1..]); }
+    if bytes[i] == b' ' {
+        let mut j = i;
+        while j < bytes.len() && bytes[j] == b' ' { j += 1; }
+        if j - i >= 2 {
+            return Some(&s[j..]);
+        }
+    }
+    None
 }
 
 const LOGO_ART: &[&str] = &[
