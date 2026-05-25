@@ -1,0 +1,24 @@
+[package]
+name = "stynx-code-server"
+version = "2.0.2"
+edition = "2024"
+description = "HTTP server with chat and health endpoints"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/stynx-code"
+readme = "../README.md"
+
+[dependencies]
+stynx-code-auth = { workspace = true }
+stynx-code-config = { workspace = true }
+stynx-code-errors = { workspace = true }
+stynx-code-types = { workspace = true }
+stynx-code-tools = { workspace = true }
+stynx-code-provider = { workspace = true }
+stynx-code-engine = { workspace = true }
+axum = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

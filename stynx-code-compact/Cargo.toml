@@ -1,0 +1,19 @@
+[package]
+name = "stynx-code-compact"
+version = "2.0.2"
+edition = "2024"
+description = "Context compaction and conversation summarization"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/stynx-code"
+readme = "../README.md"
+
+[dependencies]
+stynx-code-errors = { workspace = true }
+stynx-code-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+regex = { workspace = true }

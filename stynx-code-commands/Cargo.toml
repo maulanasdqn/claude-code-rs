@@ -1,0 +1,16 @@
+[package]
+name = "stynx-code-commands"
+version = "2.0.2"
+edition = "2024"
+description = "Slash commands and file reference expansion"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/stynx-code"
+readme = "../README.md"
+
+[dependencies]
+stynx-code-config = { workspace = true }
+stynx-code-errors = { workspace = true }
+stynx-code-types = { workspace = true }
+regex = { workspace = true }
+tokio = { workspace = true }
+base64 = { workspace = true }

@@ -277,292 +277,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
-name = "claude-rust"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "base64",
- "clap",
- "claude-rust-auth",
- "claude-rust-commands",
- "claude-rust-config",
- "claude-rust-engine",
- "claude-rust-errors",
- "claude-rust-memory",
- "claude-rust-permission",
- "claude-rust-provider",
- "claude-rust-tools",
- "claude-rust-tui",
- "claude-rust-types",
- "crossterm",
- "indicatif",
- "serde",
- "serde_json",
- "syntect",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "claude-rust-auth"
-version = "2.0.2"
-dependencies = [
- "base64",
- "claude-rust-errors",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-bridge"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64",
- "claude-rust-errors",
- "claude-rust-types",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-commands"
-version = "2.0.2"
-dependencies = [
- "base64",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "regex",
- "tokio",
-]
-
-[[package]]
-name = "claude-rust-compact"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-errors",
- "claude-rust-types",
- "futures",
- "regex",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-config"
-version = "2.0.2"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "claude-rust-coordinator"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-engine"
-version = "2.0.2"
-dependencies = [
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-tools",
- "claude-rust-types",
- "futures",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-errors"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "axum",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-memory"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "claude-rust-permission"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "crossterm",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "claude-rust-plugins"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-provider"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-auth",
- "claude-rust-errors",
- "claude-rust-types",
- "futures",
- "reqwest",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-server"
-version = "2.0.2"
-dependencies = [
- "axum",
- "claude-rust-auth",
- "claude-rust-config",
- "claude-rust-engine",
- "claude-rust-errors",
- "claude-rust-provider",
- "claude-rust-tools",
- "claude-rust-types",
- "futures",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "claude-rust-services"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-skills"
-version = "2.0.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "regex",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-tools"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "crossterm",
- "glob",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "claude-rust-tui"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-config",
- "claude-rust-errors",
- "claude-rust-types",
- "crossterm",
- "ratatui",
- "serde",
- "serde_json",
- "syntect",
- "tokio",
- "tracing",
- "unicode-width 0.2.0",
-]
-
-[[package]]
-name = "claude-rust-types"
-version = "2.0.2"
-dependencies = [
- "async-trait",
- "claude-rust-errors",
- "futures",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -728,6 +442,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "either"
@@ -2062,6 +1782,293 @@ dependencies = [
  "quote",
  "rustversion",
  "syn",
+]
+
+[[package]]
+name = "stynx-code"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "base64",
+ "clap",
+ "crossterm",
+ "dotenvy",
+ "indicatif",
+ "serde",
+ "serde_json",
+ "stynx-code-auth",
+ "stynx-code-commands",
+ "stynx-code-config",
+ "stynx-code-engine",
+ "stynx-code-errors",
+ "stynx-code-memory",
+ "stynx-code-permission",
+ "stynx-code-provider",
+ "stynx-code-tools",
+ "stynx-code-tui",
+ "stynx-code-types",
+ "syntect",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "stynx-code-auth"
+version = "2.0.2"
+dependencies = [
+ "base64",
+ "serde",
+ "serde_json",
+ "sha2",
+ "stynx-code-errors",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-bridge"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64",
+ "serde",
+ "serde_json",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-commands"
+version = "2.0.2"
+dependencies = [
+ "base64",
+ "regex",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+]
+
+[[package]]
+name = "stynx-code-compact"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "futures",
+ "regex",
+ "serde",
+ "serde_json",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-config"
+version = "2.0.2"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "stynx-code-coordinator"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-engine"
+version = "2.0.2"
+dependencies = [
+ "futures",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-tools",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-errors"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "axum",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-memory"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+]
+
+[[package]]
+name = "stynx-code-permission"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "crossterm",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+]
+
+[[package]]
+name = "stynx-code-plugins"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-provider"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "stynx-code-auth",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-server"
+version = "2.0.2"
+dependencies = [
+ "axum",
+ "futures",
+ "serde",
+ "serde_json",
+ "stynx-code-auth",
+ "stynx-code-config",
+ "stynx-code-engine",
+ "stynx-code-errors",
+ "stynx-code-provider",
+ "stynx-code-tools",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "stynx-code-services"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-skills"
+version = "2.0.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "regex",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-tools"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "crossterm",
+ "glob",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "stynx-code-tui"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "crossterm",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "stynx-code-config",
+ "stynx-code-errors",
+ "stynx-code-types",
+ "syntect",
+ "tokio",
+ "tracing",
+ "unicode-width 0.2.0",
+]
+
+[[package]]
+name = "stynx-code-types"
+version = "2.0.2"
+dependencies = [
+ "async-trait",
+ "futures",
+ "serde",
+ "serde_json",
+ "stynx-code-errors",
 ]
 
 [[package]]

@@ -20,13 +20,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Tier 0: no internal deps
-      - name: Publish claude-rust-errors
-        run: cargo publish -p claude-rust-errors --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-errors
+        run: cargo publish -p stynx-code-errors --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-config
-        run: cargo publish -p claude-rust-config --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-config
+        run: cargo publish -p stynx-code-config --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -34,13 +34,13 @@ jobs:
         run: sleep 30
 
       # Tier 1: depends on errors only
-      - name: Publish claude-rust-types
-        run: cargo publish -p claude-rust-types --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-types
+        run: cargo publish -p stynx-code-types --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-auth
-        run: cargo publish -p claude-rust-auth --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-auth
+        run: cargo publish -p stynx-code-auth --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -48,63 +48,63 @@ jobs:
         run: sleep 30
 
       # Tier 2: depends on errors + config + types (and optionally auth)
-      - name: Publish claude-rust-tools
-        run: cargo publish -p claude-rust-tools --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-tools
+        run: cargo publish -p stynx-code-tools --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-memory
-        run: cargo publish -p claude-rust-memory --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-memory
+        run: cargo publish -p stynx-code-memory --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-permission
-        run: cargo publish -p claude-rust-permission --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-permission
+        run: cargo publish -p stynx-code-permission --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-commands
-        run: cargo publish -p claude-rust-commands --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-commands
+        run: cargo publish -p stynx-code-commands --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-services
-        run: cargo publish -p claude-rust-services --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-services
+        run: cargo publish -p stynx-code-services --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-compact
-        run: cargo publish -p claude-rust-compact --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-compact
+        run: cargo publish -p stynx-code-compact --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-coordinator
-        run: cargo publish -p claude-rust-coordinator --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-coordinator
+        run: cargo publish -p stynx-code-coordinator --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-bridge
-        run: cargo publish -p claude-rust-bridge --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-bridge
+        run: cargo publish -p stynx-code-bridge --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-plugins
-        run: cargo publish -p claude-rust-plugins --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-plugins
+        run: cargo publish -p stynx-code-plugins --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-skills
-        run: cargo publish -p claude-rust-skills --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-skills
+        run: cargo publish -p stynx-code-skills --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-tui
-        run: cargo publish -p claude-rust-tui --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-tui
+        run: cargo publish -p stynx-code-tui --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish claude-rust-provider
-        run: cargo publish -p claude-rust-provider --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-provider
+        run: cargo publish -p stynx-code-provider --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -112,8 +112,8 @@ jobs:
         run: sleep 30
 
       # Tier 3: depends on tools
-      - name: Publish claude-rust-engine
-        run: cargo publish -p claude-rust-engine --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-engine
+        run: cargo publish -p stynx-code-engine --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -121,8 +121,8 @@ jobs:
         run: sleep 30
 
       # Tier 4: depends on provider + engine + tools
-      - name: Publish claude-rust-server
-        run: cargo publish -p claude-rust-server --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code-server
+        run: cargo publish -p stynx-code-server --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -130,7 +130,7 @@ jobs:
         run: sleep 30
 
       # Tier 5: binary crate (depends on everything)
-      - name: Publish claude-rust (binary)
-        run: cargo publish -p claude-rust --no-verify || echo "Already published, skipping"
+      - name: Publish stynx-code (binary)
+        run: cargo publish -p stynx-code --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

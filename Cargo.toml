@@ -1,24 +1,24 @@
 [workspace]
 members = [
-    "claude-rust-errors",
-    "claude-rust-types",
-    "claude-rust-tools",
-    "claude-rust-provider",
-    "claude-rust-engine",
-    "claude-rust-server",
-    "claude-rust",
-    "claude-rust-auth",
-    "claude-rust-permission",
-    "claude-rust-commands",
-    "claude-rust-memory",
-    "claude-rust-config",
-    "claude-rust-services",
-    "claude-rust-compact",
-    "claude-rust-coordinator",
-    "claude-rust-bridge",
-    "claude-rust-plugins",
-    "claude-rust-skills",
-    "claude-rust-tui",
+    "stynx-code-errors",
+    "stynx-code-types",
+    "stynx-code-tools",
+    "stynx-code-provider",
+    "stynx-code-engine",
+    "stynx-code-server",
+    "stynx-code",
+    "stynx-code-auth",
+    "stynx-code-permission",
+    "stynx-code-commands",
+    "stynx-code-memory",
+    "stynx-code-config",
+    "stynx-code-services",
+    "stynx-code-compact",
+    "stynx-code-coordinator",
+    "stynx-code-bridge",
+    "stynx-code-plugins",
+    "stynx-code-skills",
+    "stynx-code-tui",
 ]
 resolver = "3"
 
@@ -45,22 +45,22 @@ sha2 = "0.10"
 ratatui = "0.29"
 unicode-width = "0.2"
 
-claude-rust-errors = { version = "2.0.2", path = "claude-rust-errors" }
-claude-rust-types = { version = "2.0.2", path = "claude-rust-types" }
-claude-rust-tools = { version = "2.0.2", path = "claude-rust-tools" }
-claude-rust-provider = { version = "2.0.2", path = "claude-rust-provider" }
-claude-rust-engine = { version = "2.0.2", path = "claude-rust-engine" }
-claude-rust-server = { version = "2.0.2", path = "claude-rust-server" }
-claude-rust = { version = "2.0.2", path = "claude-rust" }
-claude-rust-auth = { version = "2.0.2", path = "claude-rust-auth" }
-claude-rust-permission = { version = "2.0.2", path = "claude-rust-permission" }
-claude-rust-commands = { version = "2.0.2", path = "claude-rust-commands" }
-claude-rust-memory = { version = "2.0.2", path = "claude-rust-memory" }
-claude-rust-config = { version = "2.0.2", path = "claude-rust-config" }
-claude-rust-services = { version = "2.0.2", path = "claude-rust-services" }
-claude-rust-compact = { version = "2.0.2", path = "claude-rust-compact" }
-claude-rust-coordinator = { version = "2.0.2", path = "claude-rust-coordinator" }
-claude-rust-bridge = { version = "2.0.2", path = "claude-rust-bridge" }
-claude-rust-plugins = { version = "2.0.2", path = "claude-rust-plugins" }
-claude-rust-skills = { version = "2.0.2", path = "claude-rust-skills" }
-claude-rust-tui = { version = "2.0.2", path = "claude-rust-tui" }
+stynx-code-errors = { version = "2.0.2", path = "stynx-code-errors" }
+stynx-code-types = { version = "2.0.2", path = "stynx-code-types" }
+stynx-code-tools = { version = "2.0.2", path = "stynx-code-tools" }
+stynx-code-provider = { version = "2.0.2", path = "stynx-code-provider" }
+stynx-code-engine = { version = "2.0.2", path = "stynx-code-engine" }
+stynx-code-server = { version = "2.0.2", path = "stynx-code-server" }
+stynx-code = { version = "2.0.2", path = "stynx-code" }
+stynx-code-auth = { version = "2.0.2", path = "stynx-code-auth" }
+stynx-code-permission = { version = "2.0.2", path = "stynx-code-permission" }
+stynx-code-commands = { version = "2.0.2", path = "stynx-code-commands" }
+stynx-code-memory = { version = "2.0.2", path = "stynx-code-memory" }
+stynx-code-config = { version = "2.0.2", path = "stynx-code-config" }
+stynx-code-services = { version = "2.0.2", path = "stynx-code-services" }
+stynx-code-compact = { version = "2.0.2", path = "stynx-code-compact" }
+stynx-code-coordinator = { version = "2.0.2", path = "stynx-code-coordinator" }
+stynx-code-bridge = { version = "2.0.2", path = "stynx-code-bridge" }
+stynx-code-plugins = { version = "2.0.2", path = "stynx-code-plugins" }
+stynx-code-skills = { version = "2.0.2", path = "stynx-code-skills" }
+stynx-code-tui = { version = "2.0.2", path = "stynx-code-tui" }

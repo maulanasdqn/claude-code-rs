@@ -1,3 +1,7 @@
 /target
 /.omc
 /docs
+.env
+.env.local
+.env.*.local
+.direnv

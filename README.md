@@ -1,430 +1,160 @@
-# claude-rust
+# stynx-code
 
-A Rust reimplementation of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) -- the agentic tool-use loop backed by the Anthropic streaming API.
+An interactive AI coding assistant for the terminal — multi-provider, tool-using, fast, and yours.
 
-The TypeScript original has ~1,900 files. This project distills it to its essence: a multi-crate Rust workspace that streams responses from the Anthropic Messages API, detects tool-use requests, executes tools locally, feeds results back, and loops until the model is done.
+```
+  ____ _____ __   ___   __ __
+ / ___|_   _\ \ / / \ | \ \ / /
+ \___ \ | |  \ V /|  \| |\ V /
+  ___) || |   | | | |\  | | |
+ |____/ |_|   |_| |_| \_| |_|
+               c o d e
+```
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+## What it is
+
+`stynx-code` is a self-contained TUI for getting work done with an LLM. It speaks Anthropic's Claude API natively and any OpenAI-compatible endpoint (DeepSeek, OpenAI, OpenRouter, Together, local Ollama, …) for cheap delegation. It runs an autonomous tool-using loop with bash / file edit / glob / grep / web fetch and a permission system that prompts you only when you want it to.
+
+Highlights:
+
+- **Modern terminal UI** — sidebar, command palette, model picker, session list, theme switcher (rose-pine, catppuccin, tokyo-night, gruvbox), mouse + bracketed paste, `@`-file mentions, multi-line input, slash-command popover, toast notifications, diff renderer for file edits.
+- **Intern mode** — Claude as the senior, DeepSeek (or any OpenAI-compat model) as the intern. Senior delegates focused subtasks via the `delegate_to_intern` tool or `/intern <task>` slash command.
+- **Permission-first** — Normal / Auto-accept / Plan / Bypass modes. Per-tool allow rules. Inline confirmation modal — no terminal mode-switching.
+- **First-class skills** — drop a markdown file under `.claude/skills/` and it shows up as a slash command.
+- **Sessions** — automatic per-project persistence at `~/.stynx-code/projects/<slug>/session.json`.
+- **Hooks** — `session-start`, `pre-tool-use`, `post-tool-use` shell hooks for integrations.
+
+## Install
+
+```bash
+# from source, with cargo
+cargo install --path stynx-code
+
+# or with nix
+nix develop
+cargo build --release --workspace
+```
+
+The binary is `stynx-code`.
+
+## Quickstart
+
+```bash
+# interactive TUI (the main mode)
+stynx-code
+
+# one-shot prompt
+stynx-code -p "find every TODO comment under src/ and group by file"
+
+# pipe mode — read stdin as the prompt
+echo "explain this file" | stynx-code
+
+# JSON output for scripting
+stynx-code --json -p "list files modified in the last commit"
+```
+
+## Configuration
+
+**Anthropic credentials** — uses Claude Code's OAuth token (`~/.claude/`) if present, falls back to `ANTHROPIC_API_KEY`. Run `/login` for instructions.
+
+**Intern (OpenAI-compatible) provider** — set in `.env` at the project root or as shell env:
+
+```bash
+DEEPSEEK_API_KEY=sk-...
+# optional overrides:
+DEEPSEEK_MODEL=deepseek-chat                  # default
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+```
+
+Add `.env` to your `.gitignore`.
+
+**Settings file** — `~/.config/stynx-code/settings.json` (or project-local `.stynx/settings.json`) for permission rules, model defaults, hooks. Run `/config` to see the merged view.
+
+## Daily flow
+
+| Key            | Action                                       |
+|----------------|----------------------------------------------|
+| `Enter`        | Submit message                               |
+| `Shift+Enter`  | Newline (also `Alt+Enter`, `Ctrl+J`)         |
+| `Esc`          | Interrupt streaming · or vim normal mode     |
+| `Ctrl+P`       | Command palette                              |
+| `Ctrl+S`       | Session list                                 |
+| `Ctrl+M`       | Switch model                                 |
+| `Ctrl+B`       | Toggle sidebar                               |
+| `Ctrl+T`       | Toggle tool block details                    |
+| `Shift+Tab`    | Cycle permission mode                        |
+| `Shift+↑/↓`    | Scroll messages by line (works while typing) |
+| `PgUp/PgDn`    | Scroll by page                               |
+| `@`            | File-mention picker                          |
+| `/`            | Slash-command popover                        |
+| `Ctrl+C`       | Quit                                         |
+
+Mouse scroll wheel works in any terminal with mouse capture.
+
+## Slash commands
+
+`/help`, `/status`, `/version`, `/quit`, `/exit`
+`/model [name]`, `/fast`, `/effort low|medium|high|max`, `/think`
+`/mode`, `/plan [task]`
+`/compact`, `/cost`, `/usage`
+`/diff`, `/status`, `/review`, `/commit`
+`/memory`, `/init`, `/add <path>`, `/files`, `/skills`
+`/session`, `/rewind [n]`, `/export`, `/copy`, `/undo [n]`
+`/config`, `/permissions`
+`/intern <task>` — hand work to the intern model directly
+`!<command>` — run a shell command without leaving the TUI
+
 ## Architecture
 
-Every crate follows **Clean Architecture** with `domain/`, `application/`, and `infrastructure/` layers.
+Every crate follows Clean Architecture with `domain/`, `application/`, and `infrastructure/` layers.
 
 ```
-claude-rust-auth        - Credential resolution (macOS Keychain / Linux keyring OAuth + API key fallback)
-claude-rust-config      - Settings loading and merging (global + project)
-claude-rust-errors      - AppError enum, axum IntoResponse impl
-claude-rust-types       - Shared traits (Tool, Provider, PermissionChecker) and message types
-claude-rust-tools       - Tool implementations and ToolRegistry (+ MCP support)
-claude-rust-provider    - Anthropic HTTP + SSE streaming client with thinking support
-claude-rust-engine      - Agentic tool-use loop with streaming callbacks, retry, and sub-agents
-claude-rust-permission  - Config-aware permission checker with interactive prompts and skill scoping
-claude-rust-memory      - Session persistence (JSON files)
-claude-rust-commands    - Slash commands and @file references
-claude-rust-compact     - 4-stage conversation compaction pipeline (auto, micro, session memory, full)
-claude-rust-services    - Platform services (analytics, notifications, LSP, token estimation, rate limiting, diagnostics)
-claude-rust             - Interactive terminal REPL (the main binary)
-claude-rust-server      - axum HTTP server (POST /chat, GET /health)
+stynx-code/                main binary, app loop, CLI surface
+stynx-code-types/          shared types: Provider, Tool, Message, Conversation
+stynx-code-errors/         AppError + AppResult
+stynx-code-config/         settings loader, theme/keybind config
+stynx-code-auth/           credential resolution (Anthropic OAuth / env keys)
+stynx-code-provider/       AnthropicProvider + OpenAiProvider (DeepSeek etc.)
+stynx-code-engine/         streaming tool-use loop, max-turns, compact
+stynx-code-tools/          bash, read, write, edit, glob, grep, web_fetch, …
+stynx-code-permission/     allow/deny rules + interactive prompts (bridge to TUI)
+stynx-code-memory/         per-project session persistence
+stynx-code-commands/       slash-command handlers
+stynx-code-compact/        conversation summarization
+stynx-code-coordinator/    parallel sub-agent orchestration
+stynx-code-skills/         user-defined skill loading
+stynx-code-plugins/        plugin host (skills + MCP)
+stynx-code-bridge/         server bridge for IDE/web frontends
+stynx-code-server/         optional HTTP/SSE server surface
+stynx-code-services/       cross-cutting services (tips, telemetry, …)
+stynx-code-tui/            ratatui-based terminal UI
 ```
 
-### Core Loop
-
-```
-user input
-  -> expand @file references + image attachments
-  -> build Conversation
-  -> provider.stream() (with extended thinking if enabled)
-  -> accumulate StreamEvents
-  -> if stop_reason == ToolUse -> check permission -> execute tools -> append results -> loop
-  -> if overloaded -> retry with exponential backoff (up to 3 attempts)
-  -> else -> return final text -> auto-save session
-```
-
-Bounded by `max_turns` (default 20). Tool errors are sent back as `is_error: true` so the model can self-correct.
-
-## Authentication
-
-Credentials are resolved automatically in this order:
-
-1. **`ANTHROPIC_API_KEY` environment variable** -- uses `api.anthropic.com` with `x-api-key` header.
-2. **System Keychain** -- reads the OAuth token stored by Claude Code. Uses `api.claude.ai` with `Authorization: Bearer` header. Works on macOS (Keychain) and Linux (secret-tool/keyring).
-
-If you already have Claude Code installed and logged in, it just works -- no extra configuration needed.
-
-## Features
-
-### Interactive CLI
-
-- Rich terminal UI with bordered input box, permission mode badges, and git branch display
-- Session persistence with resume on startup
-- Streaming output with `indicatif` progress spinners and task progress display
-- Vi mode editing (toggle with `/vim`)
-- Command autocomplete with dropdown suggestions
-- History search (`Ctrl+R`)
-- Image paste from clipboard (`Ctrl+V`) with `[Image #N]` markers
-- Background task execution (`Ctrl+B`)
-- Stash/restore input buffer (`Ctrl+S`)
-- `@file` references: type `@Cargo.toml` to inject file contents
-- Interactive permission prompts for dangerous tool calls
-- Retry with exponential backoff on API overload
-- Extended thinking support (`/think`)
-
-### Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/help` | List available commands |
-| `/model [name]` | Show or switch model (interactive picker if no arg) |
-| `/fast` | Toggle fast mode (Haiku) |
-| `/mode` | Cycle permission mode (Normal / Auto-accept / Plan / Bypass) |
-| `/plan [task]` | Enter plan mode for read-only exploration |
-| `/think` | Toggle extended thinking |
-| `/effort [level]` | Set effort level (low / medium / high / max) |
-| `/clear` | Clear conversation history |
-| `/compact` | Compact conversation to save context |
-| `/diff` | Show git diff |
-| `/status` | Show git status |
-| `/review` | Review uncommitted changes |
-| `/commit` | Commit staged changes |
-| `/memory` | Show CLAUDE.md files |
-| `/export` | Export conversation to markdown |
-| `/rewind [n]` | Rewind conversation by N messages |
-| `/add <path>` | Pin a file to all future messages |
-| `/files` | List pinned files |
-| `/config` | Show current settings |
-| `/permissions` | Show permission rules |
-| `/usage` | Show plan usage (OAuth only) |
-| `/doctor` | Diagnostic checks |
-| `/vim` | Toggle vi mode |
-| `/copy` | Copy last response to clipboard |
-| `/login` / `/logout` | Manage authentication |
-| `/version` | Show version |
-| `/quit` or `/exit` | End the session |
-
-### Custom Skills & Commands
-
-Load custom slash commands from markdown files with YAML frontmatter:
-
-**Skills** (`~/.claude/skills/` or `.claude/skills/`):
-```
-~/.claude/skills/
-  my-skill/
-    SKILL.md       # Directory format (preferred)
-```
-
-**Legacy Commands** (`~/.claude/commands/` or `.claude/commands/`):
-```
-~/.claude/commands/
-  smart-push.md    # Standalone .md format
-  my-tool/
-    SKILL.md       # Directory format also supported
-```
-
-#### Frontmatter Format
-
-```yaml
----
-name: smart-push
-description: Intelligent git workflow with grouped commits
-argument-hint: [optional commit message]
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push:*)
-when_to_use: Use when the user wants to commit and push changes
-user-invocable: true
----
-
-Your prompt template here. Use $ARGUMENTS for user-provided arguments.
-```
-
-- **`allowed-tools`**: Auto-approve matching tool calls during skill execution
-- **`when_to_use`**: Included in system prompt so the model can suggest the skill
-- **`user-invocable`**: Set to `false` to hide from autocomplete (default: `true`)
-
-### Built-in Tools
-
-| Tool | Permission | Description |
-|------|-----------|-------------|
-| `bash` | Dangerous | Execute a shell command |
-| `read` | ReadOnly | Read a file with line numbers |
-| `file_write` | Dangerous | Create or overwrite a file |
-| `file_edit` | Dangerous | Find-and-replace edit in a file |
-| `glob` | ReadOnly | Find files matching a glob pattern |
-| `grep` | ReadOnly | Search file contents with regex |
-| `web_fetch` | Dangerous | Fetch a URL and extract content |
-| `web_search` | Dangerous | Search the web |
-| `ask_user_question` | ReadOnly | Ask the user a question |
-| `todo_write` | ReadOnly | Create/update task list with progress display |
-| `todo_read` | ReadOnly | Read current task list |
-| `enter_plan_mode` / `exit_plan_mode` | ReadOnly | Plan mode transitions |
-| `agent` | Dangerous | Spawn an autonomous sub-agent |
-| `explore` | ReadOnly | Spawn a read-only exploration sub-agent |
-| MCP tools | Varies | External tools via Model Context Protocol |
-
-### Configuration
-
-Settings are loaded from `~/.claude/settings.json` (global) and `.claude/settings.json` (project), with project overriding global:
-
-```json
-{
-  "model": "claude-sonnet-4-6",
-  "max_turns": 20,
-  "max_tokens": 16384,
-  "permissions": {
-    "allow": ["read", "glob", "grep", "bash(git *)"],
-    "deny": ["bash(rm -rf *)"]
-  },
-  "hooks": {
-    "PreToolUse": [{ "matcher": "bash", "command": "echo $CLAUDE_TOOL_INPUT" }],
-    "PostToolUse": [{ "command": "notify-send 'Tool done'" }],
-    "SessionStart": [{ "command": "echo 'Session started'" }],
-    "Stop": [{ "command": "echo 'Session ended'" }]
-  }
-}
-```
-
-### CLAUDE.md
-
-Project instructions are loaded hierarchically from `CLAUDE.md` and `.claude/CLAUDE.md` files, walking up from the current directory to `~/.claude/CLAUDE.md`. All found files are concatenated into the system prompt.
-
-### MCP (Model Context Protocol)
-
-External tool servers are configured via `.mcp.json`, `.claude/mcp.json`, or `~/.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "npx",
-      "args": ["-y", "my-mcp-server"],
-      "env": { "API_KEY": "..." }
-    }
-  }
-}
-```
-
-### HTTP Server
-
-- `GET /health` -- health check
-- `POST /chat` -- send messages and get responses
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | (auto-detected) | API key. Falls back to system keychain if unset |
-| `ANTHROPIC_BASE_URL` | auto | Override the API base URL |
-| `MODEL` | `claude-sonnet-4-6` | Model to use |
-| `RUST_LOG` | `warn` (cli) / `info` (server) | Log level filter |
-
-## Prerequisites
-
-- Rust 1.85+ (2024 edition)
-- One of:
-  - An [Anthropic API key](https://console.anthropic.com/), or
-  - An existing Claude Code installation (credentials are read from the system keychain)
-
-## Quick Start
-
-### Install from source
+## Intern mode in 30 seconds
 
 ```bash
-git clone https://github.com/maulanasdqn/claude-rust.git
-cd claude-rust
-cargo install --path claude-rust
+# .env
+DEEPSEEK_API_KEY=sk-...
+
+# in stynx-code
+> refactor every println! in src/foo.rs to tracing::info!; hand it to the intern
 ```
 
-### Run
+Claude calls `delegate_to_intern` with a focused task description. The intern (DeepSeek) runs with a restricted toolset (bash/read/write/edit/glob/grep — no recursive sub-agents) and returns `Summary / Files changed / Output`. Claude reviews and integrates.
 
-```bash
-# Using your existing Claude Code session (no env var needed)
-claude-rust
+You can also call it directly: `/intern list every public function in stynx-code-tui`.
 
-# Or with an explicit API key
-ANTHROPIC_API_KEY=sk-ant-... claude-rust
-```
+## Hooks
 
-### Keyboard Shortcuts
+Drop scripts referenced by `settings.json::hooks`:
 
-| Shortcut | Action |
-|----------|--------|
-| `Enter` | Submit message |
-| `Shift+Enter` | New line |
-| `Ctrl+C` | Cancel current operation |
-| `Ctrl+R` | Search history |
-| `Ctrl+V` | Paste image from clipboard |
-| `Ctrl+B` | Run current input as background task |
-| `Ctrl+S` | Stash/restore input buffer |
-| `Up/Down` | Navigate history / autocomplete suggestions |
-| `Tab` | Accept autocomplete suggestion |
-| `Esc` | Dismiss suggestions |
+- `session-start` — run when a session begins; output is shown to the user
+- `pre-tool-use` — run before each tool execution; can inject context
+- `post-tool-use` — run after each tool execution; can post-process
 
-## Project Structure
-
-```
-.
-├── Cargo.toml                          Workspace root
-├── claude-rust/                        CLI binary
-│   └── src/
-│       ├── main.rs
-│       └── infrastructure/
-│           ├── app_loop.rs             Main REPL loop
-│           ├── skills.rs               Skill/command loader
-│           ├── command_handler.rs       Slash command dispatcher
-│           ├── command_extras/          Review, commit, export, memory
-│           ├── run_engine.rs            Engine runner with progress display
-│           ├── event_renderer/          Streaming event rendering
-│           └── terminal/
-│               ├── input.rs            Input box rendering
-│               ├── input_raw.rs        Raw mode input + clipboard
-│               ├── input_handler.rs    Key event processing + vi mode
-│               ├── input_suggest.rs    Command autocomplete
-│               ├── input_search.rs     History search (Ctrl+R)
-│               ├── input_select.rs     Interactive list picker
-│               ├── banner.rs           Startup banner
-│               └── system_prompt.rs    System prompt builder
-├── claude-rust-auth/                   Credential resolution
-│   └── src/
-│       ├── domain/credential.rs
-│       ├── application/resolve_credential.rs
-│       └── infrastructure/keychain_provider.rs
-├── claude-rust-config/                 Settings loading + merging
-│   └── src/
-│       ├── domain/config.rs            Settings, Hooks, Permissions structs
-│       └── application/load_config.rs  Global + project merge
-├── claude-rust-errors/
-│   └── src/lib.rs                      AppError, IntoResponse
-├── claude-rust-types/
-│   └── src/domain/
-│       ├── message.rs                  Message, ContentBlock, Conversation
-│       ├── tool.rs                     Tool trait, PermissionLevel
-│       ├── provider.rs                 Provider trait, StreamEvent
-│       └── permission.rs              PermissionChecker trait, AllowAll
-├── claude-rust-tools/
-│   └── src/
-│       ├── application/registry.rs     ToolRegistry
-│       └── infrastructure/
-│           ├── bash_tool.rs            Shell execution
-│           ├── read_tool.rs            File reading
-│           ├── file_write_tool.rs      File creation
-│           ├── file_edit_tool.rs       Find-and-replace editing
-│           ├── glob_tool.rs            File pattern matching
-│           ├── grep_tool.rs            Content search
-│           ├── web_fetch_tool.rs       URL fetching
-│           ├── web_search_tool.rs      Web search
-│           ├── ask_user_tool.rs        Interactive questions
-│           ├── todo_write_tool.rs      Task management
-│           ├── todo_read_tool.rs       Task reading
-│           ├── plan_mode_tool.rs       Plan mode enter/exit
-│           ├── mcp_tool.rs             MCP external tools
-│           └── todo_store.rs           Task state store
-├── claude-rust-provider/
-│   └── src/infrastructure/
-│       ├── anthropic_provider.rs       Streaming client + thinking
-│       ├── request_builder.rs          API request serialization
-│       └── sse_parser.rs              Server-sent events parser
-├── claude-rust-engine/
-│   └── src/application/
-│       ├── query_engine.rs             Agentic tool-use loop
-│       ├── tool_executor.rs            Permission-checked execution
-│       ├── hook_runner.rs              Pre/Post tool hooks
-│       └── undo.rs                     File edit undo stack
-├── claude-rust-permission/
-│   └── src/infrastructure/
-│       ├── config_aware_checker.rs     Config + skill-scoped permissions
-│       └── terminal_checker.rs         Interactive y/n prompts
-├── claude-rust-compact/                Conversation compaction pipeline
-│   └── src/
-│       ├── lib.rs                      CompactionPipeline (4-stage)
-│       ├── auto_compact.rs             Token threshold check
-│       ├── micro_compact.rs            Truncate oversized tool results
-│       ├── session_memory_compact.rs   Extract key memories before discard
-│       ├── full_compact.rs             Provider-based summarization
-│       ├── grouping.rs                 MessageGroup utilities
-│       └── prompt.rs                   Compaction prompt templates
-├── claude-rust-services/               Platform services
-│   └── src/
-│       ├── analytics/                  Usage analytics
-│       ├── notifications/              System notifications
-│       ├── lsp/                        LSP integration
-│       ├── token_estimation/           Token counting utilities
-│       ├── tool_use_summary/           Tool call summarization
-│       ├── rate_limit/                 API rate limiting
-│       ├── prevent_sleep/              System sleep prevention
-│       ├── plugin_registry/            Plugin management
-│       ├── session_memory/             In-memory session state
-│       └── diagnostics/               Health diagnostics
-├── claude-rust-memory/
-│   └── src/
-│       ├── domain/session_repository.rs
-│       ├── application/{save,load}_session.rs
-│       └── infrastructure/file_session_repository.rs
-├── claude-rust-commands/
-│   └── src/
-│       ├── domain/command.rs           SlashCommand enum
-│       ├── application/
-│       │   ├── parse_command.rs
-│       │   ├── execute_command.rs
-│       │   └── expand_references.rs    @file and image expansion
-│       ├── infrastructure/handlers/
-│       └── tests/
-└── claude-rust-server/
-    └── src/
-        ├── main.rs
-        └── infrastructure/http/
-            ├── routes.rs
-            ├── handlers.rs
-            └── dto.rs
-```
-
-### Dependency DAG
-
-```
-claude-rust-errors
-  <- claude-rust-types
-       <- claude-rust-tools
-       <- claude-rust-permission
-  <- claude-rust-auth
-       <- claude-rust-provider
-  <- claude-rust-config
-  <- claude-rust-memory
-  <- claude-rust-compact
-  <- claude-rust-services
-  <- claude-rust-commands
-            <- claude-rust-engine
-                 <- claude-rust (CLI)
-                 <- claude-rust-server
-```
-
-## Roadmap
-
-### `/intern` — Multi-Model Orchestration
-
-We're building an `/intern` command that lets you bring in other AI models (OpenAI, Gemini, local LLMs, etc.) to assist with tasks — while Claude remains the maestro directing the work.
-
-Why "intern"? Because these external models act as interns: they do the legwork (research, drafting, grunt work) under Claude's supervision. Claude orchestrates, reviews, and makes the final calls. Think of it as a conductor leading an orchestra — the interns play their parts, but the maestro shapes the performance.
-
-**Planned capabilities:**
-
-- **Multi-provider support** — plug in OpenAI, Gemini, Mistral, Ollama, or any OpenAI-compatible API
-- **Task delegation** — Claude breaks down work and assigns sub-tasks to intern models
-- **Quality gate** — Claude reviews intern output before accepting it into the conversation
-- **Cost optimization** — route simple tasks to cheaper/faster models, reserve Claude for complex reasoning
-- **Configurable routing** — define which models handle which task types via settings
-
-```
-/intern openai "research the latest changes in the Rust borrow checker"
-/intern gemini "generate test cases for this function"
-/intern ollama:codellama "write boilerplate CRUD handlers"
-```
-
-Claude evaluates the results, requests revisions if needed, and integrates the final output — maintaining quality while leveraging the strengths of different models.
-
-## Building
-
-```bash
-cargo build --workspace
-cargo build --workspace --release
-cargo test --workspace
-```
+Each hook receives the relevant JSON on stdin and prints text to stdout.
 
 ## License
 

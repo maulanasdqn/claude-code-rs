@@ -1,0 +1,40 @@
+use stynx_code_types::Conversation;
+
+pub enum SlashCommand {
+    Help,
+    Clear,
+    Compact,
+    Cost,
+    Model(String),
+    Mode,
+    Diff,
+    Status,
+    Doctor,
+    Config,
+    Permissions,
+    Session(String),
+    Plan,
+    Think,
+    Add(String),
+    Files,
+    Memory,
+    Export,
+    Rewind(usize),
+    Review,
+    Commit,
+    Fast,
+    Effort(String),
+    Usage,
+    Copy,
+    Login,
+    Logout,
+    Vim,
+    Version,
+    Quit,
+}
+
+pub enum CommandResult {
+    Output(String),
+    ReplaceConversation(Conversation),
+    Quit,
+}

@@ -1,0 +1,324 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicU8;
+
+use stynx_code_config::HooksConfig;
+use stynx_code_engine::{EngineEvent, QueryEngine};
+use stynx_code_errors::AppResult;
+use stynx_code_types::{
+    Conversation, InterruptBehavior, Message, PermissionChecker, PermissionLevel, Role,
+    SearchReadInfo, Tool,
+};
+use stynx_code_tools::ToolRegistry;
+use serde_json::{Value, json};
+
+const AGENT_SYSTEM: &str = "You are a specialized sub-agent. Complete the given task efficiently and concisely. Use tools as needed. Report results clearly.";
+
+const EXPLORE_SYSTEM: &str = "You are a code exploration sub-agent. Analyze the codebase using read-only tools (read, glob, grep). Report findings clearly and concisely.";
+
+const INTERN_SYSTEM: &str = "You are an intern engineer assisting a senior engineer (Claude). \
+The senior delegates focused, well-scoped tasks to you. \
+DO THE WORK. Do not just gather context — actually execute the task. \
+If asked to update a file, you MUST call file_write or file_edit. If asked to find something, you MUST run the search. \
+Use the tools available (bash, read, file_write, file_edit, glob, grep). \
+\n\nAfter you finish, you MUST send one final assistant message in this exact shape:\n\n\
+  Summary: one line of what you actually did\n\
+  Files changed:\n\
+    - <path1>\n\
+    - <path2>\n\
+  (or 'none' if nothing changed)\n\
+  Output: the requested deliverable, or notes the senior needs\n\n\
+Be brief. Never end with only a tool call — always close with the summary message above.";
+
+struct SubEngine {
+    provider: Arc<dyn stynx_code_types::Provider>,
+    registry: Arc<ToolRegistry>,
+    permission: Arc<dyn PermissionChecker>,
+    mode: Arc<AtomicU8>,
+    hooks: HooksConfig,
+}
+
+struct Activity {
+    text: String,
+    actions: Vec<String>,
+    current_tool: Option<(String, String)>, // (name, input_json)
+}
+
+impl SubEngine {
+    async fn run(&self, system: &str, task: &str) -> AppResult<String> {
+        let sub_registry = Arc::new(self.registry.clone_excluding(&["agent", "explore"]));
+        let engine = QueryEngine::new(
+            self.provider.clone(),
+            sub_registry,
+            self.permission.clone(),
+            self.mode.clone(),
+            self.hooks.clone(),
+        );
+        let mut conv = Conversation {
+            system: Some(system.to_string()),
+            ..Default::default()
+        };
+        conv.push(Message { role: Role::User, content: vec![stynx_code_types::ContentBlock::Text { text: task.to_string() }] });
+
+        let activity = std::sync::Arc::new(std::sync::Mutex::new(Activity {
+            text: String::new(),
+            actions: Vec::new(),
+            current_tool: None,
+        }));
+        let act_ref = activity.clone();
+        engine
+            .run(conv, move |event| {
+                let mut a = act_ref.lock().unwrap();
+                match event {
+                    EngineEvent::TextDelta(text) => a.text.push_str(&text),
+                    EngineEvent::ToolStart { name, .. } => {
+                        a.current_tool = Some((name, String::new()));
+                    }
+                    EngineEvent::ToolInput { json_chunk } => {
+                        if let Some((_, buf)) = a.current_tool.as_mut() {
+                            buf.push_str(&json_chunk);
+                        }
+                    }
+                    EngineEvent::ToolResult { name, output, is_error } => {
+                        let input = a
+                            .current_tool
+                            .take()
+                            .filter(|(n, _)| n == &name)
+                            .map(|(_, j)| j)
+                            .unwrap_or_default();
+                        let summary = summarize_action(&name, &input, &output, is_error);
+                        a.actions.push(summary);
+                    }
+                    _ => {}
+                }
+            })
+            .await?;
+
+        let act = activity.lock().unwrap();
+        let mut out = String::new();
+        if !act.text.trim().is_empty() {
+            out.push_str(act.text.trim());
+            out.push('\n');
+        }
+        if !act.actions.is_empty() {
+            if !out.is_empty() { out.push('\n'); }
+            out.push_str("Actions taken:\n");
+            for a in &act.actions {
+                out.push_str("  • ");
+                out.push_str(a);
+                out.push('\n');
+            }
+        }
+        if out.trim().is_empty() {
+            out.push_str("(intern returned no output and took no actions)");
+        }
+        Ok(out)
+    }
+}
+
+fn summarize_action(name: &str, input_json: &str, output: &str, is_error: bool) -> String {
+    let parsed: Option<serde_json::Value> = serde_json::from_str(input_json).ok();
+    let get_str = |k: &str| -> String {
+        parsed
+            .as_ref()
+            .and_then(|v| v.get(k))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    let head = match name {
+        "bash" => format!("bash $ {}", first_line_trunc(&get_str("command"), 100)),
+        "read" => format!("read {}", get_str("file_path")),
+        "file_write" => format!("write {}", get_str("file_path")),
+        "file_edit" => format!("edit {}", get_str("file_path")),
+        "glob" => format!("glob {}", get_str("pattern")),
+        "grep" => {
+            let p = get_str("pattern");
+            let path = get_str("path");
+            if path.is_empty() { format!("grep {p}") } else { format!("grep {p} in {path}") }
+        }
+        other => format!("{other}"),
+    };
+    let tail = if is_error {
+        format!(" — ERROR: {}", first_line_trunc(output, 120))
+    } else if name == "bash" || name == "file_write" || name == "file_edit" {
+        let line_count = output.lines().filter(|l| !l.trim().is_empty()).count();
+        if line_count > 0 { format!(" ({line_count} output lines)") } else { String::new() }
+    } else {
+        String::new()
+    };
+    format!("{head}{tail}")
+}
+
+fn first_line_trunc(s: &str, max: usize) -> String {
+    let line = s.lines().next().unwrap_or("").trim();
+    if line.chars().count() <= max {
+        return line.to_string();
+    }
+    let mut out: String = line.chars().take(max.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+pub struct AgentTool(SubEngine);
+
+impl AgentTool {
+    pub fn new(
+        provider: Arc<dyn stynx_code_types::Provider>,
+        registry: Arc<ToolRegistry>,
+        permission: Arc<dyn PermissionChecker>,
+        mode: Arc<AtomicU8>,
+        hooks: HooksConfig,
+    ) -> Self {
+        Self(SubEngine { provider, registry, permission, mode, hooks })
+    }
+}
+
+#[async_trait::async_trait]
+impl Tool for AgentTool {
+    fn name(&self) -> &str { "agent" }
+
+    fn description(&self) -> &str {
+        "Spawn a sub-agent to handle a complex, independent task. Use this to delegate research, analysis, or multi-step work that can run autonomously. Returns the agent's final response."
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": "The task description for the sub-agent"
+                },
+                "system_prompt": {
+                    "type": "string",
+                    "description": "Optional custom system prompt override for the sub-agent"
+                }
+            },
+            "required": ["task"]
+        })
+    }
+
+    fn permission_level(&self) -> PermissionLevel { PermissionLevel::Dangerous }
+
+    fn interrupt_behavior(&self) -> InterruptBehavior { InterruptBehavior::Cancel }
+
+    async fn execute(&self, input: Value) -> AppResult<String> {
+        let task = input["task"].as_str().unwrap_or("").to_string();
+        let system = input["system_prompt"].as_str().unwrap_or(AGENT_SYSTEM);
+        self.0.run(system, &task).await
+    }
+}
+
+pub struct ExploreAgentTool(SubEngine);
+
+impl ExploreAgentTool {
+    pub fn new(
+        provider: Arc<dyn stynx_code_types::Provider>,
+        registry: Arc<ToolRegistry>,
+        permission: Arc<dyn PermissionChecker>,
+        mode: Arc<AtomicU8>,
+        hooks: HooksConfig,
+    ) -> Self {
+        Self(SubEngine { provider, registry, permission, mode, hooks })
+    }
+}
+
+#[async_trait::async_trait]
+impl Tool for ExploreAgentTool {
+    fn name(&self) -> &str { "explore" }
+
+    fn description(&self) -> &str {
+        "Spawn a read-only exploration sub-agent to analyze the codebase. Use this to search, read, and understand code without making changes. Returns the agent's findings."
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": "What to explore or analyze in the codebase"
+                }
+            },
+            "required": ["task"]
+        })
+    }
+
+    fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
+
+    fn is_read_only(&self, _input: &Value) -> bool { true }
+    fn is_concurrent_safe(&self, _input: &Value) -> bool { true }
+
+    fn is_search_or_read_command(&self, _input: &Value) -> SearchReadInfo {
+        SearchReadInfo { is_search: false, is_read: true, is_list: false }
+    }
+
+    async fn execute(&self, input: Value) -> AppResult<String> {
+        let task = input["task"].as_str().unwrap_or("").to_string();
+        self.0.run(EXPLORE_SYSTEM, &task).await
+    }
+}
+
+pub struct InternTool {
+    inner: SubEngine,
+    label: String,
+}
+
+impl InternTool {
+    pub fn new(
+        provider: Arc<dyn stynx_code_types::Provider>,
+        registry: Arc<ToolRegistry>,
+        permission: Arc<dyn PermissionChecker>,
+        mode: Arc<AtomicU8>,
+        hooks: HooksConfig,
+        label: impl Into<String>,
+    ) -> Self {
+        Self {
+            inner: SubEngine { provider, registry, permission, mode, hooks },
+            label: label.into(),
+        }
+    }
+
+    pub async fn run_task(&self, task: &str) -> AppResult<String> {
+        self.inner.run(INTERN_SYSTEM, task).await
+    }
+}
+
+#[async_trait::async_trait]
+impl Tool for InternTool {
+    fn name(&self) -> &str { "delegate_to_intern" }
+
+    fn description(&self) -> &str {
+        "Hand off a focused, well-scoped subtask to a cheaper intern model. \
+The intern has read/write/edit/bash/glob/grep available but cannot spawn further sub-agents. \
+Use this for grunt work — boilerplate, mechanical refactors, gathering data, drafting code that you'll review. \
+Provide explicit acceptance criteria. Returns the intern's summary + output."
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": "Crisp task description, including acceptance criteria and any files / context the intern should look at."
+                }
+            },
+            "required": ["task"]
+        })
+    }
+
+    fn permission_level(&self) -> PermissionLevel { PermissionLevel::Dangerous }
+
+    fn interrupt_behavior(&self) -> InterruptBehavior { InterruptBehavior::Cancel }
+
+    async fn execute(&self, input: Value) -> AppResult<String> {
+        let task = input["task"].as_str().unwrap_or("").to_string();
+        if task.trim().is_empty() {
+            return Ok("[intern] no task provided".into());
+        }
+        tracing::info!(intern = %self.label, task_len = task.len(), "delegating to intern");
+        let result = self.inner.run(INTERN_SYSTEM, &task).await?;
+        Ok(format!("[{label} intern]\n{result}", label = self.label))
+    }
+}
