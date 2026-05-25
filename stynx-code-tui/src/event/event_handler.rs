@@ -53,11 +53,9 @@ fn handle_ctrl_v(state: &mut AppState) {
     use crate::clipboard::{PasteOutcome, read_clipboard};
     match read_clipboard() {
         PasteOutcome::Image { path } => {
-            let s = path.display().to_string();
-            state.input.insert_char('@');
-            for c in s.chars() { state.input.insert_char(c); }
+            let idx = state.input.insert_image_paste(path);
             state.input.insert_char(' ');
-            state.toasts.success(format!("pasted image → {s}"));
+            state.toasts.success(format!("attached image #{idx}"));
         }
         PasteOutcome::Text(text) => {
             if text.len() > 200 || text.matches('\n').count() > 4 {

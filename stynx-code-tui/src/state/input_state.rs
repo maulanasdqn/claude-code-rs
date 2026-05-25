@@ -13,6 +13,10 @@ pub struct InputState {
     pub suggestion: String,
     /// Most recent large paste; expanded back into the message on submit.
     pub pasted_buffer: Option<String>,
+    /// File paths for images pasted via Ctrl+V, in the order they were pasted.
+    /// In the buffer they appear as `[Image #1]`, `[Image #2]`, … and are
+    /// expanded back to `@<path>` tokens at submit time.
+    pub pasted_images: Vec<std::path::PathBuf>,
     /// (command, description) pairs matching the slash prefix in the buffer.
     pub slash_matches: Vec<(String, String)>,
     pub slash_selected: usize,
@@ -28,27 +32,48 @@ impl InputState {
             history_index: None,
             suggestion: String::new(),
             pasted_buffer: None,
+            pasted_images: Vec::new(),
             slash_matches: Vec::new(),
             slash_selected: 0,
         }
     }
 
-    /// Expand the buffer for submission: if a large paste was made, replace
-    /// the `[Pasted …]` token with the real content.
+    /// Register a pasted image, insert its `[Image #N]` placeholder into the
+    /// buffer at the cursor, and return the assigned index.
+    pub fn insert_image_paste(&mut self, path: std::path::PathBuf) -> usize {
+        self.pasted_images.push(path);
+        let idx = self.pasted_images.len();
+        let token = format!("[Image #{idx}]");
+        for c in token.chars() {
+            self.insert_char(c);
+        }
+        idx
+    }
+
+    /// Expand the buffer for submission:
+    /// - `[Pasted N lines, M chars]` → the real pasted text
+    /// - `[Image #N]`                 → `@<path>` so file-reference expansion
+    ///                                  picks the image up downstream
     pub fn expand_for_submit(&self) -> String {
+        let mut out = self.buffer.clone();
         if let Some(real) = &self.pasted_buffer {
-            if let Some(start) = self.buffer.find("[Pasted ") {
-                if let Some(rel_end) = self.buffer[start..].find(']') {
+            if let Some(start) = out.find("[Pasted ") {
+                if let Some(rel_end) = out[start..].find(']') {
                     let end = start + rel_end + 1;
-                    let mut out = String::with_capacity(self.buffer.len() + real.len());
-                    out.push_str(&self.buffer[..start]);
-                    out.push_str(real);
-                    out.push_str(&self.buffer[end..]);
-                    return out;
+                    let mut s = String::with_capacity(out.len() + real.len());
+                    s.push_str(&out[..start]);
+                    s.push_str(real);
+                    s.push_str(&out[end..]);
+                    out = s;
                 }
             }
         }
-        self.buffer.clone()
+        for (i, path) in self.pasted_images.iter().enumerate() {
+            let token = format!("[Image #{}]", i + 1);
+            let replacement = format!("@{}", path.display());
+            out = out.replace(&token, &replacement);
+        }
+        out
     }
 
     pub fn complete_suggestion(&mut self) {
@@ -163,6 +188,7 @@ impl InputState {
         self.cursor_pos = 0;
         self.history_index = None;
         self.pasted_buffer = None;
+        self.pasted_images.clear();
     }
 
     pub fn get_display_text(&self) -> &str { &self.buffer }
