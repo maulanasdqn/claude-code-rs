@@ -2,14 +2,14 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "stynx-code",
+    name = "stynx",
     about = "stynx-code — interactive AI coding assistant",
     version,
     after_help = "EXAMPLES:\n  \
-        stynx-code                          Interactive TUI\n  \
-        stynx-code -p 'explain this'        One-shot query\n  \
-        cat file.rs | stynx-code            Pipe mode\n  \
-        stynx-code --json -p 'list files'   JSON output mode"
+        stynx                          Interactive TUI\n  \
+        stynx -p 'explain this'        One-shot query\n  \
+        cat file.rs | stynx            Pipe mode\n  \
+        stynx --json -p 'list files'   JSON output mode"
 )]
 pub struct Cli {
     #[arg(short, long, help = "One-shot prompt to send")]

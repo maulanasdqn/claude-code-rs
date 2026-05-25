@@ -2,10 +2,14 @@
 name = "stynx-code"
 version = "3.0.0"
 edition = "2024"
-description = "Interactive CLI for Claude AI"
+description = "stynx-code — interactive AI coding assistant"
 license = "MIT"
 repository = "https://github.com/maulanasdqn/stynx-code"
 readme = "../README.md"
+
+[[bin]]
+name = "stynx"
+path = "src/main.rs"
 
 [dependencies]
 stynx-code-auth = { workspace = true }
