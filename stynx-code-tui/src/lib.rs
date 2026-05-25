@@ -1,3 +1,4 @@
+pub mod clipboard;
 pub mod dialogs;
 pub mod event;
 pub mod layout;

@@ -20,3 +20,5 @@ crossterm = { workspace = true }
 syntect = { workspace = true }
 ratatui = { workspace = true }
 unicode-width = { workspace = true }
+arboard = { version = "3", default-features = false, features = ["wayland-data-control", "image-data"] }
+image = { version = "0.25", default-features = false, features = ["png"] }

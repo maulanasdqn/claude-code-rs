@@ -49,6 +49,33 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/version",     "Show version"),
 ];
 
+fn handle_ctrl_v(state: &mut AppState) {
+    use crate::clipboard::{PasteOutcome, read_clipboard};
+    match read_clipboard() {
+        PasteOutcome::Image { path } => {
+            let s = path.display().to_string();
+            state.input.insert_char('@');
+            for c in s.chars() { state.input.insert_char(c); }
+            state.input.insert_char(' ');
+            state.toasts.success(format!("pasted image → {s}"));
+        }
+        PasteOutcome::Text(text) => {
+            if text.len() > 200 || text.matches('\n').count() > 4 {
+                let lines = text.lines().count().max(1);
+                let chars = text.chars().count();
+                let token = format!("[Pasted {lines} lines, {chars} chars]");
+                for c in token.chars() { state.input.insert_char(c); }
+                state.input.pasted_buffer = Some(text);
+            } else {
+                for c in text.chars() { state.input.insert_char(c); }
+            }
+        }
+        PasteOutcome::Empty => {
+            state.toasts.warn("clipboard empty");
+        }
+    }
+}
+
 fn update_suggestion(state: &mut AppState) {
     let buf = state.input.buffer.clone();
     if buf.starts_with('/') && !buf.contains(' ') {
@@ -166,6 +193,11 @@ impl EventHandler {
                 UiAction::None
             }
             (KeyCode::Char('b'), KeyModifiers::CONTROL) => UiAction::ToggleSidebar,
+            (KeyCode::Char('v'), KeyModifiers::CONTROL) => {
+                handle_ctrl_v(state);
+                update_suggestion(state);
+                UiAction::None
+            }
             (KeyCode::Char('t'), KeyModifiers::CONTROL) => {
                 state.tool_details = !state.tool_details;
                 let label = if state.tool_details { "tool details on" } else { "tool details off" };

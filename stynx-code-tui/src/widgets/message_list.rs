@@ -141,7 +141,13 @@ fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
 
 impl<'a> Widget for MessageList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let area = Rect { y: area.y + 1, height: area.height.saturating_sub(1), ..area };
+        let pad = if area.width >= 80 { 4 } else { 2 };
+        let area = Rect {
+            x: area.x + pad,
+            width: area.width.saturating_sub(pad * 2),
+            y: area.y + 1,
+            height: area.height.saturating_sub(1),
+        };
 
         if self.state.messages.is_empty() {
             draw_empty_state(area, buf);
