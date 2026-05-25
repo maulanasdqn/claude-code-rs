@@ -151,7 +151,9 @@ async fn main() {
         .map(|s| (s.name.clone(), s.description.clone(), s.when_to_use.clone()))
         .collect();
 
-    let system_prompt = cli.system.clone().unwrap_or_else(|| make_system_prompt(&env, &tool_names, &skill_pairs));
+    let system_prompt = cli.system.clone().unwrap_or_else(|| {
+        make_system_prompt(&env, &tool_names, &skill_pairs, config.commit_attribution)
+    });
 
     if Cli::is_piped() {
         if let Err(e) = run_pipe(&engine, system_prompt, cli.prompt.as_deref(), cli.json).await {

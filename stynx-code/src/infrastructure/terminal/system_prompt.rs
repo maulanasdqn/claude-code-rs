@@ -34,7 +34,12 @@ fn is_leap(y: u32) -> bool {
 }
 
 /// Skill info for system prompt: (name, description, when_to_use)
-pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(String, String, Option<String>)]) -> String {
+pub fn make_system_prompt(
+    env: &EnvInfo,
+    tool_names: &[String],
+    skills: &[(String, String, Option<String>)],
+    commit_attribution: bool,
+) -> String {
     let today = today_date();
 
     let mut sections = vec![
@@ -68,10 +73,18 @@ pub fn make_system_prompt(env: &EnvInfo, tool_names: &[String], skills: &[(Strin
         sections.push(skill_section);
     }
 
-    sections.push("# Project-specific rules\n \
- - No code comments of any kind. No AI/assistant attribution in commits.\n \
+    let commit_line = if commit_attribution {
+        "  - Commit attribution is allowed (Co-Authored-By trailers, etc.)."
+    } else {
+        "  - No AI/assistant attribution in commits (no Co-Authored-By, no \"Generated with\")."
+    };
+    sections.push(format!(
+        "# Project-specific rules\n \
+ - No code comments of any kind.\n\
+{commit_line}\n \
  - Max 200 lines per source file — split before reaching the limit.\n \
- - Single-responsibility files. Low coupling, high cohesion.".to_string());
+ - Single-responsibility files. Low coupling, high cohesion."
+    ));
 
     sections.push(environment_section(env));
 

@@ -50,6 +50,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
         max_turns: project.max_turns.or(global.max_turns),
         max_tokens: project.max_tokens.or(global.max_tokens),
         effort: project.effort.or(global.effort),
+        commit_attribution: project.commit_attribution || global.commit_attribution,
     }
 }
 

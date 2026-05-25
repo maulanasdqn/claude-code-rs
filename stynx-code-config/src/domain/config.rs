@@ -14,6 +14,10 @@ pub struct Settings {
     pub max_tokens: Option<u32>,
     #[serde(default)]
     pub effort: Option<String>,
+    /// When true, the assistant may attribute commits to itself (e.g. add a
+    /// `Co-Authored-By:` trailer). Defaults to false — commits stay clean.
+    #[serde(default)]
+    pub commit_attribution: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
