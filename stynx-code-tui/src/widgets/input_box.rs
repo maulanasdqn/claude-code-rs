@@ -84,9 +84,11 @@ impl<'a> Widget for InputBox<'a> {
 
         if self.focused && inner.width > 0 && inner.height > 0 {
             let (line, col) = self.state.cursor_line_col();
-            let cx = inner.x + col as u16;
-            let cy = inner.y + line as u16;
-            if cx < inner.x + inner.width && cy < inner.y + inner.height {
+            let cx = inner.x.saturating_add(u16::try_from(col).unwrap_or(u16::MAX));
+            let cy = inner.y.saturating_add(u16::try_from(line).unwrap_or(u16::MAX));
+            let right = inner.x.saturating_add(inner.width);
+            let bottom = inner.y.saturating_add(inner.height);
+            if cx < right && cy < bottom {
                 buf[(cx, cy)].set_style(Style::default().bg(theme::HL_HIGH()).fg(theme::TEXT()));
             }
         }

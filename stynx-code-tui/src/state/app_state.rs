@@ -170,16 +170,17 @@ impl AppState {
                 }
             }
             EngineEvent::ToolResult { name, output, is_error } => {
+                let clean_output = crate::util::strip_ansi(&output);
                 let preview_limit = if is_error { 400 } else { 80 };
                 if let Some(m) = self.conversation.messages.last_mut() {
                     if let Some(t) = m.tool_uses.iter_mut().rev()
                         .find(|t| t.name == name && t.status == ToolUseStatus::Running) {
                         t.status = if is_error { ToolUseStatus::Error } else { ToolUseStatus::Completed };
-                        t.output_preview = output.lines().next().unwrap_or("").chars().take(preview_limit).collect();
+                        t.output_preview = clean_output.lines().next().unwrap_or("").chars().take(preview_limit).collect();
                         if t.input_summary.is_empty() {
                             t.input_summary = summarize_tool_input(&t.name, &t.input_json);
                         }
-                        t.output_excerpt = excerpt_lines(&output, 6, 200);
+                        t.output_excerpt = excerpt_lines(&clean_output, 6, 200);
                         if t.name == "file_edit" || t.name == "file_write" {
                             t.diff = build_diff_for(&t.name, &t.input_json);
                         }
@@ -188,12 +189,12 @@ impl AppState {
                 if is_error {
                     self.conversation.messages.push(DisplayMessage {
                         role: "error".to_string(),
-                        content: format!("{name}: {output}"),
+                        content: format!("{name}: {clean_output}"),
                         thinking: String::new(),
                         tool_uses: Vec::new(),
                         is_streaming: false,
                     });
-                    tracing::error!(tool = %name, %output, "tool returned error");
+                    tracing::error!(tool = %name, output = %clean_output, "tool returned error");
                 }
             }
             EngineEvent::TurnComplete => {

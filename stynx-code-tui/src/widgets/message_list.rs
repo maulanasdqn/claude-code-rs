@@ -328,13 +328,7 @@ impl<'a> Widget for MessageList<'a> {
                         let body_width = (area.width as usize).saturating_sub(10).max(20);
                         for body in body_lines {
                             let cleaned = clean_tool_body_line(&tool.name, body);
-                            let truncated = if cleaned.chars().count() > body_width {
-                                let mut s: String = cleaned.chars().take(body_width - 1).collect();
-                                s.push('…');
-                                s
-                            } else {
-                                cleaned
-                            };
+                            let truncated = truncate_to_width(&cleaned, body_width);
                             lines.push(Line::from(vec![
                                 Span::styled(
                                     "      ┊ ",
@@ -380,6 +374,26 @@ impl<'a> Widget for MessageList<'a> {
 
         Paragraph::new(lines).scroll((offset as u16, 0)).wrap(Wrap { trim: false }).render(area, buf);
     }
+}
+
+fn truncate_to_width(s: &str, max: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+    let mut out = String::with_capacity(s.len());
+    let mut width = 0usize;
+    let mut truncated = false;
+    for c in s.chars() {
+        let w = c.width().unwrap_or(0);
+        if width + w > max.saturating_sub(1) {
+            truncated = true;
+            break;
+        }
+        width += w;
+        out.push(c);
+    }
+    if truncated {
+        out.push('…');
+    }
+    out
 }
 
 /// Per-tool cleanup of body excerpt lines before they hit the renderer.

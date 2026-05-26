@@ -2,10 +2,12 @@ pub mod clipboard;
 pub mod dialogs;
 pub mod event;
 pub mod layout;
+pub mod persistence;
 pub mod render;
 pub mod state;
 pub mod theme;
 pub mod tool_ui_impl;
+pub mod util;
 pub mod widgets;
 
 pub use event::event_handler::{EventHandler, UiAction};
@@ -31,8 +33,32 @@ pub struct TuiApp {
     in_alt: bool,
 }
 
+/// Restore the terminal to a usable state. Safe to call multiple times.
+pub fn restore_terminal() {
+    let _ = disable_raw_mode();
+    let _ = execute!(
+        io::stdout(),
+        DisableMouseCapture,
+        DisableBracketedPaste,
+        LeaveAlternateScreen,
+    );
+}
+
+fn install_panic_hook() {
+    use std::sync::Once;
+    static INSTALLED: Once = Once::new();
+    INSTALLED.call_once(|| {
+        let prev = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            restore_terminal();
+            prev(info);
+        }));
+    });
+}
+
 impl TuiApp {
     pub fn new() -> io::Result<Self> {
+        install_panic_hook();
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBracketedPaste)?;

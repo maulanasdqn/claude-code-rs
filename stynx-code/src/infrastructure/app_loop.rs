@@ -85,6 +85,8 @@ pub async fn run_loop(
     tui.state.cwd = cwd.clone();
     tui.state.conversation.messages = conv_to_tui(&conversation);
     refresh_sidebar_sessions(&session_repo, &mut tui).await;
+    let persisted = stynx_code_tui::persistence::load();
+    stynx_code_tui::persistence::apply_to(&mut tui.state, &persisted);
     set_current_model(&model_id);
     provider.toggle_thinking(); // enable thinking by default
 
@@ -384,6 +386,7 @@ pub async fn run_loop(
     }
 
     save_session(&session_repo, &conversation).await;
+    stynx_code_tui::persistence::save(&stynx_code_tui::persistence::snapshot(&tui.state));
 }
 
 async fn export_transcript(conversation: &Conversation, cwd: &str) -> Result<String, String> {
