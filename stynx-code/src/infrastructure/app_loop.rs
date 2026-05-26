@@ -239,18 +239,17 @@ pub async fn run_loop(
                     tui.state.toasts.success(format!("model → {effective}"));
                 }
                 UiAction::SelectSession(session_id) => {
-                    if session_id == "__current__" {
-                        match stynx_code_memory::load_session(&session_repo).await {
-                            Ok(Some(loaded)) => {
-                                tui.state.conversation.messages = conv_to_tui(&loaded);
-                                conversation = loaded;
-                                tui.state.push_system_message("session reloaded");
-                            }
-                            Ok(None) => tui.state.push_system_message("no saved session"),
-                            Err(e) => tui.state.push_system_message(format!("session load failed: {e}")),
+                    match session_repo.load(&session_id).await {
+                        Ok(Some(loaded)) => {
+                            tui.state.conversation.messages = conv_to_tui(&loaded);
+                            conversation = loaded;
+                            let _ = session_repo.set_current(&session_id).await;
+                            tui.state.sidebar.session_id = session_id.clone();
+                            refresh_sidebar_sessions(&session_repo, &mut tui).await;
+                            tui.state.toasts.success(format!("switched → {}", &tui.state.sidebar.title));
                         }
-                    } else {
-                        tui.state.push_system_message(format!("session: {session_id} (multi-session not yet supported)"));
+                        Ok(None) => tui.state.toasts.warn("session not found"),
+                        Err(e) => tui.state.toasts.error(format!("load failed: {e}")),
                     }
                 }
                 UiAction::ToggleSidebar => {
@@ -279,8 +278,21 @@ pub async fn run_loop(
                             tui.state.total_cost = 0.0;
                             tui.state.total_input = 0;
                             tui.state.total_output = 0;
-                            tui.state.sidebar.title = "New session".to_string();
-                            tui.state.push_system_message("new session");
+                            match session_repo.new_session_id().await {
+                                Ok(id) => {
+                                    let _ = session_repo.set_current(&id).await;
+                                    if let Err(e) = session_repo.save(Some(&id), &conversation).await {
+                                        tracing::warn!("save new session failed: {e}");
+                                    }
+                                    tui.state.sidebar.title = "New session".to_string();
+                                    tui.state.sidebar.session_id = id;
+                                    refresh_sidebar_sessions(&session_repo, &mut tui).await;
+                                    tui.state.toasts.success("new session");
+                                }
+                                Err(e) => {
+                                    tui.state.toasts.error(format!("new session failed: {e}"));
+                                }
+                            }
                         }
                         "session.compact" => {
                             tui.state.push_system_message("compacting…");
@@ -356,7 +368,14 @@ pub async fn run_loop(
                 }
                 UiAction::InputConfirmed { kind, value } => match kind {
                     InputKind::SessionRename => {
+                        let id = tui.state.sidebar.session_id.clone();
+                        if !id.is_empty() {
+                            if let Err(e) = session_repo.rename(&id, &value).await {
+                                tracing::warn!("rename failed: {e}");
+                            }
+                        }
                         tui.state.sidebar.title = value.clone();
+                        refresh_sidebar_sessions(&session_repo, &mut tui).await;
                         tui.state.toasts.success(format!("renamed → {value}"));
                     }
                     InputKind::AskUserQuestion => {
@@ -425,25 +444,28 @@ async fn refresh_sidebar_sessions(
     repo: &Arc<dyn stynx_code_memory::SessionRepository>,
     tui: &mut TuiApp,
 ) {
-    let ids = match repo.list().await { Ok(v) => v, Err(_) => Vec::new() };
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    tui.state.sidebar.sessions = ids
-        .into_iter()
-        .map(|id| SessionSummary {
-            id: if id == "current" { "__current__".to_string() } else { id.clone() },
-            title: if id == "current" { "Active session".to_string() } else { id },
-            updated_at: now,
+    let summaries = repo.list().await.unwrap_or_default();
+    let current = repo.current().await.ok().flatten();
+    tui.state.sidebar.sessions = summaries
+        .iter()
+        .map(|s| SessionSummary {
+            id: s.id.clone(),
+            title: s.title.clone(),
+            updated_at: s.updated_at,
             pinned: false,
         })
         .collect();
-    if let Some(first) = tui.state.sidebar.sessions.first() {
-        tui.state.sidebar.session_id = first.id.clone();
-        if tui.state.sidebar.title == "New session" {
+    if let Some(id) = current {
+        if let Some(s) = summaries.iter().find(|s| s.id == id) {
+            tui.state.sidebar.session_id = s.id.clone();
+            tui.state.sidebar.title = s.title.clone();
+        } else if let Some(first) = summaries.first() {
+            tui.state.sidebar.session_id = first.id.clone();
             tui.state.sidebar.title = first.title.clone();
         }
+    } else if let Some(first) = summaries.first() {
+        tui.state.sidebar.session_id = first.id.clone();
+        tui.state.sidebar.title = first.title.clone();
     }
 }
 

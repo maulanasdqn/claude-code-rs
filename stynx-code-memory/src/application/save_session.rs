@@ -9,5 +9,5 @@ pub async fn save_session(
     repo: &Arc<dyn SessionRepository>,
     conversation: &Conversation,
 ) -> AppResult<String> {
-    repo.save(conversation).await
+    repo.save(None, conversation).await
 }
