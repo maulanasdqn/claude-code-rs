@@ -22,65 +22,83 @@ impl<'a> ThinkingPanel<'a> {
 
 impl<'a> Widget for ThinkingPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if self.text.trim().is_empty() || area.height == 0 {
+        if self.text.trim().is_empty() || area.height == 0 || area.width < 4 {
             return;
-        }
-
-        // Subtle backdrop so the panel reads as a distinct surface.
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                buf[(x, y)].set_style(Style::default().bg(theme::BACKGROUND_PANEL()));
-            }
-        }
-
-        let visible_body = (area.height as usize).saturating_sub(1);
-        let mut body_lines: Vec<&str> = self
-            .text
-            .lines()
-            .filter(|l| !l.trim().is_empty())
-            .collect();
-        if body_lines.len() > visible_body {
-            body_lines = body_lines[body_lines.len() - visible_body..].to_vec();
         }
 
         let frame = FRAMES[self.spinner_frame % FRAMES.len()];
 
-        let mut lines: Vec<Line<'static>> = Vec::new();
-        lines.push(Line::from(vec![
+        let visible_body = (area.height as usize).saturating_sub(1);
+        let body_lines: Vec<&str> = {
+            let mut v: Vec<&str> = self
+                .text
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .collect();
+            if v.len() > visible_body {
+                v = v[v.len() - visible_body..].to_vec();
+            }
+            v
+        };
+
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                buf[(x, y)].set_style(Style::default().bg(theme::BACKGROUND()));
+            }
+        }
+
+        let accent = theme::IRIS();
+        let bar_col = theme::OVERLAY();
+
+        for y in area.y..area.y + area.height {
+            buf[(area.x, y)]
+                .set_char('▌')
+                .set_style(Style::default().fg(accent).bg(theme::BACKGROUND()));
+        }
+
+        let inner_x = area.x + 2;
+        let inner_width = area.width.saturating_sub(3) as usize;
+        let _ = bar_col;
+
+        let header = Line::from(vec![
             Span::styled(
-                format!(" {frame}  "),
+                format!("{frame} "),
                 Style::default()
-                    .fg(theme::PRIMARY())
-                    .bg(theme::BACKGROUND_PANEL())
+                    .fg(accent)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 "thinking",
                 Style::default()
-                    .fg(theme::TEXT_MUTED())
-                    .bg(theme::BACKGROUND_PANEL())
+                    .fg(theme::SUBTLE())
                     .add_modifier(Modifier::ITALIC),
             ),
-        ]));
+        ]);
+
+        let inner_area = Rect {
+            x: inner_x,
+            y: area.y,
+            width: inner_width as u16,
+            height: area.height,
+        };
+
+        let mut lines: Vec<Line<'static>> = vec![header];
         for raw in body_lines {
-            lines.push(Line::from(vec![
-                Span::styled(
-                    "     ",
-                    Style::default().bg(theme::BACKGROUND_PANEL()),
-                ),
-                Span::styled(
-                    raw.trim_end().to_string(),
-                    Style::default()
-                        .fg(theme::TEXT_MUTED())
-                        .bg(theme::BACKGROUND_PANEL())
-                        .add_modifier(Modifier::ITALIC | Modifier::DIM),
-                ),
-            ]));
+            let text = if raw.len() > inner_width {
+                format!("{}…", &raw[..inner_width.saturating_sub(1)])
+            } else {
+                raw.trim_end().to_string()
+            };
+            lines.push(Line::from(Span::styled(
+                text,
+                Style::default()
+                    .fg(theme::MUTED())
+                    .add_modifier(Modifier::ITALIC),
+            )));
         }
 
         Paragraph::new(lines)
-            .style(Style::default().bg(theme::BACKGROUND_PANEL()))
             .wrap(Wrap { trim: false })
-            .render(area, buf);
+            .render(inner_area, buf);
     }
 }
