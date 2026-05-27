@@ -213,7 +213,10 @@ impl<'a> Widget for MessageList<'a> {
                                 .fg(theme::MUTED())
                                 .add_modifier(Modifier::ITALIC | Modifier::DIM),
                         )));
+                        lines.push(Line::from(""));
                     }
+                    let has_content = !msg.content.trim().is_empty();
+                    let has_tools = !msg.tool_uses.is_empty();
                     let mut in_code = false;
                     let mut in_mermaid = false;
                     let mut prev_blank = false;
@@ -254,6 +257,9 @@ impl<'a> Widget for MessageList<'a> {
                         }
                     }
                     let _ = in_code;
+                    if has_content && has_tools {
+                        lines.push(Line::from(""));
+                    }
                     for tool in &msg.tool_uses {
                         let (dot, col) = match tool.status {
                             ToolUseStatus::Running => (
