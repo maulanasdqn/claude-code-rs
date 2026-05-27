@@ -107,6 +107,8 @@ pub async fn run_loop(
     });
 
     let mut engine_task: EngineSlot = None;
+    let mut engine_started: Option<std::time::Instant> = None;
+    let mut tokens_at_start: (u64, u64) = (0, 0);
     let perm = permission.clone();
 
     let (prompt_bridge, mut prompt_rx) = PromptBridge::new();
@@ -135,13 +137,32 @@ pub async fn run_loop(
                         tui.state.modal.close();
                     }
                 }
+                let elapsed = engine_started.take()
+                    .map(|t| t.elapsed())
+                    .unwrap_or(std::time::Duration::ZERO);
+                let (start_in, start_out) = std::mem::take(&mut tokens_at_start);
+                let in_delta = total_input.load(Ordering::Relaxed).saturating_sub(start_in);
+                let out_delta = total_output.load(Ordering::Relaxed).saturating_sub(start_out);
                 match task.await {
-                    Ok(Ok(updated)) => { conversation = updated; save_session(&session_repo, &conversation).await; }
+                    Ok(Ok(updated)) => {
+                        conversation = updated;
+                        save_session(&session_repo, &conversation).await;
+                        tui.state.toasts.success(format!(
+                            "done · {} · {} in / {} out",
+                            fmt_elapsed(elapsed),
+                            fmt_tokens(in_delta),
+                            fmt_tokens(out_delta),
+                        ));
+                    }
                     Ok(Err(e)) if e.is_interrupted() => {
                         conversation = pre;
                         if let Some(m) = tui.state.conversation.messages.last_mut() { m.is_streaming = false; }
                     }
-                    Ok(Err(e)) => { tui.state.push_system_message(format!("Error: {e}")); conversation = pre; }
+                    Ok(Err(e)) => {
+                        tui.state.push_system_message(format!("Error: {e}"));
+                        tui.state.toasts.error(format!("failed · {}", fmt_elapsed(elapsed)));
+                        conversation = pre;
+                    }
                     Err(_) => { conversation = pre; }
                 }
                 tui.state.is_streaming = false;
@@ -251,6 +272,8 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                             Some(CommandAction::SendToEngine(msg, tools)) => {
                                 if !tools.is_empty() { perm.set_skill_allow_rules(tools); }
                                 engine_task = spawn_engine(&msg, &mut conversation, &mut tui, &engine, &total_input, &total_output);
+                                engine_started = Some(std::time::Instant::now());
+                                tokens_at_start = (total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
                                 perm.clear_skill_allow_rules();
                             }
                             Some(CommandAction::Output(t)) => tui.state.push_system_message(t.trim_end()),
@@ -260,6 +283,8 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                     } else {
                         let expanded = expand_with_pins(&trimmed, &pinned_files);
                         engine_task = spawn_engine(&expanded, &mut conversation, &mut tui, &engine, &total_input, &total_output);
+                        engine_started = Some(std::time::Instant::now());
+                        tokens_at_start = (total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
                     }
                 }
                 UiAction::CyclePermissionMode => {
@@ -543,4 +568,24 @@ async fn handle_tui_slash(
     let result = handle_slash_command(cmd, provider, config, mode_flag, system_prompt, cwd, conversation, skills).await;
     tui.enter_alt();
     result
+}
+
+fn fmt_elapsed(d: std::time::Duration) -> String {
+    let secs = d.as_secs();
+    let ms = d.subsec_millis();
+    if secs >= 60 {
+        let m = secs / 60;
+        let s = secs % 60;
+        format!("{m}m {s}s")
+    } else if secs >= 10 {
+        format!("{secs}s")
+    } else {
+        format!("{secs}.{:01}s", ms / 100)
+    }
+}
+
+fn fmt_tokens(n: u64) -> String {
+    if n >= 1_000_000 { format!("{:.1}M", n as f64 / 1_000_000.0) }
+    else if n >= 1_000 { format!("{:.1}k", n as f64 / 1_000.0) }
+    else { n.to_string() }
 }

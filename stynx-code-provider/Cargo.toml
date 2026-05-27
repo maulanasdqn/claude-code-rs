@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-provider"
-version = "3.2.1"
+version = "3.2.2"
 edition = "2024"
 description = "Anthropic API provider with SSE streaming"
 license = "MIT"

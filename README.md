@@ -141,7 +141,7 @@ QWEN_MODEL=qwen-plus                         # optional; qwen-max / qwen-turbo /
 | `qwen`       | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`       | `QWEN_API_KEY`          |
 | `custom`     | (set via `base_url`)                                           | (set via `api_key_env`) |
 
-Add `.env` to your `.gitignore` — `stynx` autoloads it on startup.
+Copy `.env.example` to `.env` and fill in your API keys. Add `.env` to your `.gitignore` — `stynx` autoloads it on startup.
 
 At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line per intern that successfully resolved. Interns missing their API key are silently skipped (a `WARN` is emitted to logs).
 

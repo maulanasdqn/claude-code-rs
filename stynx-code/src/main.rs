@@ -18,7 +18,7 @@ use stynx_code_tools::{
 };
 use stynx_code_types::{Conversation, PermissionMode};
 
-use infrastructure::agent_tool::{AgentTool, ExploreAgentTool, InternTool};
+use infrastructure::agent_tool::{AgentTool, AllInternsTool, ExploreAgentTool, InternTool};
 use infrastructure::app_display::print_session_history;
 use infrastructure::app_loop::run_loop;
 use infrastructure::cli::Cli;
@@ -121,6 +121,12 @@ async fn main() {
     );
     for t in &intern_tools {
         registry.register(t.clone());
+    }
+    // Always register the "all interns" fan-out, even with zero interns —
+    // its description tells the senior the list is empty so the model
+    // doesn't waste a call.
+    if intern_tools.len() >= 2 {
+        registry.register(Arc::new(AllInternsTool::new(intern_tools.clone())));
     }
     conductor_reg.register(Arc::new(SpawnAgentTool::new(
         provider.clone(), sub_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(), agent_manager.clone(),
