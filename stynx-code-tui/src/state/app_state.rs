@@ -208,6 +208,39 @@ impl AppState {
             }
             EngineEvent::TurnComplete => {
                 self.is_streaming = false;
+                let tool_summary = self.conversation.messages.last().and_then(|m| {
+                    if m.role != "assistant" { return None; }
+                    if m.tool_uses.is_empty() { return None; }
+                    let parts: Vec<String> = m.tool_uses.iter().map(|t| {
+                        let pretty = match t.name.as_str() {
+                            "bash" => "Bash".into(),
+                            "read" => "Read".into(),
+                            "file_write" => "Write".into(),
+                            "file_edit" => "Edit".into(),
+                            "glob" => "Glob".into(),
+                            "grep" => "Grep".into(),
+                            "web_fetch" => "WebFetch".into(),
+                            "web_search" => "WebSearch".into(),
+                            "todo_write" => "TodoWrite".into(),
+                            "todo_read" => "TodoRead".into(),
+                            "ask_user_question" => "AskUser".into(),
+                            "agent" => "Agent".into(),
+                            other => {
+                                let mut s = other.replace('_', " ");
+                                s = s.split_whitespace()
+                                    .map(|w| { let mut c = w.chars(); c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default() })
+                                    .collect::<Vec<_>>().join("");
+                                s
+                            }
+                        };
+                        if t.input_summary.is_empty() {
+                            pretty
+                        } else {
+                            format!("{}({})", pretty, t.input_summary)
+                        }
+                    }).collect();
+                    Some(parts.join(", "))
+                });
                 if let Some(m) = self.conversation.messages.last_mut() {
                     m.is_streaming = false;
                     if !self.live_thinking.is_empty() && m.role == "assistant" {
@@ -220,6 +253,16 @@ impl AppState {
                     }
                 }
                 self.live_thinking.clear();
+                if let Some(summary) = tool_summary {
+                    self.conversation.messages.push(DisplayMessage {
+                        role: "done".to_string(),
+                        content: summary,
+                        thinking: String::new(),
+                        tool_uses: Vec::new(),
+                        is_streaming: false,
+                    });
+                    self.conversation.auto_scroll = true;
+                }
             }
             EngineEvent::Usage { input_tokens, output_tokens } => {
                 if input_tokens > 0 { self.total_input += input_tokens; }

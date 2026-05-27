@@ -192,6 +192,18 @@ impl<'a> Widget for MessageList<'a> {
                         )));
                     }
                 }
+                "done" => {
+                    lines.push(Line::from(vec![
+                        Span::styled(
+                            "  ✓ ",
+                            Style::default().fg(theme::SUCCESS()).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            msg.content.clone(),
+                            Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
+                        ),
+                    ]));
+                }
                 _ => {
                     if !msg.thinking.is_empty() && !msg.is_streaming {
                         let lc = msg.thinking.lines().count();
