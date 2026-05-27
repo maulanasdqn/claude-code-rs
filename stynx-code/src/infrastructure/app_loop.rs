@@ -209,7 +209,7 @@ pub async fn run_loop(
                         let rest = rest.trim();
                         if intern_tools.is_empty() {
                             tui.state.push_system_message(
-                                "no interns configured. add `interns` to .claude/settings.json, \
+                                "no interns configured. add `interns` to .stynx/settings.json, \
 or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                             );
                             continue;

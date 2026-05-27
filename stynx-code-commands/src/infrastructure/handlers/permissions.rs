@@ -11,7 +11,7 @@ pub fn handle_permissions(allow: &[String], deny: &[String]) -> CommandResult {
 
     if allow.is_empty() && deny.is_empty() {
         output.push_str(&format!("  {DIM}No permission rules configured.{RESET}\n"));
-        output.push_str(&format!("  {DIM}Add rules in ~/.claude/settings.json or .claude/settings.json{RESET}\n"));
+        output.push_str(&format!("  {DIM}Add rules in ~/.stynx/settings.json or .stynx/settings.json{RESET}\n"));
         return CommandResult::Output(output);
     }
 

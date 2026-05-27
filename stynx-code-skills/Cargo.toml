@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-skills"
-version = "3.2.2"
+version = "3.3.0"
 edition = "2024"
 description = "Skill definitions and slash-command handling"
 license = "MIT"

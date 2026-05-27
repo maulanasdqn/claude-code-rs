@@ -51,15 +51,15 @@ pub fn resolve_file_oauth() -> AppResult<Credential> {
     })
 }
 
-/// Reads auth token from `~/.claude/settings.json`, which is where Claude Code CLI stores
-/// environment variables including ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL.
+/// Reads auth token from `~/.stynx/settings.json`. Supports the same
+/// `env.ANTHROPIC_AUTH_TOKEN` / `env.ANTHROPIC_BASE_URL` shape as Claude Code's settings.json.
 pub fn resolve_settings_json() -> AppResult<Credential> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| AppError::Provider("cannot determine home directory".to_string()))?;
 
     let path = std::path::PathBuf::from(home)
-        .join(".claude")
+        .join(".stynx")
         .join("settings.json");
 
     let contents = std::fs::read_to_string(&path)

@@ -31,10 +31,10 @@ pub async fn handle_doctor() -> CommandResult {
 
     // Check config files
     let home = stynx_code_config::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let global_config = home.join(".claude").join("settings.json");
+    let global_config = home.join(".stynx").join("settings.json");
     let project_config = std::env::current_dir()
         .unwrap_or_default()
-        .join(".claude")
+        .join(".stynx")
         .join("settings.json");
 
     if global_config.exists() {

@@ -3,12 +3,12 @@
 An interactive AI coding assistant for the terminal. Multi-provider, tool-using, fast.
 
 ```
-  ____ _____ __   ___   __ __
- / ___|_   _\ \ / / \ | \ \ / /
- \___ \ | |  \ V /|  \| |\ V /
-  ___) || |   | | | |\  | | |
- |____/ |_|   |_| |_| \_| |_|
-               c o d e
+ ____   _____ __   __ _   _ __  __
+/ ___| |_   _|\ \ / /| \ | |\ \/ /
+\___ \   | |   \ V / |  \| | \  / 
+ ___) |  | |    | |  | |\  | /  \ 
+|____/   |_|    |_|  |_| \_|/_/\_\
+            c o d e
 ```
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

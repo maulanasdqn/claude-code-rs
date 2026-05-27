@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-commands"
-version = "3.2.2"
+version = "3.3.0"
 edition = "2024"
 description = "Slash commands and file reference expansion"
 license = "MIT"

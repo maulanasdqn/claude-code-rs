@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::prompt_sections::{
-    EnvInfo, actions_section, doing_tasks_section, efficiency_section,
+    EnvInfo, actions_section, caveman_section, doing_tasks_section, efficiency_section,
     environment_section, intro_section, system_section, tone_section, using_tools_section,
 };
 
@@ -50,6 +50,7 @@ pub fn make_system_prompt(
         using_tools_section(tool_names),
         tone_section(),
         efficiency_section(),
+        caveman_section(),
     ];
 
     if is_rust_project(&env.cwd) {

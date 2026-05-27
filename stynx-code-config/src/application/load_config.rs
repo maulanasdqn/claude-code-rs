@@ -10,13 +10,13 @@ pub fn load_config() -> Settings {
 fn global_settings_path() -> std::path::PathBuf {
     let home = super::platform::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."));
-    home.join(".claude").join("settings.json")
+    home.join(".stynx").join("settings.json")
 }
 
 fn project_settings_path() -> std::path::PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| std::path::PathBuf::from("."))
-        .join(".claude")
+        .join(".stynx")
         .join("settings.json")
 }
 
