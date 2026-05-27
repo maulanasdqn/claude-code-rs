@@ -184,6 +184,15 @@ impl AppState {
                         if t.name == "file_edit" || t.name == "file_write" {
                             t.diff = build_diff_for(&t.name, &t.input_json);
                         }
+                        // Append line-count badge to read/grep/glob/bash summary
+                        // so the user can see how much came back without
+                        // dumping the body.
+                        if matches!(t.name.as_str(), "read" | "grep" | "glob") && !is_error {
+                            let n = clean_output.lines().filter(|l| !l.trim().is_empty()).count();
+                            if n > 0 && !t.input_summary.contains("(")  {
+                                t.input_summary = format!("{}  ({n} lines)", t.input_summary);
+                            }
+                        }
                     }
                 }
                 if is_error {
@@ -267,9 +276,20 @@ pub fn summarize_tool_input(tool: &str, json: &str) -> String {
     };
     match tool {
         "bash" => {
+            if parsed.as_ref().and_then(|v| v.get("list")).and_then(|v| v.as_bool()).unwrap_or(false) {
+                return "list background processes".to_string();
+            }
+            if let Some(h) = parsed.as_ref().and_then(|v| v.get("kill")).and_then(|v| v.as_str()) {
+                return format!("kill {h}");
+            }
+            if let Some(h) = parsed.as_ref().and_then(|v| v.get("status")).and_then(|v| v.as_str()) {
+                return format!("status {h}");
+            }
             let cmd = get("command");
             if cmd.is_empty() { return String::new(); }
-            format!("$ {}", shorten(first_line(&cmd), 140))
+            let bg = parsed.as_ref().and_then(|v| v.get("background")).and_then(|v| v.as_bool()).unwrap_or(false);
+            let suffix = if bg { "  &" } else { "" };
+            format!("$ {}{suffix}", shorten(first_line(&cmd), 140))
         }
         "read" => {
             let path = get("file_path");
