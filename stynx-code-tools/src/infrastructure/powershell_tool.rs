@@ -3,7 +3,6 @@ use stynx_code_types::{InterruptBehavior, PermissionLevel, Tool};
 use serde_json::{Value, json};
 use tokio::process::Command;
 
-/// Tool to execute PowerShell commands.
 pub struct PowerShellTool;
 
 impl PowerShellTool {
@@ -59,7 +58,6 @@ impl Tool for PowerShellTool {
 
         tracing::info!(command, "executing PowerShell");
 
-        // Use pwsh (cross-platform) or powershell.exe on Windows
         let program = if cfg!(target_os = "windows") {
             "powershell.exe"
         } else {

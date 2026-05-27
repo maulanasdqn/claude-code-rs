@@ -18,7 +18,7 @@ impl TerminalNotifier {
 #[async_trait]
 impl NotificationService for TerminalNotifier {
     async fn notify(&self, title: &str, body: &str) -> AppResult<()> {
-        // Use iTerm2 escape sequence if TERM_PROGRAM indicates iTerm
+
         if std::env::var("TERM_PROGRAM")
             .map(|v| v.contains("iTerm"))
             .unwrap_or(false)

@@ -58,7 +58,6 @@ impl Tool for EnterWorktreeTool {
 
         tracing::info!(branch, path, "creating worktree");
 
-        // Try creating a new branch first; if that fails, use existing branch
         let output = Command::new("git")
             .args(["worktree", "add", path, "-b", branch])
             .output()
@@ -69,7 +68,6 @@ impl Tool for EnterWorktreeTool {
             return Ok(format!("Created worktree at '{path}' on new branch '{branch}'."));
         }
 
-        // Fall back to existing branch
         let output = Command::new("git")
             .args(["worktree", "add", path, branch])
             .output()

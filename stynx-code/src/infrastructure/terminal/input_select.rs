@@ -5,10 +5,6 @@ use crossterm::terminal;
 
 use super::{BOLD, CYAN, DIM, GREEN, RESET};
 
-/// Show an interactive selection list. Returns `Some(value)` on Enter, `None` on Esc.
-///
-/// `items` is a slice of `(value, label)` pairs.
-/// `current` is the currently active value (shown with a green tag).
 pub fn select_from_list(
     title: &str,
     items: &[(String, String)],
@@ -25,7 +21,6 @@ pub fn select_from_list(
 
     terminal::enable_raw_mode().ok()?;
 
-    // Print initial blank lines to reserve space, then move back up
     let total_lines = items.len() + 4;
     for _ in 0..total_lines {
         println!();
@@ -66,12 +61,11 @@ pub fn select_from_list(
         }
     };
 
-    // Clear the selection UI (cursor is at top of reserved area from draw_list)
     print!("\r\x1b[2K");
     for _ in 1..total_lines {
         print!("\x1b[B\r\x1b[2K");
     }
-    // Move back up to where we started
+
     print!("\x1b[{}A", total_lines - 1);
     io::stdout().flush().ok();
 
@@ -87,16 +81,11 @@ fn draw_list(
     current: &str,
     total_lines: usize,
 ) {
-    // Draw from top of reserved area (cursor is already here).
-    // Use \x1b[B (cursor down) instead of \n to avoid terminal scrolling.
 
-    // Line 0: blank
     print!("\r\x1b[2K");
 
-    // Line 1: title
     print!("\x1b[B\r\x1b[2K  {BOLD}{title}{RESET}");
 
-    // Line 2: blank
     print!("\x1b[B\r\x1b[2K");
 
     for (i, (value, label)) in items.iter().enumerate() {
@@ -115,10 +104,8 @@ fn draw_list(
         }
     }
 
-    // Footer
     print!("\x1b[B\r\x1b[2K  {DIM}\u{2191}/\u{2193} navigate  Enter select  Esc cancel{RESET}");
 
-    // Move back up to top of reserved area (scroll-safe)
     print!("\x1b[{}A", total_lines - 1);
 
     io::stdout().flush().ok();

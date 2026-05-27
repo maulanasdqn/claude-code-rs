@@ -6,6 +6,7 @@ pub mod footer;
 pub mod info_dialog;
 pub mod input_box;
 pub mod input_dialog;
+mod markdown;
 pub mod message_list;
 pub mod model_picker;
 pub mod permission_dialog;

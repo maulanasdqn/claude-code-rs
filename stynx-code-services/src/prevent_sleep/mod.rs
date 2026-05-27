@@ -21,7 +21,6 @@ impl Drop for SleepGuard {
     }
 }
 
-/// No-op inhibitor — real implementations are platform-specific.
 pub struct NoopInhibitor;
 
 impl NoopInhibitor {

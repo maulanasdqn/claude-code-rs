@@ -3,7 +3,6 @@ use crate::domain::CommandResult;
 pub async fn handle_diff() -> CommandResult {
     let mut output = String::new();
 
-    // Unstaged changes
     match tokio::process::Command::new("git")
         .args(["diff"])
         .output()
@@ -26,7 +25,6 @@ pub async fn handle_diff() -> CommandResult {
         }
     }
 
-    // Staged changes
     match tokio::process::Command::new("git")
         .args(["diff", "--cached"])
         .output()

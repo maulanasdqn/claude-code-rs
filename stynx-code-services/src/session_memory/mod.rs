@@ -49,7 +49,7 @@ fn now_secs() -> u64 {
 #[async_trait]
 impl SessionMemoryService for FileSessionMemory {
     async fn extract_memories(&self, conversation: &str) -> Vec<Memory> {
-        // Simple extraction: each non-empty line that starts with "REMEMBER:" becomes a memory.
+
         conversation
             .lines()
             .filter(|line| line.starts_with("REMEMBER:"))

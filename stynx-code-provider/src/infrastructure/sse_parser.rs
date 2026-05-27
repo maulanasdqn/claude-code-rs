@@ -62,7 +62,7 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Vec<StreamEvent> {
                     }
                 }
                 Some("thinking") => {
-                    // Thinking block start — no initial content to emit
+
                     vec![]
                 }
                 _ => vec![],
@@ -110,7 +110,6 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Vec<StreamEvent> {
         "message_delta" => {
             let mut events = Vec::new();
 
-            // Extract output tokens from usage
             let output_tokens = v
                 .get("usage")
                 .and_then(|u| u.get("output_tokens"))
@@ -125,7 +124,6 @@ pub fn parse_sse_event(event_type: &str, data: &str) -> Vec<StreamEvent> {
                 });
             }
 
-            // Extract stop reason
             if let Some(reason_str) = v
                 .get("delta")
                 .and_then(|d| d.get("stop_reason"))

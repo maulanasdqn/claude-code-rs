@@ -2,8 +2,6 @@ use stynx_code_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
 
-/// Reads OAuth credentials from `~/.claude/.credentials.json`,
-/// which is where the Claude Code CLI stores them on Linux (and as a fallback on all platforms).
 pub fn resolve_file_oauth() -> AppResult<Credential> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -51,8 +49,6 @@ pub fn resolve_file_oauth() -> AppResult<Credential> {
     })
 }
 
-/// Reads auth token from `~/.stynx/settings.json`. Supports the same
-/// `env.ANTHROPIC_AUTH_TOKEN` / `env.ANTHROPIC_BASE_URL` shape as Claude Code's settings.json.
 pub fn resolve_settings_json() -> AppResult<Credential> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))

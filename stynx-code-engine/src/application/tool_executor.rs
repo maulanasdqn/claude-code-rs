@@ -17,7 +17,6 @@ pub async fn execute_tool(
         .get(name)
         .ok_or_else(|| AppError::Tool(format!("unknown tool: {name}")))?;
 
-    // Validate input before execution
     if let ValidationResult::Error { message, .. } = tool.validate_input(input).await {
         return Err(AppError::Tool(format!("validation error for {name}: {message}")));
     }
@@ -29,7 +28,6 @@ pub async fn execute_tool(
         }
     }
 
-    // Use get_path() for undo instead of hardcoded tool name matching
     if (tool.is_destructive(input) || matches!(name, "file_edit" | "file_write"))
         && let Some(path) = tool.get_path(input)
     {

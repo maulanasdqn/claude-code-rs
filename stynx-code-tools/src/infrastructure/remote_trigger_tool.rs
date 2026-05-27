@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool to fire a remote trigger.
-///
-/// TODO: Phase 4 — integrate with real remote trigger service.
 pub struct RemoteTriggerTool;
 
 impl RemoteTriggerTool {
@@ -51,7 +48,6 @@ impl Tool for RemoteTriggerTool {
 
         let payload = input.get("payload");
 
-        // TODO: Phase 4 — replace stub with real remote trigger integration
         tracing::info!(trigger_id, ?payload, "firing remote trigger (stub)");
 
         Ok(format!("Trigger '{trigger_id}' acknowledged. (stub)"))

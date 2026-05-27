@@ -4,8 +4,6 @@ use futures::StreamExt;
 
 use crate::prompt;
 
-/// Full compaction: sends the conversation to a provider for summarization,
-/// then replaces all but the last 2 messages with a single summary message.
 pub struct FullCompactor;
 
 impl Default for FullCompactor {
@@ -19,16 +17,12 @@ impl FullCompactor {
         Self
     }
 
-    /// Compact a conversation by asking the provider to summarize it.
-    ///
-    /// The last 2 messages are preserved verbatim. Everything else is replaced
-    /// with a summary produced by the provider.
     pub async fn compact(
         &self,
         conversation: &Conversation,
         provider: &dyn Provider,
     ) -> AppResult<Conversation> {
-        // Build a text representation of the conversation for summarization
+
         let conversation_text = self.build_conversation_text(conversation);
 
         let conversation_text = if conversation_text.len() > 50_000 {
@@ -37,7 +31,6 @@ impl FullCompactor {
             conversation_text
         };
 
-        // Create the summarization request
         let mut summary_conv = Conversation {
             system: Some(prompt::compaction_system_prompt()),
             ..Default::default()
@@ -59,7 +52,7 @@ impl FullCompactor {
             }
             Err(e) => {
                 tracing::error!("Full compaction failed: {e}");
-                // Fallback: keep last 4 messages
+
                 return Ok(self.fallback_compact(conversation));
             }
         }
@@ -68,13 +61,11 @@ impl FullCompactor {
             summary_text = "Previous conversation context was compacted.".into();
         }
 
-        // Build the compacted conversation
         let mut compacted = Conversation {
             system: conversation.system.clone(),
             ..Default::default()
         };
 
-        // Add the summary as a user message + assistant acknowledgment
         compacted.push(Message::user(format!(
             "[Context from previous conversation]\n{summary_text}"
         )));
@@ -82,7 +73,6 @@ impl FullCompactor {
             text: "I understand. I have the context from our previous conversation. How can I help you next?".into(),
         }]));
 
-        // Preserve the last 2 messages from the original conversation
         let keep = conversation.messages.len().min(2);
         let start = conversation.messages.len() - keep;
         for msg in &conversation.messages[start..] {

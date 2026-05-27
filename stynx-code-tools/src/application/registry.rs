@@ -23,7 +23,6 @@ impl ToolRegistry {
         self.tools.get(name)
     }
 
-    /// Look up a tool by its primary name or any of its aliases.
     pub fn get_by_name_or_alias(&self, name: &str) -> Option<&Arc<dyn Tool>> {
         if let Some(tool) = self.tools.get(name) {
             return Some(tool);
@@ -51,7 +50,6 @@ impl ToolRegistry {
             .collect()
     }
 
-    /// Return minimal definitions for deferred tools (name + description only).
     pub fn deferred_tool_definitions(&self) -> Vec<Value> {
         self.tools
             .values()
@@ -65,7 +63,6 @@ impl ToolRegistry {
             .collect()
     }
 
-    /// Return tool definitions filtered by a predicate on the tool trait.
     pub fn tool_definitions_filtered<F>(&self, predicate: F) -> Vec<Value>
     where
         F: Fn(&dyn Tool) -> bool,

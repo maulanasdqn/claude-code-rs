@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool for LSP operations (diagnostics, hover, goto definition, etc.).
-///
-/// TODO: Phase 4 — integrate with real LSP server.
 pub struct LSPTool;
 
 impl LSPTool {
@@ -71,7 +68,6 @@ impl Tool for LSPTool {
         let line = input.get("line").and_then(|v| v.as_u64());
         let character = input.get("character").and_then(|v| v.as_u64());
 
-        // TODO: Phase 4 — replace stub with real LSP integration
         tracing::info!(operation, file_path, ?line, ?character, "LSP operation (stub)");
 
         Ok(format!(

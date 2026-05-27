@@ -294,7 +294,7 @@ impl EventHandler {
                 } else if state.input.buffer.is_empty() {
                     scroll_up(state, 3);
                 } else if state.input.line_count() > 1 && state.input.cursor_up_line() {
-                    // moved within multi-line buffer
+
                 } else {
                     state.input.history_prev();
                 }
@@ -307,7 +307,7 @@ impl EventHandler {
                 } else if state.input.buffer.is_empty() {
                     scroll_down(state, 3);
                 } else if state.input.line_count() > 1 && state.input.cursor_down_line() {
-                    // moved within multi-line buffer
+
                 } else {
                     state.input.history_next();
                 }
@@ -398,7 +398,7 @@ impl EventHandler {
                 }
             }
         }
-        // Special: simple modals that close on any non-typing key.
+
         if let Some(ModalKind::Info { .. }) = &state.modal.active {
             match (key.code, key.modifiers) {
                 (KeyCode::Esc, _) | (KeyCode::Enter, _) | (KeyCode::Char('q'), _) => {
@@ -550,7 +550,7 @@ impl EventHandler {
                         }
                         SelectKind::FileMention => {
                             if value != "__empty__" {
-                                // Buffer already contains "@" — append the path then a space
+
                                 for c in value.chars() {
                                     state.input.insert_char(c);
                                 }

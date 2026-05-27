@@ -2,7 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool that returns content as structured output with optional format.
 pub struct SyntheticOutputTool;
 
 impl SyntheticOutputTool {
@@ -61,7 +60,7 @@ impl Tool for SyntheticOutputTool {
 
         match format {
             "json" => {
-                // Validate it's valid JSON, otherwise wrap it
+
                 if serde_json::from_str::<Value>(content).is_ok() {
                     Ok(content.to_string())
                 } else {

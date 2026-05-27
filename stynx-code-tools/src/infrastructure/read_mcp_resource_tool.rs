@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, SearchReadInfo, Tool};
 use serde_json::{Value, json};
 
-/// Tool to read a specific MCP resource by URI.
-///
-/// TODO: Phase 4 — integrate with real MCP client.
 pub struct ReadMcpResourceTool;
 
 impl ReadMcpResourceTool {
@@ -54,7 +51,6 @@ impl Tool for ReadMcpResourceTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| stynx_code_errors::AppError::Tool("missing 'uri' field".into()))?;
 
-        // TODO: Phase 4 — replace stub with real MCP resource reading
         tracing::info!(uri, "reading MCP resource (stub)");
 
         Ok(format!(

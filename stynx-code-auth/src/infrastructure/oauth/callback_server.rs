@@ -2,8 +2,6 @@ use stynx_code_errors::{AppError, AppResult};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-/// Starts a one-shot HTTP server on `http://127.0.0.1:{port}/callback`,
-/// waits for a single GET request with `?code=xxx`, returns the code.
 pub async fn run_callback_server(port: u16) -> AppResult<String> {
     let addr = format!("127.0.0.1:{port}");
     let listener = TcpListener::bind(&addr)
@@ -37,7 +35,7 @@ pub async fn run_callback_server(port: u16) -> AppResult<String> {
 
 fn extract_code(request: &str) -> Option<String> {
     let first_line = request.lines().next()?;
-    // e.g. "GET /callback?code=abc123&state=xyz HTTP/1.1"
+
     let path = first_line.split_whitespace().nth(1)?;
     let query = path.split_once('?').map(|(_, q)| q)?;
     for pair in query.split('&') {

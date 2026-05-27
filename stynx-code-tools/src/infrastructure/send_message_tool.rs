@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool to send a message to an agent or team.
-///
-/// TODO: Phase 5 — integrate with real message routing.
 pub struct SendMessageTool;
 
 impl SendMessageTool {
@@ -55,7 +52,6 @@ impl Tool for SendMessageTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| stynx_code_errors::AppError::Tool("missing 'message' field".into()))?;
 
-        // TODO: Phase 5 — replace stub with real message routing
         tracing::info!(to, message_len = message.len(), "sending message (stub)");
 
         Ok(format!("Message delivered to '{to}'. Length: {} chars.", message.len()))

@@ -13,7 +13,7 @@ pub struct ConfigAwarePermissionChecker {
     settings: PermissionSettings,
     interactive: InteractivePermissionChecker,
     mode: Arc<AtomicU8>,
-    /// Temporary allow rules from skill `allowed-tools` frontmatter.
+
     skill_allow_rules: RwLock<Vec<String>>,
 }
 
@@ -34,13 +34,10 @@ impl ConfigAwarePermissionChecker {
         self.interactive.bridge_handle().set(bridge);
     }
 
-    /// Set skill-specific allow rules (from `allowed-tools` frontmatter).
-    /// These are checked in addition to config-level allow rules.
     pub fn set_skill_allow_rules(&self, rules: Vec<String>) {
         *self.skill_allow_rules.write().unwrap() = rules;
     }
 
-    /// Clear skill-specific allow rules (call after skill execution completes).
     pub fn clear_skill_allow_rules(&self) {
         self.skill_allow_rules.write().unwrap().clear();
     }
@@ -66,7 +63,7 @@ impl PermissionChecker for ConfigAwarePermissionChecker {
                 return Ok(PermissionDecision::Allow);
             }
         }
-        // Check skill-specific allow rules
+
         {
             let skill_rules = self.skill_allow_rules.read().unwrap();
             for rule_str in skill_rules.iter() {

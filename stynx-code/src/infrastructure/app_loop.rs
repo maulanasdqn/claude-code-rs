@@ -88,7 +88,7 @@ pub async fn run_loop(
     let persisted = stynx_code_tui::persistence::load();
     stynx_code_tui::persistence::apply_to(&mut tui.state, &persisted);
     set_current_model(&model_id);
-    provider.toggle_thinking(); // enable thinking by default
+    provider.toggle_thinking();
 
     let (key_tx, mut key_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
     let stop = Arc::new(AtomicBool::new(false));
@@ -126,9 +126,7 @@ pub async fn run_loop(
             while let Ok(ev) = ev_rx.try_recv() { tui.state.apply_engine_event(ev); }
             if task.is_finished() {
                 let (task, _, pre) = engine_task.take().unwrap();
-                // The engine task ended — any pending prompts/questions whose
-                // responders belong to that task are now dead and would block
-                // the next turn if we kept them around.
+
                 if pending_prompt.take().is_some() || pending_question.take().is_some() {
                     if matches!(&tui.state.modal.active,
                         Some(stynx_code_tui::ModalKind::Permission { .. })
@@ -177,8 +175,6 @@ pub async fn run_loop(
             }
         }
 
-        // If a pending question existed but the user dismissed the modal,
-        // unblock the engine by sending None.
         if pending_question.is_some() && tui.state.modal.active.is_none() {
             if let Some(responder) = pending_question.take() {
                 let _ = responder.send(None);
@@ -223,7 +219,7 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                             ));
                             continue;
                         }
-                        // Try `/intern <name> <task>`: match name against intern labels.
+
                         let (intern, task) = match rest.split_once(' ') {
                             Some((first, tail)) => {
                                 let first_t = first.trim();
@@ -453,7 +449,7 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         tui.state.is_streaming = false;
                         tui.state.toasts.warn("interrupted");
                     }
-                    // Drop any in-flight prompts whose engine task just died.
+
                     pending_prompt.take();
                     pending_question.take();
                     tui.state.modal.close();

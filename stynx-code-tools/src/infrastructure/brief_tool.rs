@@ -2,7 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool that returns content as-is for structured output.
 pub struct BriefTool;
 
 impl BriefTool {

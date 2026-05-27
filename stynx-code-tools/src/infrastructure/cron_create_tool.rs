@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool to create a cron job.
-///
-/// TODO: Phase 4 — integrate with real cron scheduler.
 pub struct CronCreateTool;
 
 impl CronCreateTool {
@@ -61,7 +58,6 @@ impl Tool for CronCreateTool {
 
         let name = input.get("name").and_then(|v| v.as_str());
 
-        // TODO: Phase 4 — replace stub with real cron scheduler integration
         let cron_id = format!("cron-{:08x}", rand_id());
 
         tracing::info!(schedule, command, ?name, cron_id, "creating cron job (stub)");

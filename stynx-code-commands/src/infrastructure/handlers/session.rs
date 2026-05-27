@@ -8,7 +8,7 @@ pub async fn handle_session(arg: &str) -> CommandResult {
     let session_dir = session_directory();
 
     if arg.is_empty() {
-        // List sessions
+
         let entries = match std::fs::read_dir(&session_dir) {
             Ok(entries) => entries,
             Err(_) => return CommandResult::Output(format!("  {DIM}No sessions found.{RESET}")),
@@ -45,7 +45,7 @@ pub async fn handle_session(arg: &str) -> CommandResult {
 
         CommandResult::Output(output)
     } else {
-        // Load a specific session
+
         let path = session_dir.join(format!("{arg}.json"));
         if path.exists() {
             CommandResult::Output(format!("  {DIM}Session file: {}{RESET}", path.display()))

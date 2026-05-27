@@ -1,8 +1,6 @@
 use stynx_code_types::{ContentBlock, Conversation};
 use regex::Regex;
 
-/// Extracts session memories (key decisions, file paths, errors) before discarding
-/// conversation content during compaction.
 pub struct SessionMemoryCompactor;
 
 impl Default for SessionMemoryCompactor {
@@ -16,10 +14,6 @@ impl SessionMemoryCompactor {
         Self
     }
 
-    /// Extract memory strings from the conversation and return a compacted conversation.
-    ///
-    /// Returns `(memories, compacted_conversation)` where memories contains key decisions,
-    /// file paths mentioned, and errors encountered.
     pub fn extract_and_compact(
         &self,
         conversation: &Conversation,
@@ -33,7 +27,7 @@ impl SessionMemoryCompactor {
                         self.extract_memories_from_text(text, &mut memories);
                     }
                     ContentBlock::ToolResult { content, is_error, .. } => {
-                        // Capture error messages as memories
+
                         if *is_error == Some(true) {
                             let preview = if content.len() > 200 {
                                 format!("{}...", &content[..200])
@@ -42,7 +36,7 @@ impl SessionMemoryCompactor {
                             };
                             memories.push(format!("Error encountered: {preview}"));
                         }
-                        // Extract file paths from tool results
+
                         self.extract_file_paths(content, &mut memories);
                     }
                     _ => {}
@@ -52,13 +46,11 @@ impl SessionMemoryCompactor {
 
         memories.dedup();
 
-        // The compacted conversation is returned as-is; the caller (full_compact)
-        // handles the actual message reduction. This stage only extracts memories.
         (memories, conversation.clone())
     }
 
     fn extract_memories_from_text(&self, text: &str, memories: &mut Vec<String>) {
-        // Extract decision patterns
+
         let decision_patterns = [
             "I decided to",
             "The solution is",
@@ -93,7 +85,7 @@ impl SessionMemoryCompactor {
         for cap in path_re.captures_iter(text) {
             if let Some(path) = cap.get(1) {
                 let p = path.as_str();
-                // Filter out obviously non-file patterns
+
                 if p.len() > 3 && !p.starts_with("//") {
                     memories.push(format!("File: {p}"));
                 }

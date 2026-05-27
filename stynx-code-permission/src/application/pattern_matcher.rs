@@ -1,13 +1,11 @@
 use serde_json::Value;
 
-/// A parsed permission rule, e.g. "bash(git *)" → tool="bash", pattern=Some("git *")
 #[derive(Debug, Clone)]
 pub struct PermissionRule {
     pub tool: String,
     pub pattern: Option<String>,
 }
 
-/// Parse a permission rule string like "bash(git *)", "read", "glob".
 pub fn parse_rule(rule: &str) -> PermissionRule {
     let rule = rule.trim();
     if let Some(paren_start) = rule.find('(')
@@ -25,25 +23,23 @@ pub fn parse_rule(rule: &str) -> PermissionRule {
     }
 }
 
-/// Check if a permission rule matches a given tool invocation.
 pub fn rule_matches(rule: &PermissionRule, tool_name: &str, input: &Value) -> bool {
     if rule.tool != tool_name {
         return false;
     }
 
     let Some(pattern) = &rule.pattern else {
-        // Tool name only match — matches any input
+
         return true;
     };
 
-    // Get the relevant input field based on tool type
     let field_value = match tool_name {
         "bash" => input.get("command").and_then(|v| v.as_str()),
         "file_write" | "file_edit" => input.get("file_path").and_then(|v| v.as_str()),
         "read" => input.get("file_path").and_then(|v| v.as_str()),
         "web_fetch" => input.get("url").and_then(|v| v.as_str()),
         _ => {
-            // For other tools, try to match against the full input JSON string
+
             None
         }
     };
@@ -55,18 +51,16 @@ pub fn rule_matches(rule: &PermissionRule, tool_name: &str, input: &Value) -> bo
     glob_match(pattern, value)
 }
 
-/// Simple glob matching: `*` matches any sequence of chars.
 fn glob_match(pattern: &str, text: &str) -> bool {
     let parts: Vec<&str> = pattern.split('*').collect();
 
     if parts.len() == 1 {
-        // No wildcards — exact match
+
         return pattern == text;
     }
 
     let mut pos = 0;
 
-    // First part must match from the start
     if !parts[0].is_empty() {
         if !text.starts_with(parts[0]) {
             return false;
@@ -74,7 +68,6 @@ fn glob_match(pattern: &str, text: &str) -> bool {
         pos = parts[0].len();
     }
 
-    // Middle parts must appear in order
     for part in &parts[1..parts.len() - 1] {
         if part.is_empty() {
             continue;
@@ -85,7 +78,6 @@ fn glob_match(pattern: &str, text: &str) -> bool {
         }
     }
 
-    // Last part must match at the end
     let last = parts[parts.len() - 1];
     if !last.is_empty() {
         text[pos..].ends_with(last)

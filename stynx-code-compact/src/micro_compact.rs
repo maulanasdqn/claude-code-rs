@@ -1,8 +1,7 @@
 use stynx_code_types::{ContentBlock, Conversation, Message};
 
-/// Reduces individual tool results that exceed a size threshold.
 pub struct MicroCompactor {
-    /// Maximum allowed size for tool result content in characters.
+
     pub max_tool_result_size: usize,
 }
 
@@ -21,7 +20,6 @@ impl MicroCompactor {
         }
     }
 
-    /// Compact a single message by truncating oversized tool results.
     pub fn compact_message(&self, message: &Message) -> Message {
         let content = message
             .content
@@ -55,7 +53,6 @@ impl MicroCompactor {
         }
     }
 
-    /// Compact all messages in a conversation.
     pub fn compact_conversation(&self, conversation: &Conversation) -> Conversation {
         let messages = conversation
             .messages

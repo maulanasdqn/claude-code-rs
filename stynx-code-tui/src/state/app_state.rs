@@ -51,9 +51,7 @@ pub struct AppState {
     pub total_output: u64,
     pub recent_models: Vec<String>,
     pub tool_details: bool,
-    /// Live thinking text for the in-flight turn. Rendered in a dedicated
-    /// panel just above the input; archived into the last assistant message
-    /// once the turn completes.
+
     pub live_thinking: String,
 }
 
@@ -184,9 +182,7 @@ impl AppState {
                         if t.name == "file_edit" || t.name == "file_write" {
                             t.diff = build_diff_for(&t.name, &t.input_json);
                         }
-                        // Append line-count badge to read/grep/glob/bash summary
-                        // so the user can see how much came back without
-                        // dumping the body.
+
                         if matches!(t.name.as_str(), "read" | "grep" | "glob") && !is_error {
                             let n = clean_output.lines().filter(|l| !l.trim().is_empty()).count();
                             if n > 0 && !t.input_summary.contains("(")  {
@@ -391,7 +387,7 @@ pub fn summarize_tool_input(tool: &str, json: &str) -> String {
         }
         "todo_write" | "todo_read" => String::new(),
         _ => {
-            // Generic fallback: first string field
+
             parsed
                 .as_ref()
                 .and_then(|v| v.as_object())
@@ -425,12 +421,11 @@ pub fn build_diff_for(tool: &str, input_json: &str) -> Vec<DiffLine> {
     let old_lines: Vec<&str> = old_s.split('\n').collect();
     let new_lines: Vec<&str> = new_s.split('\n').collect();
 
-    // Trim common prefix
     let mut p = 0;
     while p < old_lines.len() && p < new_lines.len() && old_lines[p] == new_lines[p] {
         p += 1;
     }
-    // Trim common suffix
+
     let mut s = 0;
     while s < old_lines.len() - p && s < new_lines.len() - p
         && old_lines[old_lines.len() - 1 - s] == new_lines[new_lines.len() - 1 - s]
@@ -440,25 +435,21 @@ pub fn build_diff_for(tool: &str, input_json: &str) -> Vec<DiffLine> {
 
     let mut out: Vec<DiffLine> = Vec::new();
 
-    // Leading context
     let ctx_start = p.saturating_sub(context_lines);
     for line in &old_lines[ctx_start..p] {
         out.push(DiffLine { kind: DiffLineKind::Context, text: line.to_string() });
     }
 
-    // Removed
     for line in &old_lines[p..old_lines.len() - s] {
         out.push(DiffLine { kind: DiffLineKind::Removed, text: line.to_string() });
         if out.len() >= max_lines { return out; }
     }
 
-    // Added
     for line in &new_lines[p..new_lines.len() - s] {
         out.push(DiffLine { kind: DiffLineKind::Added, text: line.to_string() });
         if out.len() >= max_lines { return out; }
     }
 
-    // Trailing context
     let ctx_end_start = old_lines.len() - s;
     let ctx_end_stop = (ctx_end_start + context_lines).min(old_lines.len());
     for line in &old_lines[ctx_end_start..ctx_end_stop] {

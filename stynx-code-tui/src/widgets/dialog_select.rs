@@ -67,11 +67,11 @@ impl<'a> Widget for DialogSelect<'a> {
         block.render(dialog, buf);
 
         let rows = Layout::vertical([
-            Constraint::Length(1), // title
-            Constraint::Length(1), // search input
-            Constraint::Length(1), // divider
-            Constraint::Min(1),    // options
-            Constraint::Length(1), // footer
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
         ])
         .split(inner);
 

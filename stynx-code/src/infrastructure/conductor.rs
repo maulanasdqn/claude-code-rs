@@ -107,4 +107,3 @@ pub(crate) struct AgentCtx {
     pub mode: Arc<AtomicU8>,
     pub hooks: HooksConfig,
 }
-

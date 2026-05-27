@@ -238,9 +238,7 @@ impl PersistentShell {
     async fn run(&mut self, command: &str, timeout: Option<Duration>) -> AppResult<String> {
         let nonce = nonce_hex();
         let marker = format!("__STYNX_DONE_{nonce}__");
-        // Wrap user command in a brace group so multi-line / multi-statement
-        // input works, and merge stderr into stdout so it interleaves with
-        // the marker correctly.
+
         let payload = format!(
             "{{\n{command}\n}} 2>&1\nprintf '\\n%s:%d\\n' '{marker}' $?\n"
         );
@@ -300,7 +298,7 @@ the command with background:true if it's a long-running process."
                         "persistent shell stdout closed unexpectedly".into(),
                     ));
                 }
-                Err(_) => {} // poll deadline + try_recv
+                Err(_) => {}
             }
         }
     }
@@ -314,9 +312,7 @@ fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 fn nonce_hex() -> String {
-    // Cheap, dependency-free unique-ish nonce. Collision with a literal
-    // appearing in user output is astronomically unlikely once paired with
-    // the STYNX_DONE_ prefix.
+
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())

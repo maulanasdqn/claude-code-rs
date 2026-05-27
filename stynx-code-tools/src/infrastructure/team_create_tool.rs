@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool to create a new agent team.
-///
-/// TODO: Phase 5 — integrate with real coordinator/team manager.
 pub struct TeamCreateTool;
 
 impl TeamCreateTool {
@@ -55,7 +52,6 @@ impl Tool for TeamCreateTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| stynx_code_errors::AppError::Tool("missing 'description' field".into()))?;
 
-        // TODO: Phase 5 — replace stub with real coordinator integration
         let team_id = format!("team-{:08x}", rand_id());
 
         tracing::info!(name, description, team_id, "creating team (stub)");

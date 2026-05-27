@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use serde::Deserialize;
 
-/// Newtype wrapper for a skill identifier.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SkillId(pub String);
 
@@ -21,7 +20,6 @@ impl std::fmt::Display for SkillId {
     }
 }
 
-/// Metadata parsed from the YAML frontmatter of a skill file.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SkillMetadata {
     pub name: String,
@@ -34,7 +32,6 @@ pub struct SkillMetadata {
     pub is_hidden: bool,
 }
 
-/// Where a skill was loaded from.
 #[derive(Debug, Clone)]
 pub enum SkillSource {
     UserSkill(PathBuf),
@@ -43,17 +40,16 @@ pub enum SkillSource {
     Plugin(String),
 }
 
-/// A fully loaded skill with metadata, markdown body, and its origin.
 #[derive(Debug, Clone)]
 pub struct Skill {
     pub metadata: SkillMetadata,
-    /// The full markdown body (everything after the frontmatter).
+
     pub content: String,
     pub source: SkillSource,
 }
 
 impl Skill {
-    /// Replace `{{ARGUMENTS}}` in the content with the given arguments string.
+
     pub fn expand_template(&self, arguments: &str) -> String {
         self.content.replace("{{ARGUMENTS}}", arguments)
     }

@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool for getting, setting, and listing configuration values.
-///
-/// TODO: Phase 4 — integrate with real configuration store.
 pub struct ConfigTool;
 
 impl ConfigTool {
@@ -58,7 +55,6 @@ impl Tool for ConfigTool {
         let key = input.get("key").and_then(|v| v.as_str());
         let value = input.get("value").and_then(|v| v.as_str());
 
-        // TODO: Phase 4 — replace stub with real config store integration
         tracing::info!(operation, key, value, "config operation (stub)");
 
         match operation {

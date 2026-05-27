@@ -50,10 +50,10 @@ impl<'a> Widget for PermissionDialog<'a> {
         };
 
         let chunks = Layout::vertical([
-            Constraint::Length(1), // title
-            Constraint::Length(1), // tool name
-            Constraint::Min(1),    // description
-            Constraint::Length(2), // buttons
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(2),
         ])
         .split(content);
 

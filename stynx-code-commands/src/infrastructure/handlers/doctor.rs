@@ -9,19 +9,16 @@ const RESET: &str = "\x1b[0m";
 pub async fn handle_doctor() -> CommandResult {
     let mut output = format!("  {BOLD}Environment Diagnostics{RESET}\n\n");
 
-    // Check git
     let git_ok = check_command("git", &["--version"]).await;
     output.push_str(&format_check("git", &git_ok));
 
-    // Check ripgrep
     let rg_ok = check_command("rg", &["--version"]).await;
     output.push_str(&format_check("ripgrep (rg)", &rg_ok));
 
-    // Check credential
     let cred_ok = if std::env::var("ANTHROPIC_API_KEY").is_ok() {
         Ok("API key set via ANTHROPIC_API_KEY".into())
     } else {
-        // Try to check for OAuth credential
+
         match check_command("security", &["find-generic-password", "-s", "claude-code-credentials"]).await {
             Ok(_) => Ok("OAuth credential found in keychain".into()),
             Err(_) => Err("No ANTHROPIC_API_KEY or OAuth credential found".into()),
@@ -29,7 +26,6 @@ pub async fn handle_doctor() -> CommandResult {
     };
     output.push_str(&format_check("credentials", &cred_ok));
 
-    // Check config files
     let home = stynx_code_config::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
     let global_config = home.join(".stynx").join("settings.json");
     let project_config = std::env::current_dir()

@@ -1,6 +1,5 @@
 use crate::domain::skill::Skill;
 
-/// Case-insensitive search across skill name, description, and triggers.
 pub fn search_skills<'a>(skills: &'a [Skill], query: &str) -> Vec<&'a Skill> {
     let q = query.to_lowercase();
     skills

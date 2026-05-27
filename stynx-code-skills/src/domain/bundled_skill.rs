@@ -1,6 +1,5 @@
 use super::skill::{Skill, SkillMetadata, SkillSource};
 
-/// Returns the set of built-in bundled skills.
 pub fn bundled_skills() -> Vec<Skill> {
     vec![
         Skill {

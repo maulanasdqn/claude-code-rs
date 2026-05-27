@@ -66,10 +66,8 @@ impl Tool for WebFetchTool {
             .await
             .map_err(|e| AppError::Tool(format!("failed to read response body: {e}")))?;
 
-        // Strip HTML tags for readability
         let text = strip_html_tags(&body);
 
-        // Truncate if too large
         if text.len() > MAX_RESPONSE_SIZE {
             Ok(format!(
                 "{}...\n(truncated at {}KB)",
@@ -82,7 +80,6 @@ impl Tool for WebFetchTool {
     }
 }
 
-/// Basic HTML tag stripping via simple state machine.
 fn strip_html_tags(html: &str) -> String {
     let mut result = String::with_capacity(html.len());
     let mut in_tag = false;
@@ -98,7 +95,7 @@ fn strip_html_tags(html: &str) -> String {
 
     while i < len {
         if !in_tag && chars[i] == '<' {
-            // Check for script/style tags
+
             if i + 7 < len && &lower[i..i + 7] == "<script" {
                 in_script = true;
             }
@@ -133,7 +130,6 @@ fn strip_html_tags(html: &str) -> String {
             continue;
         }
 
-        // Decode common entities
         if chars[i] == '&' {
             if i + 4 < len && &html[i..i + 4] == "&lt;" {
                 result.push('<');
@@ -174,7 +170,6 @@ fn strip_html_tags(html: &str) -> String {
         i += 1;
     }
 
-    // Collapse multiple blank lines
     let mut cleaned = String::new();
     let mut blank_count = 0;
     for line in result.lines() {
@@ -191,6 +186,6 @@ fn strip_html_tags(html: &str) -> String {
         }
     }
 
-    let _ = lower_chars; // suppress unused warning
+    let _ = lower_chars;
     cleaned.trim().to_string()
 }

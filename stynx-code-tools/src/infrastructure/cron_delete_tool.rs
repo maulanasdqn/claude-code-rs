@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, Tool};
 use serde_json::{Value, json};
 
-/// Tool to delete an existing cron job.
-///
-/// TODO: Phase 4 — integrate with real cron scheduler.
 pub struct CronDeleteTool;
 
 impl CronDeleteTool {
@@ -46,7 +43,6 @@ impl Tool for CronDeleteTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| stynx_code_errors::AppError::Tool("missing 'cron_id' field".into()))?;
 
-        // TODO: Phase 4 — replace stub with real cron scheduler integration
         tracing::info!(cron_id, "deleting cron job (stub)");
 
         Ok(format!("Cron job '{cron_id}' deleted successfully."))

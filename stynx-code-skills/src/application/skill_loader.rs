@@ -5,7 +5,6 @@ use stynx_code_errors::{AppError, AppResult};
 use crate::domain::bundled_skill::bundled_skills;
 use crate::domain::skill::{Skill, SkillMetadata, SkillSource};
 
-
 pub struct SkillLoader;
 
 impl SkillLoader {
@@ -13,7 +12,6 @@ impl SkillLoader {
         Self
     }
 
-    /// Load all skills from a single directory.
     pub fn load_from_directory(&self, dir: &Path) -> AppResult<Vec<Skill>> {
         let mut skills = Vec::new();
         if !dir.is_dir() {
@@ -26,7 +24,6 @@ impl SkillLoader {
         for entry in entries.flatten() {
             let p = entry.path();
 
-            // Directory format: skill-name/SKILL.md
             if p.is_dir() {
                 let skill_file = p.join("SKILL.md");
                 let skill_file_lower = p.join("skill.md");
@@ -47,7 +44,6 @@ impl SkillLoader {
                 continue;
             }
 
-            // Standalone .md file
             if p.extension().and_then(|e| e.to_str()) == Some("md") {
                 if let Ok(skill) = parse_skill_file(&p) {
                     if !skills.iter().any(|s: &Skill| s.metadata.name == skill.metadata.name) {
@@ -60,7 +56,6 @@ impl SkillLoader {
         Ok(skills)
     }
 
-    /// Load all skills: user skills, project skills, legacy commands, and bundled.
     pub fn load_all(&self) -> AppResult<Vec<Skill>> {
         let home = stynx_code_config::home_dir()
             .map(|p| p.to_string_lossy().to_string())
@@ -91,7 +86,6 @@ impl SkillLoader {
             }
         }
 
-        // Append bundled skills (lowest priority — only if not already defined)
         for skill in bundled_skills() {
             if !all.iter().any(|s| s.metadata.name == skill.metadata.name) {
                 all.push(skill);
@@ -108,14 +102,12 @@ impl Default for SkillLoader {
     }
 }
 
-/// Parse a skill from a markdown file with optional YAML frontmatter.
 pub fn parse_skill_file(path: &Path) -> AppResult<Skill> {
     let raw = std::fs::read_to_string(path)
         .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to read {:?}: {}", path, e)))?;
 
     let (frontmatter, body) = split_frontmatter(&raw);
 
-    // Determine name: frontmatter > file stem
     let name = extract_field(&frontmatter, "name").or_else(|| {
         path.file_stem()
             .and_then(|s| s.to_str())
@@ -149,7 +141,7 @@ pub fn parse_skill_file(path: &Path) -> AppResult<Skill> {
             is_hidden,
         },
         content: body.trim().to_string(),
-        // Caller may override source; default to user path
+
         source: SkillSource::UserSkill(path.to_path_buf()),
     })
 }

@@ -62,7 +62,6 @@ impl Tool for GrepTool {
 
         tracing::info!(pattern, search_path, "grepping");
 
-        // Try ripgrep first, fall back to grep
         let output = match try_ripgrep(pattern, search_path, file_glob).await {
             Ok(out) => out,
             Err(_) => try_grep(pattern, search_path).await?,
@@ -101,7 +100,6 @@ async fn try_ripgrep(
         .await
         .map_err(|e| AppError::Tool(format!("rg not available: {e}")))?;
 
-    // rg returns exit code 1 for no matches, 2 for errors
     if output.status.code() == Some(2) {
         return Err(AppError::Tool("ripgrep error".into()));
     }

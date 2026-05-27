@@ -1,17 +1,15 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Outcome of a Ctrl+V paste attempt.
 pub enum PasteOutcome {
-    /// Clipboard held a bitmap; saved at `path`.
+
     Image { path: PathBuf },
-    /// Clipboard held text.
+
     Text(String),
-    /// Clipboard was empty or unreadable.
+
     Empty,
 }
 
-/// Try to pull an image first; if there isn't one, try text.
 pub fn read_clipboard() -> PasteOutcome {
     let Ok(mut cb) = arboard::Clipboard::new() else { return PasteOutcome::Empty; };
 

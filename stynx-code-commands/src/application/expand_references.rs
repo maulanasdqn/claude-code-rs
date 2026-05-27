@@ -6,7 +6,7 @@ static FILE_REF_RE: LazyLock<Regex> =
 
 const MAX_FILE_SIZE: u64 = 100 * 1024;
 
-const MAX_IMAGE_SIZE: u64 = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_SIZE: u64 = 5 * 1024 * 1024;
 
 static IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp"];
 

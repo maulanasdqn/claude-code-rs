@@ -121,12 +121,11 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
         .max(24);
     let inner = w;
 
-    // Word-wrap the detail so long commands don't get truncated
     let detail_lines: Vec<String> = {
         let mut lines = Vec::new();
         let mut remaining = detail;
         while remaining.len() > inner {
-            // Find a good break point (space) near the limit
+
             let break_at = remaining[..inner].rfind(' ').unwrap_or(inner);
             lines.push(remaining[..break_at].to_string());
             remaining = remaining[break_at..].trim_start();
@@ -139,7 +138,6 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     };
     let detail_line_count = detail_lines.len();
 
-    // Title separator: ─── Bash ──────────────
     let title_prefix = format!("─── {title} ");
     let title_fill = inner.saturating_sub(title_prefix.len());
 
@@ -156,19 +154,17 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     let mut out = std::io::stdout();
 
     let draw = |out: &mut dyn Write, sel: usize| -> std::io::Result<()> {
-        // Use \r\n so redraws in raw mode return to column 0 (raw mode
-        // does not translate \n → \r\n, causing horizontal "sliding").
-        // Blank line + title separator
+
         write!(out, "\r\n  \x1b[33m\x1b[1m{title_prefix}{}\x1b[0m\r\n", "─".repeat(title_fill))?;
-        // Detail lines (dim, code-style)
+
         for line in &detail_lines {
             write!(out, "  \x1b[2m{line}\x1b[0m\r\n")?;
         }
-        // Bottom separator
+
         write!(out, "  \x1b[2m{}\x1b[0m\r\n", "─".repeat(inner))?;
-        // Blank line before options
+
         write!(out, "\r\n")?;
-        // Options
+
         for (i, (label, _)) in options.iter().enumerate() {
             if i == sel {
                 write!(out, "  \x1b[33m\x1b[1m❯\x1b[0m \x1b[1m{label}\x1b[0m\r\n")?;
@@ -179,7 +175,6 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
         out.flush()
     };
 
-    // Lines consumed: 1(blank) + 1(title) + detail_lines + 1(bottom sep) + 1(blank) + n(options)
     let total_lines = (4 + detail_line_count + n) as u16;
 
     let clear = |out: &mut dyn Write| -> std::io::Result<()> {

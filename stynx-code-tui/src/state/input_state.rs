@@ -11,13 +11,11 @@ pub struct InputState {
     pub history: Vec<String>,
     pub history_index: Option<usize>,
     pub suggestion: String,
-    /// Most recent large paste; expanded back into the message on submit.
+
     pub pasted_buffer: Option<String>,
-    /// File paths for images pasted via Ctrl+V, in the order they were pasted.
-    /// In the buffer they appear as `[Image #1]`, `[Image #2]`, … and are
-    /// expanded back to `@<path>` tokens at submit time.
+
     pub pasted_images: Vec<std::path::PathBuf>,
-    /// (command, description) pairs matching the slash prefix in the buffer.
+
     pub slash_matches: Vec<(String, String)>,
     pub slash_selected: usize,
 }
@@ -38,8 +36,6 @@ impl InputState {
         }
     }
 
-    /// Register a pasted image, insert its `[Image #N]` placeholder into the
-    /// buffer at the cursor, and return the assigned index.
     pub fn insert_image_paste(&mut self, path: std::path::PathBuf) -> usize {
         self.pasted_images.push(path);
         let idx = self.pasted_images.len();
@@ -50,10 +46,6 @@ impl InputState {
         idx
     }
 
-    /// Expand the buffer for submission:
-    /// - `[Pasted N lines, M chars]` → the real pasted text
-    /// - `[Image #N]`                 → `@<path>` so file-reference expansion
-    ///                                  picks the image up downstream
     pub fn expand_for_submit(&self) -> String {
         let mut out = self.buffer.clone();
         if let Some(real) = &self.pasted_buffer {
@@ -193,9 +185,6 @@ impl InputState {
 
     pub fn get_display_text(&self) -> &str { &self.buffer }
 
-    /// (line_index, display_column) for the current cursor byte position.
-    /// Display column is in terminal cells (unicode-width aware), not chars,
-    /// so emoji and CJK don't push the cursor off.
     pub fn cursor_line_col(&self) -> (usize, usize) {
         use unicode_width::UnicodeWidthChar;
         let mut line = 0;

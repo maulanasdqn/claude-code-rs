@@ -2,7 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, SearchReadInfo, Tool};
 use serde_json::{Value, json};
 
-/// Tool to invoke a skill by reading its SKILL.md file.
 pub struct SkillTool;
 
 impl SkillTool {

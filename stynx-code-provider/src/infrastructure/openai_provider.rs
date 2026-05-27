@@ -1,9 +1,3 @@
-//! OpenAI-compatible streaming provider.
-//!
-//! Works against any endpoint that speaks the OpenAI chat completions wire
-//! format (DeepSeek, OpenAI itself, Together, OpenRouter, local Ollama via its
-//! OpenAI-compat shim, etc.). All quirks are kept inside this file; consumers
-//! only see the generic `Provider` trait.
 
 use std::sync::Mutex;
 
@@ -64,7 +58,7 @@ impl OpenAiProvider {
 fn sanitize_schema(schema: Value) -> Value {
     match schema {
         Value::Object(mut map) => {
-            // Fields some OpenAI-compat endpoints (DeepSeek) reject.
+
             for key in [
                 "$schema",
                 "$id",
@@ -75,7 +69,7 @@ fn sanitize_schema(schema: Value) -> Value {
             ] {
                 map.remove(key);
             }
-            // Recurse into nested schemas
+
             if let Some(props) = map.get_mut("properties").and_then(Value::as_object_mut) {
                 let keys: Vec<String> = props.keys().cloned().collect();
                 for k in keys {
@@ -197,8 +191,7 @@ fn push_assistant(msg: &Message, out: &mut Vec<Value>) {
     let mut obj = serde_json::Map::new();
     obj.insert("role".into(), json!("assistant"));
     obj.insert("content".into(), content);
-    // DeepSeek's reasoner model requires reasoning_content from prior turns to
-    // be echoed back. Other OpenAI-compat endpoints ignore unknown fields.
+
     if !reasoning_parts.is_empty() {
         obj.insert("reasoning_content".into(), Value::String(reasoning_parts.join("\n")));
     }

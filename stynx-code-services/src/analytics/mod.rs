@@ -86,7 +86,7 @@ impl AnalyticsService for LocalAnalytics {
     }
 
     async fn flush(&self) -> AppResult<()> {
-        // Local file analytics flushes on each write; nothing to do here.
+
         Ok(())
     }
 }

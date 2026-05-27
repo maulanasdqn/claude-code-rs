@@ -3,7 +3,6 @@ use stynx_code_types::{InterruptBehavior, PermissionLevel, Tool};
 use serde_json::{Value, json};
 use tokio::process::Command;
 
-/// Tool to execute code snippets in a REPL subprocess (Python or Node.js).
 pub struct REPLTool;
 
 impl REPLTool {

@@ -138,14 +138,14 @@ impl TaskManager for InMemoryTaskManager {
     }
 
     async fn output(&self, task_id: &str) -> AppResult<String> {
-        // Verify the task exists
+
         self.tasks
             .read()
             .await
             .iter()
             .find(|t| t.id == task_id)
             .ok_or_else(|| AppError::Tool(format!("task not found: {task_id}")))?;
-        // In-memory implementation has no subprocess output
+
         Ok(String::new())
     }
 }

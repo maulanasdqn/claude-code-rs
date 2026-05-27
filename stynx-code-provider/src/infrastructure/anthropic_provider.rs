@@ -68,7 +68,7 @@ impl AnthropicProvider {
             model: std::sync::Mutex::new(default_model.to_string()),
             credential,
             mode,
-            thinking: Arc::new(AtomicBool::new(false)), // off by default; enable with /think
+            thinking: Arc::new(AtomicBool::new(false)),
             max_tokens: AtomicU32::new(MAX_TOKENS),
             thinking_budget: std::sync::Mutex::new(None),
             effort: std::sync::Mutex::new(None),

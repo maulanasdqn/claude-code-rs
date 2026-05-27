@@ -157,8 +157,6 @@ pub fn set_theme(id: &str) -> bool {
     false
 }
 
-// Token accessors — preserve the existing call-site shape (`theme::FOO`) but
-// dispatch to the runtime palette.
 #[allow(non_snake_case)] pub fn BASE()    -> Color { current().base }
 #[allow(non_snake_case)] pub fn SURFACE() -> Color { current().surface }
 #[allow(non_snake_case)] pub fn OVERLAY() -> Color { current().overlay }

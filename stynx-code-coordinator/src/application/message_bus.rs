@@ -16,7 +16,7 @@ impl MessageBus {
     }
 
     pub fn send(&self, msg: TeamMessage) {
-        // Ignore send errors — no subscribers is acceptable
+
         let _ = self.sender.send(msg);
     }
 

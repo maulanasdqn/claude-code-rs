@@ -2,9 +2,6 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{PermissionLevel, SearchReadInfo, Tool};
 use serde_json::{Value, json};
 
-/// Tool to list MCP resources.
-///
-/// TODO: Phase 4 — integrate with real MCP client.
 pub struct ListMcpResourcesTool;
 
 impl ListMcpResourcesTool {
@@ -50,7 +47,6 @@ impl Tool for ListMcpResourcesTool {
     async fn execute(&self, input: Value) -> AppResult<String> {
         let server_name = input.get("server_name").and_then(|v| v.as_str());
 
-        // TODO: Phase 4 — replace stub with real MCP resource listing
         tracing::info!(?server_name, "listing MCP resources (stub)");
 
         let result = json!({

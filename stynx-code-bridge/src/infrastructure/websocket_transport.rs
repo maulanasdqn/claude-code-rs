@@ -12,13 +12,12 @@ impl WebSocketTransport {
     }
 
     pub async fn accept_connection(&self, mut stream: TcpStream) -> AppResult<BridgeConnection> {
-        // Read the HTTP upgrade request
+
         let mut buf = vec![0u8; 4096];
         let n = stream.read(&mut buf).await
             .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
         let request = String::from_utf8_lossy(&buf[..n]);
 
-        // Extract Sec-WebSocket-Key
         let key = request.lines()
             .find(|l| l.to_lowercase().starts_with("sec-websocket-key:"))
             .and_then(|l| l.splitn(2, ':').nth(1))
@@ -57,7 +56,7 @@ fn compute_accept_key(key: &str) -> String {
 }
 
 fn sha1_bytes(data: &[u8]) -> [u8; 20] {
-    // SHA-1 implementation
+
     let mut h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
     let bit_len = (data.len() as u64) * 8;
 
@@ -132,7 +131,7 @@ impl BridgeConnection {
 
 fn encode_websocket_frame(payload: &[u8]) -> Vec<u8> {
     let mut frame = Vec::new();
-    // FIN=1, opcode=1 (text)
+
     frame.push(0x81);
     let len = payload.len();
     if len <= 125 {
@@ -157,7 +156,7 @@ async fn decode_websocket_frame(stream: &mut TcpStream) -> Option<Vec<u8>> {
 
     let _fin = (header[0] & 0x80) != 0;
     let opcode = header[0] & 0x0F;
-    // opcode 8 = close
+
     if opcode == 8 {
         return None;
     }

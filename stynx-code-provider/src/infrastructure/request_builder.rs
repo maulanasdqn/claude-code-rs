@@ -87,7 +87,7 @@ pub fn build_request_body(
         let supports_adaptive = model_lower.contains("opus-4-6") || model_lower.contains("sonnet-4-6");
 
         if supports_adaptive {
-            // Models that support adaptive thinking: let the model decide how much to think
+
             body["thinking"] = json!({"type": "adaptive"});
         } else {
             match thinking_budget {
@@ -106,7 +106,6 @@ pub fn build_request_body(
         }
     }
 
-    // Effort level (max/high/medium/low)
     if let Some(eff) = effort {
         body["output_config"] = json!({"effort": eff});
     }
@@ -160,7 +159,7 @@ mod tests {
             &[], true, 64000, None, Some("max"),
         );
         assert_eq!(body["output_config"]["effort"], "max");
-        // Adaptive thinking should also be present
+
         assert_eq!(body["thinking"]["type"], "adaptive");
     }
 
@@ -209,8 +208,7 @@ mod tests {
             &[], true, 4096, Some(10000), None,
         );
         assert_eq!(body["thinking"]["type"], "enabled");
-        // effective_max = max(4096, 10000+16384) = 26384
-        // effective_budget = min(10000, 26384-1) = 10000
+
         assert_eq!(body["thinking"]["budget_tokens"], 10000);
         assert_eq!(body["max_tokens"], 26384);
     }

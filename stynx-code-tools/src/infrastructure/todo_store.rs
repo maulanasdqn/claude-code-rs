@@ -26,7 +26,6 @@ pub fn write_todos(todos: Vec<TodoItem>) {
     *store().lock().unwrap() = todos;
 }
 
-/// Returns the `active_form` of the first `in_progress` todo item, if any.
 pub fn current_active_form() -> Option<String> {
     store()
         .lock()

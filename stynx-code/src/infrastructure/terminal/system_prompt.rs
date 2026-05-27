@@ -33,7 +33,6 @@ fn is_leap(y: u32) -> bool {
     (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400)
 }
 
-/// Skill info for system prompt: (name, description, when_to_use)
 pub fn make_system_prompt(
     env: &EnvInfo,
     tool_names: &[String],

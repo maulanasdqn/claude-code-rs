@@ -1,11 +1,5 @@
 use std::path::{Path, PathBuf};
 
-/// Returns all directory paths that may contain skills.
-///
-/// Search order:
-///   1. `~/.claude/skills/`
-///   2. `.claude/skills/`
-///   3. `.claude/commands/`
 pub fn scan_skill_directories() -> Vec<PathBuf> {
     let home = stynx_code_config::home_dir()
         .unwrap_or_else(|| PathBuf::from("."));
@@ -16,7 +10,6 @@ pub fn scan_skill_directories() -> Vec<PathBuf> {
     ]
 }
 
-/// Recursively finds all `*.md` and `SKILL.md` files under `dir`.
 pub fn find_skill_files(dir: &Path) -> Vec<PathBuf> {
     let mut results = Vec::new();
     if !dir.is_dir() {

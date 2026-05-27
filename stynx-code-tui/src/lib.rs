@@ -33,7 +33,6 @@ pub struct TuiApp {
     in_alt: bool,
 }
 
-/// Restore the terminal to a usable state. Safe to call multiple times.
 pub fn restore_terminal() {
     let _ = disable_raw_mode();
     let _ = execute!(
