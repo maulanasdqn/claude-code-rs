@@ -376,6 +376,8 @@ impl<'a> Widget for MessageList<'a> {
                                 ),
                             ]));
                         }
+                        // Breathing room between consecutive tool blocks.
+                        lines.push(Line::from(""));
                     }
                 }
             }
