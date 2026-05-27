@@ -43,6 +43,15 @@ fn merge(global: Settings, project: Settings) -> Settings {
     let mut session_start = global.hooks.session_start;
     session_start.extend(project.hooks.session_start);
 
+    let mut interns = global.interns;
+    for p in project.interns {
+        if let Some(slot) = interns.iter_mut().find(|i| i.name == p.name) {
+            *slot = p;
+        } else {
+            interns.push(p);
+        }
+    }
+
     Settings {
         permissions: crate::domain::config::PermissionSettings { allow, deny },
         model: project.model.or(global.model),
@@ -51,6 +60,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
         max_tokens: project.max_tokens.or(global.max_tokens),
         effort: project.effort.or(global.effort),
         commit_attribution: project.commit_attribution || global.commit_attribution,
+        interns,
     }
 }
 

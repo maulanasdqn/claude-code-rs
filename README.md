@@ -22,7 +22,7 @@ A self-contained terminal app for getting work done with an LLM. Speaks Anthropi
 Highlights:
 
 - **Modern terminal UI** — sidebar, command palette, model picker, session list, runtime theme switcher (rose-pine, catppuccin, tokyo-night, gruvbox), mouse + bracketed paste, `@`-file mentions, multi-line input, slash-command popover with descriptions, toast notifications, colorized diff renderer for file edits.
-- **Intern mode** — Claude as the senior, DeepSeek (or any OpenAI-compat model) as the intern. Senior delegates focused subtasks via the `delegate_to_intern` tool or `/intern <task>` slash command.
+- **Intern mode** — Claude as the senior, one or more cheaper OpenAI-compat models (DeepSeek, OpenRouter, OpenAI, custom) as interns. Each intern shows up as its own `delegate_to_<name>` tool the senior can pick from, or call directly via `/intern <name> <task>`.
 - **Permission-first** — Normal / Auto-accept / Plan / Bypass modes, per-tool allow rules, in-TUI confirmation modal (no terminal mode-switching).
 - **Skills as slash commands** — drop a markdown file under `.claude/skills/` and it appears as `/your-skill`.
 - **Sessions** — automatic per-project persistence at `~/.stynx-code/projects/<slug>/session.json`.
@@ -73,20 +73,69 @@ Resolved in order:
 
 Run `/login` inside `stynx` for instructions.
 
-### Intern (OpenAI-compatible) provider
+### Interns (OpenAI-compatible providers)
 
-Set in a project-local `.env` or shell env:
+You can configure any number of interns concurrently — DeepSeek and OpenRouter together, mixed providers, whatever you want. Each becomes its own `delegate_to_<name>` tool the senior model can pick from.
+
+**Option 1 — `.env` shorthand** (zero settings.json edits):
 
 ```bash
+# DeepSeek (legacy single-intern shortcut)
 DEEPSEEK_API_KEY=sk-...
-# optional overrides:
-DEEPSEEK_MODEL=deepseek-chat                  # or deepseek-reasoner
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat                  # optional
+
+# OpenRouter — declare multiple interns via name:model pairs
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
 ```
+
+**Option 2 — `interns` array in `settings.json`** (full control):
+
+```json
+{
+  "interns": [
+    {
+      "name": "deepseek",
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "description": "Cheap general-purpose intern; good for boilerplate and mechanical refactors."
+    },
+    {
+      "name": "qwen-coder",
+      "provider": "openrouter",
+      "model": "qwen/qwen3-coder",
+      "description": "Coding specialist; strong at multi-file edits."
+    },
+    {
+      "name": "haiku",
+      "provider": "openrouter",
+      "model": "anthropic/claude-haiku-4.5",
+      "description": "Fast, well-balanced general intern."
+    },
+    {
+      "name": "local",
+      "provider": "custom",
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": "OLLAMA_API_KEY",
+      "model": "qwen2.5-coder:32b",
+      "description": "Local Ollama intern; free but slower."
+    }
+  ]
+}
+```
+
+`provider` shorthand resolves to:
+
+| provider     | base_url                             | default api key env  |
+| ------------ | ------------------------------------ | -------------------- |
+| `deepseek`   | `https://api.deepseek.com/v1`        | `DEEPSEEK_API_KEY`   |
+| `openrouter` | `https://openrouter.ai/api/v1`       | `OPENROUTER_API_KEY` |
+| `openai`     | `https://api.openai.com/v1`          | `OPENAI_API_KEY`     |
+| `custom`     | (set via `base_url`)                 | (set via `api_key_env`) |
 
 Add `.env` to your `.gitignore` — `stynx` autoloads it on startup.
 
-At launch you'll see `· intern ready (deepseek-chat)` in the banner if the key was picked up. If not, the `/intern` command and the `delegate_to_intern` tool are simply not registered.
+At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line per intern that successfully resolved. Interns missing their API key are silently skipped (a `WARN` is emitted to logs).
 
 ### Settings file
 
@@ -99,6 +148,9 @@ At launch you'll see `· intern ready (deepseek-chat)` in the banner if the key 
   "max_tokens": 8192,
   "effort": "medium",
   "commit_attribution": false,
+  "interns": [
+    { "name": "deepseek", "provider": "deepseek", "model": "deepseek-chat" }
+  ],
   "permissions": {
     "allow": ["bash:cargo *", "read:*"],
     "deny":  ["bash:rm -rf*"]
@@ -166,7 +218,8 @@ Mouse scroll wheel works in any terminal with mouse capture.
 /add <path>           pin a file into every message
 /files                list pinned files
 /skills               list available skills
-/intern <task>        hand work to the intern model
+/intern <task>             hand work to the first intern
+/intern <name> <task>      hand work to a specific intern by name
 
 /session              list / load sessions
 /rewind [n]           remove last n exchanges
@@ -184,23 +237,52 @@ Mouse scroll wheel works in any terminal with mouse capture.
 ## Intern mode in 30 seconds
 
 ```bash
-# .env
+# .env — quick mix of providers
 DEEPSEEK_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
 ```
 
 ```
-> refactor every println! in src/foo.rs to tracing::info!; hand it to the intern
+> refactor every println! in src/foo.rs to tracing::info!; hand it to the qwen-coder intern
 ```
 
-The senior (Claude) calls `delegate_to_intern` with a focused task description. The intern (DeepSeek) runs with a restricted toolset — bash, read, file_write, file_edit, glob, grep — and cannot spawn further sub-agents. It returns `Summary / Files changed / Output`. The senior reviews and integrates.
+The senior (Claude) calls `delegate_to_qwen_coder` (or any other registered intern) with a focused task description. The intern runs with a restricted toolset — bash, read, file_write, file_edit, glob, grep — and cannot spawn further sub-agents. It returns `Summary / Files changed / Output`. The senior reviews and integrates.
 
 Direct invocation:
 
 ```
-/intern list every public function in stynx-code-tui and one-line what each does
+/intern                                                # show available interns
+/intern list every public function and one-line them    # picks the first intern
+/intern qwen-coder write a unit test for util::strip_ansi
 ```
 
-The intern's transcript is shown as a system message in the conversation, including any tool calls it made.
+When multiple interns are configured, the senior picks based on each tool's `description` — so write descriptions that say what each intern is good at (speed, cost, specialty). The intern's transcript is shown as a system message in the conversation, including any tool calls it made.
+
+## Terminal sessions
+
+`bash` is a **persistent shell**, not a series of disposable subshells. The first call boots a long-lived `bash --norc --noprofile` process; every subsequent call runs through the same shell, so `cd`, `export`, sourced files, and function definitions survive across calls.
+
+For long-running processes (dev servers, watchers, log tails), pass `background: true`:
+
+```jsonc
+// start a dev server
+{"command": "bun run dev", "background": true}        // → "started background process 'bg1'"
+
+// check on it (only new output since last read)
+{"status": "bg1"}                                     // → "[running, 12s]\n..."
+
+// read everything it has emitted
+{"status": "bg1", "full": true}
+
+// see all background processes
+{"list": true}
+
+// stop it
+{"kill": "bg1"}
+```
+
+Foreground commands have a 120s default timeout (override with `"timeout": <secs>`). If you need longer, use `background: true` instead — a timed-out foreground command leaves the persistent shell in an unknown state.
 
 ## Hooks
 

@@ -270,6 +270,8 @@ impl Tool for ExploreAgentTool {
 pub struct InternTool {
     inner: SubEngine,
     label: String,
+    tool_name: String,
+    description: String,
 }
 
 impl InternTool {
@@ -280,12 +282,18 @@ impl InternTool {
         mode: Arc<AtomicU8>,
         hooks: HooksConfig,
         label: impl Into<String>,
+        tool_name: impl Into<String>,
+        description: impl Into<String>,
     ) -> Self {
         Self {
             inner: SubEngine { provider, registry, permission, mode, hooks },
             label: label.into(),
+            tool_name: tool_name.into(),
+            description: description.into(),
         }
     }
+
+    pub fn label(&self) -> &str { &self.label }
 
     pub async fn run_task(&self, task: &str) -> AppResult<String> {
         self.inner.run(INTERN_SYSTEM, task).await
@@ -294,14 +302,9 @@ impl InternTool {
 
 #[async_trait::async_trait]
 impl Tool for InternTool {
-    fn name(&self) -> &str { "delegate_to_intern" }
+    fn name(&self) -> &str { &self.tool_name }
 
-    fn description(&self) -> &str {
-        "Hand off a focused, well-scoped subtask to a cheaper intern model. \
-The intern has read/write/edit/bash/glob/grep available but cannot spawn further sub-agents. \
-Use this for grunt work — boilerplate, mechanical refactors, gathering data, drafting code that you'll review. \
-Provide explicit acceptance criteria. Returns the intern's summary + output."
-    }
+    fn description(&self) -> &str { &self.description }
 
     fn input_schema(&self) -> Value {
         json!({

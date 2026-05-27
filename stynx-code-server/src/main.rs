@@ -25,7 +25,7 @@ async fn main() {
     let provider = Arc::new(AnthropicProvider::new(credential.clone(), mode.clone()));
 
     let mut registry = ToolRegistry::new();
-    registry.register(Arc::new(BashTool));
+    registry.register(Arc::new(BashTool::new()));
     registry.register(Arc::new(ReadTool));
     let registry = Arc::new(registry);
 

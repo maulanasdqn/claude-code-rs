@@ -68,7 +68,7 @@ pub async fn run_loop(
     skills: Vec<Skill>,
     pause_flag: Arc<AtomicBool>,
     permission: Arc<ConfigAwarePermissionChecker>,
-    intern_tool: Option<Arc<InternTool>>,
+    intern_tools: Vec<Arc<InternTool>>,
     ask_user_bridge_handle: SharedQuestionBridge,
 ) {
     let total_input = Arc::new(AtomicU64::new(0));
@@ -184,22 +184,59 @@ pub async fn run_loop(
             match EventHandler::handle(ev, &mut tui.state) {
                 UiAction::Submit(text) if engine_task.is_none() => {
                     let trimmed = text.trim().to_string();
-                    if let Some(task) = trimmed.strip_prefix("/intern ") {
-                        let task = task.trim().to_string();
-                        if task.is_empty() {
-                            tui.state.push_system_message("usage: /intern <task description>");
-                        } else if let Some(intern) = intern_tool.clone() {
-                            tui.state.push_system_message(format!("🧑‍🎓 intern working on: {task}"));
-                            match intern.run_task(&task).await {
-                                Ok(output) => {
-                                    tui.state.push_system_message(format!("🧑‍🎓 intern result:\n{output}"));
-                                }
-                                Err(e) => {
-                                    tui.state.push_system_message(format!("intern failed: {e}"));
+                    if let Some(rest) = trimmed.strip_prefix("/intern") {
+                        let rest = rest.trim();
+                        if intern_tools.is_empty() {
+                            tui.state.push_system_message(
+                                "no interns configured. add `interns` to .claude/settings.json, \
+or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
+                            );
+                            continue;
+                        }
+                        if rest.is_empty() {
+                            let names: Vec<String> = intern_tools.iter()
+                                .map(|t| t.label().to_string()).collect();
+                            tui.state.push_system_message(format!(
+                                "usage: /intern [<name>] <task description>\navailable interns: {}",
+                                names.join(", "),
+                            ));
+                            continue;
+                        }
+                        // Try `/intern <name> <task>`: match name against intern labels.
+                        let (intern, task) = match rest.split_once(' ') {
+                            Some((first, tail)) => {
+                                let first_t = first.trim();
+                                let pick = intern_tools.iter()
+                                    .find(|t| t.label().eq_ignore_ascii_case(first_t))
+                                    .cloned();
+                                match pick {
+                                    Some(t) => (t, tail.trim().to_string()),
+                                    None => (intern_tools[0].clone(), rest.to_string()),
                                 }
                             }
-                        } else {
-                            tui.state.push_system_message("intern unavailable: set DEEPSEEK_API_KEY (and optionally DEEPSEEK_MODEL / DEEPSEEK_BASE_URL) and restart");
+                            None => (intern_tools[0].clone(), rest.to_string()),
+                        };
+                        if task.is_empty() {
+                            tui.state.push_system_message("usage: /intern [<name>] <task description>");
+                            continue;
+                        }
+                        tui.state.push_system_message(format!(
+                            "🧑‍🎓 {label} intern working on: {task}",
+                            label = intern.label(),
+                        ));
+                        match intern.run_task(&task).await {
+                            Ok(output) => {
+                                tui.state.push_system_message(format!(
+                                    "🧑‍🎓 {label} intern result:\n{output}",
+                                    label = intern.label(),
+                                ));
+                            }
+                            Err(e) => {
+                                tui.state.push_system_message(format!(
+                                    "{label} intern failed: {e}",
+                                    label = intern.label(),
+                                ));
+                            }
                         }
                         continue;
                     }
@@ -343,8 +380,9 @@ pub async fn run_loop(
                             stynx_code_tui::dialogs::open_help(&mut tui.state, &skill_pairs);
                         }
                         "status.show" => {
-                            let intern_label = intern_tool.as_ref().map(|_| "deepseek");
-                            stynx_code_tui::dialogs::open_status(&mut tui.state, intern_label);
+                            let intern_labels: Vec<String> = intern_tools.iter()
+                                .map(|t| t.label().to_string()).collect();
+                            stynx_code_tui::dialogs::open_status(&mut tui.state, &intern_labels);
                         }
                         "skills.show" => {
                             let skill_pairs: Vec<(String, String)> = skills

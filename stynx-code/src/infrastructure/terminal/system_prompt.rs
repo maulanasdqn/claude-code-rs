@@ -59,7 +59,9 @@ pub fn make_system_prompt(
     sections.push("# Session-specific guidance\n \
          - For interactive shell commands users must run themselves, suggest `! <command>` in the prompt.\n \
          - Use `agent` to delegate independent subtasks. Use `explore` for read-only codebase research.\n \
-         - Sub-agents cannot spawn further sub-agents.".to_string());
+         - Sub-agents cannot spawn further sub-agents.\n \
+         - The `bash` tool runs commands in a PERSISTENT shell — `cd`, `export`, and shell state survive across calls. Do not chain with `cd ... &&` if you already cd'd in an earlier call.\n \
+         - For long-running processes (dev servers, watchers, log tails), call `bash` with `background: true`. You'll get a handle like `bg1`; read its output via `bash({\"status\":\"bg1\"})` and stop it via `bash({\"kill\":\"bg1\"})`. Do NOT run a dev server in the foreground — it will time out.".to_string());
 
     if !skills.is_empty() {
         let mut skill_section = "# User-defined Skills\nThe following custom skills are available as slash commands:\n".to_string();

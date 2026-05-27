@@ -1,5 +1,6 @@
 mod ask_user_tool;
 mod bash_tool;
+pub mod persistent_shell;
 pub mod question_bridge;
 mod file_edit_tool;
 mod file_write_tool;
