@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-tui"
-version = "3.3.1"
+version = "3.3.2"
 edition = "2024"
 description = "Terminal user interface with ratatui for interactive sessions"
 license = "MIT"

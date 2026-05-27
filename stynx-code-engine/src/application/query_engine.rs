@@ -36,7 +36,7 @@ impl QueryEngine {
     ) -> Self {
         Self {
             provider, registry, permission, hooks, mode,
-            max_turns: 20, context_limit: 80_000,
+            max_turns: 200, context_limit: 80_000,
             undo_stack: Arc::new(UndoStack::default()),
         }
     }
