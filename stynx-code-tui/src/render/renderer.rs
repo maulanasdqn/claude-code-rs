@@ -99,6 +99,7 @@ impl Renderer {
             Some(ModalKind::Input { title, prompt, buffer, .. }) => {
                 frame.render_widget(InputDialog::new(title, prompt, buffer), full);
             }
+            Some(ModalKind::QuitConfirm) => {}
             None => {}
         }
     }

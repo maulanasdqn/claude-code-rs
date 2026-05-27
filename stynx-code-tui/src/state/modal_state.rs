@@ -44,6 +44,7 @@ pub enum PermissionChoice {
 }
 
 pub enum ModalKind {
+    QuitConfirm,
     Permission {
         tool_name: String,
         description: String,
@@ -119,8 +120,11 @@ impl ModalState {
         });
     }
 
-    pub fn open_permission(&mut self, tool_name: impl Into<String>, description: impl Into<String>) {
-        self.active = Some(ModalKind::Permission {
+    pub fn open_quit_confirm(&mut self) {
+        self.active = Some(ModalKind::QuitConfirm);
+    }
+
+    pub fn open_permission(&mut self, tool_name: impl Into<String>, description: impl Into<String>) {        self.active = Some(ModalKind::Permission {
             tool_name: tool_name.into(),
             description: description.into(),
             choice: PermissionChoice::Once,

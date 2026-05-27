@@ -177,7 +177,10 @@ impl EventHandler {
 
     fn insert_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                state.modal.open_quit_confirm();
+                UiAction::None
+            }
             (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
                 open_command_palette(state);
                 UiAction::None
@@ -327,7 +330,10 @@ impl EventHandler {
 
     fn normal_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => UiAction::Quit,
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                state.modal.open_quit_confirm();
+                UiAction::None
+            }
             (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
                 open_command_palette(state);
                 UiAction::None
@@ -381,6 +387,17 @@ impl EventHandler {
     }
 
     fn modal_key(key: KeyEvent, state: &mut AppState) -> UiAction {
+        if let Some(ModalKind::QuitConfirm) = &state.modal.active {
+            match (key.code, key.modifiers) {
+                (KeyCode::Char('y'), _) | (KeyCode::Char('Y'), _) | (KeyCode::Enter, _) => {
+                    return UiAction::Quit;
+                }
+                _ => {
+                    state.modal.close();
+                    return UiAction::None;
+                }
+            }
+        }
         // Special: simple modals that close on any non-typing key.
         if let Some(ModalKind::Info { .. }) = &state.modal.active {
             match (key.code, key.modifiers) {
@@ -416,7 +433,7 @@ impl EventHandler {
         let active = state.modal.active.as_mut();
         let Some(active) = active else { return UiAction::None; };
         match active {
-            ModalKind::Info { .. } | ModalKind::Input { .. } => UiAction::None,
+            ModalKind::Info { .. } | ModalKind::Input { .. } | ModalKind::QuitConfirm => UiAction::None,
             ModalKind::Permission { choice, .. } => match (key.code, key.modifiers) {
                 (KeyCode::Esc, _) => {
                     state.modal.close();
