@@ -285,7 +285,20 @@ fn resolve_interns(config: &stynx_code_config::Settings) -> Vec<ResolvedIntern> 
         }
     }
 
+    if !names.contains("qwen") {
+        if let Some(r) = legacy_qwen_intern() {
+            names.insert(r.name.clone());
+            out.push(r);
+        }
+    }
+
     for r in openrouter_env_interns() {
+        if names.insert(r.name.clone()) {
+            out.push(r);
+        }
+    }
+
+    for r in qwen_env_interns() {
         if names.insert(r.name.clone()) {
             out.push(r);
         }
@@ -303,6 +316,11 @@ fn resolve_one(cfg: &stynx_code_config::InternConfig) -> Option<ResolvedIntern> 
         "deepseek" => ("https://api.deepseek.com/v1", "DEEPSEEK_API_KEY", "deepseek"),
         "openrouter" => ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "openrouter"),
         "openai" => ("https://api.openai.com/v1", "OPENAI_API_KEY", "openai"),
+        "qwen" => (
+            "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            "QWEN_API_KEY",
+            "qwen",
+        ),
         "custom" => ("", "", "custom"),
         _ => {
             tracing::warn!(name = %name, provider = %provider, "unknown intern provider, skipping");
@@ -359,6 +377,61 @@ fn legacy_deepseek_intern() -> Option<ResolvedIntern> {
         api_key,
         model,
     })
+}
+
+fn legacy_qwen_intern() -> Option<ResolvedIntern> {
+    let api_key = std::env::var("QWEN_API_KEY").ok().filter(|s| !s.trim().is_empty())?;
+    let base_url = std::env::var("QWEN_BASE_URL")
+        .ok().filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "https://dashscope-intl.aliyuncs.com/compatible-mode/v1".to_string());
+    let model = std::env::var("QWEN_MODEL")
+        .ok().filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "qwen-plus".to_string());
+    Some(ResolvedIntern {
+        name: "qwen".to_string(),
+        provider_label: "qwen".to_string(),
+        description: default_description("qwen", &model),
+        base_url,
+        api_key,
+        model,
+    })
+}
+
+// Parses QWEN_INTERNS="name1:model1,name2:model2" when QWEN_API_KEY is set.
+fn qwen_env_interns() -> Vec<ResolvedIntern> {
+    let mut out: Vec<ResolvedIntern> = Vec::new();
+    let api_key = match std::env::var("QWEN_API_KEY").ok().filter(|s| !s.trim().is_empty()) {
+        Some(k) => k,
+        None => return out,
+    };
+    let base_url = std::env::var("QWEN_BASE_URL")
+        .ok().filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "https://dashscope-intl.aliyuncs.com/compatible-mode/v1".to_string());
+    let spec = match std::env::var("QWEN_INTERNS").ok().filter(|s| !s.trim().is_empty()) {
+        Some(s) => s,
+        None => return out,
+    };
+    for entry in spec.split(',') {
+        let entry = entry.trim();
+        if entry.is_empty() { continue; }
+        let (name, model) = match entry.split_once(':') {
+            Some((n, m)) => (n.trim(), m.trim()),
+            None => {
+                tracing::warn!(entry = %entry, "QWEN_INTERNS entry must be name:model, skipping");
+                continue;
+            }
+        };
+        if name.is_empty() || model.is_empty() { continue; }
+        out.push(ResolvedIntern {
+            name: name.to_string(),
+            provider_label: "qwen".to_string(),
+            description: default_description(name, model),
+            base_url: base_url.clone(),
+            api_key: api_key.clone(),
+            model: model.to_string(),
+        });
+    }
+    out
 }
 
 // Parses OPENROUTER_INTERNS="name1:model1,name2:model2" when

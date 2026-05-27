@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-coordinator"
-version = "3.2.0"
+version = "3.2.1"
 edition = "2024"
 description = "Multi-turn conversation coordination and flow control"
 license = "MIT"

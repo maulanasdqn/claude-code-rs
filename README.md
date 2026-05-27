@@ -19,6 +19,8 @@ The product is `stynx-code`. The command you'll actually type is `stynx`.
 
 A self-contained terminal app for getting work done with an LLM. Speaks Anthropic's Claude API natively and any OpenAI-compatible endpoint (DeepSeek, OpenAI, OpenRouter, Together, local Ollama, …) for cheap delegation. Runs an autonomous tool-using loop with bash / file edit / glob / grep / web fetch behind a permission system that prompts you only when you ask it to.
 
+The engine runs concurrent-safe tools in parallel via `tokio::spawn`, sequential otherwise. Context is compacted automatically at 60% token threshold through a 4-stage pipeline (Auto → Micro → Session Memory → Full). File mutations are tracked on an undo stack. Provider overload triggers exponential backoff with up to 3 retries.
+
 Highlights:
 
 - **Modern terminal UI** — sidebar, command palette, model picker, session list, runtime theme switcher (rose-pine, catppuccin, tokyo-night, gruvbox), mouse + bracketed paste, `@`-file mentions, multi-line input, slash-command popover with descriptions, toast notifications, colorized diff renderer for file edits.
@@ -87,6 +89,11 @@ DEEPSEEK_MODEL=deepseek-chat                  # optional
 # OpenRouter — declare multiple interns via name:model pairs
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
+
+# Qwen / Alibaba DashScope (auto-registers a "qwen" intern; multi via QWEN_INTERNS)
+QWEN_API_KEY=sk-...
+QWEN_MODEL=qwen-plus                         # optional; qwen-max / qwen-turbo / qwen3-coder-plus
+# QWEN_INTERNS=qwen-max:qwen-max,qwen-coder:qwen3-coder-plus
 ```
 
 **Option 2 — `interns` array in `settings.json`** (full control):
@@ -126,12 +133,13 @@ OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
 
 `provider` shorthand resolves to:
 
-| provider     | base_url                             | default api key env  |
-| ------------ | ------------------------------------ | -------------------- |
-| `deepseek`   | `https://api.deepseek.com/v1`        | `DEEPSEEK_API_KEY`   |
-| `openrouter` | `https://openrouter.ai/api/v1`       | `OPENROUTER_API_KEY` |
-| `openai`     | `https://api.openai.com/v1`          | `OPENAI_API_KEY`     |
-| `custom`     | (set via `base_url`)                 | (set via `api_key_env`) |
+| provider     | base_url                                                       | default api key env     |
+| ------------ | -------------------------------------------------------------- | ----------------------- |
+| `deepseek`   | `https://api.deepseek.com/v1`                                  | `DEEPSEEK_API_KEY`      |
+| `openrouter` | `https://openrouter.ai/api/v1`                                 | `OPENROUTER_API_KEY`    |
+| `openai`     | `https://api.openai.com/v1`                                    | `OPENAI_API_KEY`        |
+| `qwen`       | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`       | `QWEN_API_KEY`          |
+| `custom`     | (set via `base_url`)                                           | (set via `api_key_env`) |
 
 Add `.env` to your `.gitignore` — `stynx` autoloads it on startup.
 
@@ -295,31 +303,76 @@ Each hook command receives the relevant JSON on stdin and writes text to stdout 
 
 Each can have an optional `matcher` (substring against tool name) and a required `command`.
 
+## Available Tools
+
+The engine provides a rich set of tools categorized as follows:
+
+- **File I/O**: `read`, `file_write`, `file_edit`
+- **Discovery**: `glob`, `grep`
+- **Shell**: `bash` (persistent session)
+- **Web**: `web_fetch`, `web_search`
+- **Tasks**: `todo_read`, `todo_write`
+- **Background tasks**: `task_create`, `task_get`, `task_list`, `task_stop`, `task_update`, `task_output`
+- **Scheduling**: `cron_create`, `cron_delete`
+- **Interaction**: `ask_user_question`
+- **Integration**: MCP (dynamic tools loaded per server), `lsp`
+- **Skills**: `skill` invocation
+- **Misc**: `notebook_edit`, `repl`, `send_message`, `sleep`, `synthetic_output`, `plan_mode`
+
+## How it works
+
+### Engine loop
+
+The QueryEngine runs up to N turns (default 20, configurable via `max_turns`). Each turn:
+
+1. Sends the conversation to the provider (with read-only tools only in plan mode)
+2. Streams the response and extracts tool calls
+3. Runs pre-tool hooks for each tool
+4. Executes concurrent-safe tools in parallel (via tokio::spawn); non-concurrent tools sequentially
+5. Runs post-tool hooks and collects results
+6. Adds results back to conversation
+7. Repeats if the model calls tools, or returns if the model stopped
+
+At 60% token threshold, the engine automatically invokes the compactor to free up context.
+
+### Context compaction (4-stage pipeline)
+
+When tokens exceed 60% of the limit:
+
+1. **Auto** — checks whether compaction is needed based on the token threshold
+2. **Micro** — truncates oversized individual tool results in-place
+3. **Session Memory** — extracts key memories before discarding content
+4. **Full** — sends older turns to the LLM for summarization, keeping the last 1–2 turns intact
+
+The compactor preserves key decisions and context needed to continue.
+
+### File edit undo stack
+
+Every file write/edit is tracked on an undo stack. Use `/undo [n]` to restore the last n file mutations.
+
 ## Architecture
 
-Every crate follows Clean Architecture with `domain/`, `application/`, and `infrastructure/` layers.
+The project is structured as a 19-crate Rust workspace, each following Clean Architecture principles with `domain/`, `application/`, and `infrastructure/` layers.
 
-```
-stynx-code/                main binary, app loop, CLI surface
-stynx-code-types/          shared types: Provider, Tool, Message, Conversation
-stynx-code-errors/         AppError + AppResult
-stynx-code-config/         settings loader
-stynx-code-auth/           credential resolution
-stynx-code-provider/       AnthropicProvider + OpenAiProvider
-stynx-code-engine/         streaming tool-use loop
-stynx-code-tools/          built-in tools + MCP loader
-stynx-code-permission/     allow/deny + prompt bridge to TUI
-stynx-code-memory/         per-project session persistence
-stynx-code-commands/       slash-command handlers
-stynx-code-compact/        conversation summarization
-stynx-code-coordinator/    parallel sub-agent orchestration
-stynx-code-skills/         user-defined skill loading
-stynx-code-plugins/        plugin host (skills + MCP)
-stynx-code-bridge/         server bridge for frontends
-stynx-code-server/         HTTP/SSE server
-stynx-code-services/       cross-cutting services (tips, telemetry, …)
-stynx-code-tui/            ratatui-based terminal UI
-```
+- `stynx-code-errors`: Defines common application error types and results.
+- `stynx-code-types`: Provides core traits and structs for tools, providers, messages, and permissions.
+- `stynx-code-tools`: Implements over 50 tools, including file operations, shell commands, and task management.
+- `stynx-code-provider`: Handles integrations with Anthropic SSE streaming and OpenAI-compatible providers.
+- `stynx-code-engine`: The core query engine, managing the multi-turn agentic loop, tool execution, context compaction, hooks, and undo stack.
+- `stynx-code-server`: Provides an Axum HTTP API for headless operation.
+- `stynx-code`: The main executable, handling CLI parsing and orchestrating the TUI and agent/intern interactions.
+- `stynx-code-auth`: Manages OAuth PKCE and API key credential resolution.
+- `stynx-code-permission`: Implements interactive and configuration-driven permission gating for tools.
+- `stynx-code-commands`: Handles slash-command expansion within the TUI.
+- `stynx-code-memory`: Manages per-project session persistence.
+- `stynx-code-config`: Loads and merges global and project-specific settings, including hook configurations.
+- `stynx-code-services`: Provides analytics, an LSP bridge, rate limiting, token estimation, diagnostics, and notifications.
+- `stynx-code-compact`: Implements the 4-stage conversation summarization pipeline.
+- `stynx-code-coordinator`: Facilitates multi-agent communication and task management via a message bus.
+- `stynx-code-bridge`: Handles inter-crate communication.
+- `stynx-code-plugins`: Manages the lifecycle of plugins.
+- `stynx-code-skills`: Loads both bundled and user-defined skills.
+- `stynx-code-tui`: Implements the `ratatui` terminal user interface, including state management and rendering.
 
 ## License
 
