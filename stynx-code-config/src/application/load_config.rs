@@ -61,6 +61,7 @@ fn merge(global: Settings, project: Settings) -> Settings {
         effort: project.effort.or(global.effort),
         commit_attribution: project.commit_attribution || global.commit_attribution,
         interns,
+        main_provider: project.main_provider.or(global.main_provider),
     }
 }
 

@@ -8,8 +8,7 @@ use stynx_code_permission::{ConfigAwarePermissionChecker, PromptBridge, PromptCh
 use stynx_code_tools::{QuestionBridge, QuestionRequest, SharedQuestionBridge};
 
 use super::agent_tool::InternTool;
-use stynx_code_provider::AnthropicProvider;
-use stynx_code_types::{Conversation, Message, PermissionMode, Role};
+use stynx_code_types::{Conversation, Message, PermissionMode, Provider, Role};
 use stynx_code_tui::state::app_state::SessionSummary;
 use stynx_code_tui::state::InputKind;
 use stynx_code_tui::{DisplayMessage, EventHandler, PermissionChoice, TuiApp, UiAction};
@@ -59,7 +58,8 @@ pub async fn run_loop(
     _conductor_engine: Arc<QueryEngine>,
     _reflect_engine: Arc<QueryEngine>,
     session_repo: Arc<dyn stynx_code_memory::SessionRepository>,
-    provider: Arc<AnthropicProvider>,
+    provider: Arc<dyn Provider>,
+    anthropic: Option<Arc<stynx_code_provider::AnthropicProvider>>,
     config: stynx_code_config::Settings,
     mode_flag: Arc<AtomicU8>,
     cwd: String,
@@ -88,7 +88,9 @@ pub async fn run_loop(
     let persisted = stynx_code_tui::persistence::load();
     stynx_code_tui::persistence::apply_to(&mut tui.state, &persisted);
     set_current_model(&model_id);
-    provider.toggle_thinking();
+    if anthropic.is_some() {
+        provider.toggle_thinking();
+    }
 
     let (key_tx, mut key_rx) = mpsc::unbounded_channel::<crossterm::event::Event>();
     let stop = Arc::new(AtomicBool::new(false));
@@ -258,7 +260,7 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         continue;
                     }
                     if trimmed.starts_with('/') {
-                        let action = handle_tui_slash(&trimmed, &provider, &config, &mode_flag,
+                        let action = handle_tui_slash(&trimmed, &provider, anthropic.as_deref(), &config, &mode_flag,
                             &system_prompt, &cwd, &conversation, &skills, &mut pinned_files, &mut tui).await;
                         match action {
                             Some(CommandAction::ReplaceConversation(c)) => {
@@ -532,7 +534,8 @@ async fn refresh_sidebar_sessions(
 
 async fn handle_tui_slash(
     cmd: &str,
-    provider: &Arc<AnthropicProvider>,
+    provider: &Arc<dyn Provider>,
+    anthropic: Option<&stynx_code_provider::AnthropicProvider>,
     config: &stynx_code_config::Settings,
     mode_flag: &Arc<AtomicU8>,
     system_prompt: &str,
@@ -563,7 +566,7 @@ async fn handle_tui_slash(
     if let Some(path) = cmd.strip_prefix("/add ") { handle_add(path, pinned_files); return None; }
 
     tui.leave_alt();
-    let result = handle_slash_command(cmd, provider, config, mode_flag, system_prompt, cwd, conversation, skills).await;
+    let result = handle_slash_command(cmd, &**provider, anthropic, config, mode_flag, system_prompt, cwd, conversation, skills).await;
     tui.enter_alt();
     result
 }

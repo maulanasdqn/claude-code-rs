@@ -2,7 +2,10 @@ use stynx_code_provider::AnthropicProvider;
 
 use super::terminal::{BOLD, CYAN, DIM, GREEN, RED, RESET, YELLOW};
 
-pub(super) async fn render_usage(provider: &AnthropicProvider) -> String {
+pub(super) async fn render_usage(anthropic: Option<&AnthropicProvider>) -> String {
+    let Some(provider) = anthropic else {
+        return format!("\n  {DIM}/usage is only available when the main agent is Claude.{RESET}\n");
+    };
     if !provider.is_oauth() {
         return format!("\n  {DIM}/usage is only available for Claude AI subscribers (OAuth login){RESET}\n");
     }

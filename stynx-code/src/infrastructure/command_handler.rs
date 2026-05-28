@@ -2,8 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
 use stynx_code_commands::{CommandResult, SlashCommand, execute_command, parse_command};
-use stynx_code_provider::AnthropicProvider;
-use stynx_code_types::{Conversation, PermissionMode};
+use stynx_code_types::{Conversation, PermissionMode, Provider};
 
 use crate::infrastructure::command_extras::{
     git_diff, handle_commit_prompt, handle_effort_cmd, handle_export, handle_memory,
@@ -19,7 +18,8 @@ const FAST_MODEL: &str = "claude-haiku-4-5-20251001";
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_slash_command(
     input: &str,
-    provider: &AnthropicProvider,
+    provider: &dyn Provider,
+    anthropic: Option<&stynx_code_provider::AnthropicProvider>,
     config: &stynx_code_config::Settings,
     mode_flag: &Arc<AtomicU8>,
     system_prompt: &str,
@@ -92,7 +92,7 @@ pub async fn handle_slash_command(
         }));
     }
 
-    if matches!(cmd, SlashCommand::Usage) { return Some(CommandAction::Output(render_usage(provider).await)); }
+    if matches!(cmd, SlashCommand::Usage) { return Some(CommandAction::Output(render_usage(anthropic).await)); }
 
     if let SlashCommand::Effort(ref level) = cmd { return Some(handle_effort_cmd(level, provider)); }
 

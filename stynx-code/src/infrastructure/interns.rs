@@ -67,6 +67,29 @@ pub fn build_intern_tools(
     out
 }
 
+pub fn resolve_main_intern_candidates(config: &stynx_code_config::Settings) -> Vec<stynx_code_config::InternConfig> {
+    let mut out: Vec<stynx_code_config::InternConfig> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for cfg in &config.interns {
+        if resolve_one(cfg).is_some() && seen.insert(cfg.name.clone()) {
+            out.push(cfg.clone());
+        }
+    }
+    for r in resolve_interns(config) {
+        if seen.insert(r.name.clone()) {
+            out.push(stynx_code_config::InternConfig {
+                name: r.name.clone(),
+                provider: if r.provider_label == "custom" { "custom".into() } else { r.provider_label.clone() },
+                model: r.model.clone(),
+                description: None,
+                base_url: Some(r.base_url.clone()),
+                api_key_env: None,
+            });
+        }
+    }
+    out
+}
+
 fn resolve_interns(config: &stynx_code_config::Settings) -> Vec<ResolvedIntern> {
     let mut out: Vec<ResolvedIntern> = Vec::new();
     let mut names: std::collections::HashSet<String> = std::collections::HashSet::new();

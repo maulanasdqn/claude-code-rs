@@ -291,6 +291,16 @@ fn handle_chunk(
 
 #[async_trait::async_trait]
 impl Provider for OpenAiProvider {
+    fn model_name(&self) -> String {
+        self.model.lock().map(|m| m.clone()).unwrap_or_default()
+    }
+
+    fn set_model(&self, model: &str) {
+        if let Ok(mut m) = self.model.lock() {
+            *m = model.to_string();
+        }
+    }
+
     async fn stream(
         &self,
         conversation: &Conversation,

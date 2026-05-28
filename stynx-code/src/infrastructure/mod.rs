@@ -14,6 +14,7 @@ pub mod event_renderer;
 pub mod intern_manager;
 pub mod intern_tools;
 pub mod interns;
+pub mod main_provider_picker;
 pub mod oneshot;
 pub mod pipe;
 pub mod run_engine;

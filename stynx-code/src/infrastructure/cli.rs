@@ -35,6 +35,9 @@ pub struct Cli {
 
     #[arg(long, help = "Effort level: max, high, medium, low (enables thinking + effort)")]
     pub effort: Option<String>,
+
+    #[arg(long, help = "Main agent provider: claude, deepseek, qwen, mimo, openrouter, openai, or a configured intern name")]
+    pub provider: Option<String>,
 }
 
 impl Cli {

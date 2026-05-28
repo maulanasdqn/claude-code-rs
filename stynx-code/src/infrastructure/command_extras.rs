@@ -1,7 +1,6 @@
 use std::path::Path;
 
-use stynx_code_provider::AnthropicProvider;
-use stynx_code_types::PermissionMode;
+use stynx_code_types::{PermissionMode, Provider};
 
 use crate::infrastructure::command_types::CommandAction;
 use crate::infrastructure::skills::Skill;
@@ -111,7 +110,7 @@ pub fn try_skill(input: &str, skills: &[Skill]) -> Option<CommandAction> {
     Some(CommandAction::SendToEngine(prompt, skill.allowed_tools.clone()))
 }
 
-pub fn handle_model_cmd(name: &str, provider: &AnthropicProvider, mode_flag: &std::sync::Arc<std::sync::atomic::AtomicU8>) -> Option<CommandAction> {
+pub fn handle_model_cmd(name: &str, provider: &dyn Provider, mode_flag: &std::sync::Arc<std::sync::atomic::AtomicU8>) -> Option<CommandAction> {
     if name.is_empty() {
         let current = provider.model_name();
         let items: Vec<(String, String)> = vec![
@@ -140,7 +139,7 @@ pub fn handle_model_cmd(name: &str, provider: &AnthropicProvider, mode_flag: &st
     }
 }
 
-pub fn handle_effort_cmd(level: &str, provider: &AnthropicProvider) -> CommandAction {
+pub fn handle_effort_cmd(level: &str, provider: &dyn Provider) -> CommandAction {
     if level.is_empty() {
         let current = provider.get_effort().unwrap_or_else(|| "auto".to_string());
         return CommandAction::Output(format!(

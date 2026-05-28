@@ -45,4 +45,13 @@ pub trait Provider: Send + Sync {
         conversation: &Conversation,
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>>;
+
+    fn model_name(&self) -> String { "unknown".into() }
+    fn set_model(&self, _model: &str) {}
+    fn set_max_tokens(&self, _n: u32) {}
+    fn set_thinking_budget(&self, _budget: u32) {}
+    fn set_effort(&self, _level: &str) {}
+    fn clear_effort(&self) {}
+    fn get_effort(&self) -> Option<String> { None }
+    fn toggle_thinking(&self) -> bool { false }
 }

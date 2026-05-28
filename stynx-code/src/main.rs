@@ -10,7 +10,7 @@ use stynx_code_config::load_config;
 use stynx_code_engine::{QueryEngine, run_session_start_hooks};
 use stynx_code_memory::FileSessionRepository;
 use stynx_code_permission::ConfigAwarePermissionChecker;
-use stynx_code_provider::AnthropicProvider;
+use stynx_code_provider::{AnthropicProvider, OpenAiProvider};
 use stynx_code_tools::{
     AskUserTool, BashTool, ExitPlanModeTool, FileEditTool, FileWriteTool,
     GlobTool, GrepTool, ReadTool, TodoReadTool, TodoWriteTool, ToolRegistry, WebFetchTool,
@@ -80,13 +80,65 @@ async fn main() {
     tracing::info!(version = %env!("CARGO_PKG_VERSION"), "stynx starting");
 
     let config = load_config();
-    let credential = match stynx_code_auth::resolve_credential() {
-        Ok(cred) => cred,
-        Err(e) => { render_error_box(&e.to_string()); std::process::exit(1); }
-    };
+    let credential = stynx_code_auth::resolve_credential().ok();
 
     let mode_flag = Arc::new(AtomicU8::new(PermissionMode::Normal as u8));
-    let provider = Arc::new(AnthropicProvider::new(credential, mode_flag.clone()));
+
+    let candidates = infrastructure::main_provider_picker::list_candidates(&config, credential.is_some());
+    if candidates.is_empty() {
+        render_error_box(
+            "No credentials found. Configure Claude (ANTHROPIC_API_KEY / OAuth login) or an intern provider (e.g. MIMO_API_KEY, DEEPSEEK_API_KEY, QWEN_API_KEY, OPENROUTER_API_KEY).",
+        );
+        std::process::exit(1);
+    }
+    let resolved_idx = infrastructure::main_provider_picker::resolve_choice(
+        cli.provider.as_deref(),
+        &config,
+        &candidates,
+    );
+    let pick_idx = match resolved_idx {
+        Some(i) => i,
+        None => {
+            let idx = infrastructure::main_provider_picker::prompt_pick(&candidates).unwrap_or(0);
+            let label = &candidates[idx].label;
+            if let Err(e) = infrastructure::main_provider_picker::persist_choice(label) {
+                tracing::warn!("could not persist main_provider choice: {e}");
+            }
+            idx
+        }
+    };
+    let picked = &candidates[pick_idx];
+
+    use infrastructure::main_provider_picker::MainProviderKind;
+    let mut anthropic_handle: Option<Arc<AnthropicProvider>> = None;
+    let provider: Arc<dyn stynx_code_types::Provider> = match &picked.kind {
+        MainProviderKind::Claude => {
+            let cred = credential.clone().expect("claude picked but credential missing");
+            let a = Arc::new(AnthropicProvider::new(cred, mode_flag.clone()));
+            anthropic_handle = Some(a.clone());
+            a
+        }
+        MainProviderKind::Intern(cfg) => {
+            let (default_base, default_key_env, provider_label) = match cfg.provider.trim().to_lowercase().as_str() {
+                "deepseek" => ("https://api.deepseek.com/v1", "DEEPSEEK_API_KEY", "deepseek"),
+                "openrouter" => ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "openrouter"),
+                "openai" => ("https://api.openai.com/v1", "OPENAI_API_KEY", "openai"),
+                "qwen" => ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "QWEN_API_KEY", "qwen"),
+                "mimo" | "custom" => ("https://api.xiaomimimo.com/v1", "MIMO_API_KEY", "custom"),
+                _ => ("", "", "custom"),
+            };
+            let base_url = cfg.base_url.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| default_base.into());
+            let key_env = cfg.api_key_env.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| default_key_env.into());
+            let api_key = match std::env::var(&key_env).ok().filter(|s| !s.trim().is_empty()) {
+                Some(k) => k,
+                None => {
+                    render_error_box(&format!("Main provider '{}' selected but {} is not set in env.", picked.label, key_env));
+                    std::process::exit(1);
+                }
+            };
+            Arc::new(OpenAiProvider::new(provider_label, base_url, api_key, &cfg.model))
+        }
+    };
 
     if let Some(ref model) = cli.model { provider.set_model(model); }
     else if let Some(ref model) = config.model { provider.set_model(model); }
@@ -250,5 +302,5 @@ async fn main() {
         _ => Conversation { system: Some(system_prompt.clone()), ..Default::default() },
     };
 
-    run_loop(engine, conductor_engine, reflect_engine, session_repo, provider, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission, intern_tools, ask_user_bridge_handle).await;
+    run_loop(engine, conductor_engine, reflect_engine, session_repo, provider, anthropic_handle, config, mode_flag, cwd, system_prompt, conversation, loaded_skills, pause_flag, permission, intern_tools, ask_user_bridge_handle).await;
 }

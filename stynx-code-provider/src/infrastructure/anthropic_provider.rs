@@ -184,6 +184,15 @@ impl AnthropicProvider {
 
 #[async_trait::async_trait]
 impl Provider for AnthropicProvider {
+    fn model_name(&self) -> String { self.effective_model() }
+    fn set_model(&self, model: &str) { AnthropicProvider::set_model(self, model); }
+    fn set_max_tokens(&self, n: u32) { AnthropicProvider::set_max_tokens(self, n); }
+    fn set_thinking_budget(&self, budget: u32) { AnthropicProvider::set_thinking_budget(self, budget); }
+    fn set_effort(&self, level: &str) { AnthropicProvider::set_effort(self, level); }
+    fn clear_effort(&self) { AnthropicProvider::clear_effort(self); }
+    fn get_effort(&self) -> Option<String> { AnthropicProvider::get_effort(self) }
+    fn toggle_thinking(&self) -> bool { AnthropicProvider::toggle_thinking(self) }
+
     async fn stream(
         &self,
         conversation: &Conversation,

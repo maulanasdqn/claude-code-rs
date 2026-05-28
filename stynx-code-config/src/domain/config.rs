@@ -20,6 +20,9 @@ pub struct Settings {
 
     #[serde(default)]
     pub interns: Vec<InternConfig>,
+
+    #[serde(default)]
+    pub main_provider: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
