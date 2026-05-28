@@ -78,11 +78,6 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish stynx-code-coordinator
-        run: cargo publish -p stynx-code-coordinator --no-verify || echo "Already published, skipping"
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
       - name: Publish stynx-code-bridge
         run: cargo publish -p stynx-code-bridge --no-verify || echo "Already published, skipping"
         env:
@@ -90,11 +85,6 @@ jobs:
 
       - name: Publish stynx-code-plugins
         run: cargo publish -p stynx-code-plugins --no-verify || echo "Already published, skipping"
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish stynx-code-skills
-        run: cargo publish -p stynx-code-skills --no-verify || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 

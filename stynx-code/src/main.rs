@@ -68,6 +68,17 @@ async fn main() {
             .with_writer(io::stderr).init();
     }
 
+    let session_id: String = {
+        let mut bytes = [0u8; 8];
+        if getrandom::getrandom(&mut bytes).is_err() {
+            "unknown".to_string()
+        } else {
+            bytes.iter().map(|b| format!("{b:02x}")).collect()
+        }
+    };
+    let _entered = tracing::info_span!("stynx", session_id = %session_id).entered();
+    tracing::info!(version = %env!("CARGO_PKG_VERSION"), "stynx starting");
+
     let config = load_config();
     let credential = match stynx_code_auth::resolve_credential() {
         Ok(cred) => cred,

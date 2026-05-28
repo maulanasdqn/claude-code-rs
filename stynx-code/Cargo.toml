@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code"
-version = "3.10.1"
+version = "3.11.0"
 edition = "2024"
 description = "stynx-code — interactive AI coding assistant"
 license = "MIT"
@@ -35,3 +35,4 @@ base64 = { workspace = true }
 stynx-code-tui = { workspace = true }
 clap = { workspace = true }
 dotenvy = "0.15"
+getrandom = "0.2"

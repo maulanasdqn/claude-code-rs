@@ -13,7 +13,7 @@ use crate::domain::EngineEvent;
 use super::compactor::compact;
 use super::hook_runner::{run_post_tool_use, run_pre_tool_use, run_stop_hooks};
 use super::stream_reader::read_stream;
-use super::tool_executor::{execute_tool, is_overloaded};
+use super::tool_executor::{execute_tool, is_overloaded, retry_after_ms};
 
 pub struct QueryEngine {
     provider: Arc<dyn Provider>,
@@ -87,7 +87,10 @@ impl QueryEngine {
                     Ok(s) => s,
                     Err(e) if attempts < 3 && is_overloaded(&e.to_string()) => {
                         attempts += 1;
-                        let delay = std::time::Duration::from_secs(2u64.pow(attempts));
+                        let delay = retry_after_ms(&e.to_string())
+                            .map(std::time::Duration::from_millis)
+                            .unwrap_or_else(|| std::time::Duration::from_secs(2u64.pow(attempts)));
+                        tracing::warn!(?delay, attempt = attempts, "provider overloaded, retrying");
                         tokio::time::sleep(delay).await;
                         continue;
                     }
@@ -104,7 +107,10 @@ impl QueryEngine {
                 if let Some(err_msg) = stream_error {
                     if attempts < 3 && is_overloaded(&err_msg) {
                         attempts += 1;
-                        let delay = std::time::Duration::from_secs(2u64.pow(attempts));
+                        let delay = retry_after_ms(&err_msg)
+                            .map(std::time::Duration::from_millis)
+                            .unwrap_or_else(|| std::time::Duration::from_secs(2u64.pow(attempts)));
+                        tracing::warn!(?delay, attempt = attempts, "stream error, retrying");
                         tokio::time::sleep(delay).await;
                         continue;
                     }

@@ -14,10 +14,8 @@ members = [
     "stynx-code-config",
     "stynx-code-services",
     "stynx-code-compact",
-    "stynx-code-coordinator",
     "stynx-code-bridge",
     "stynx-code-plugins",
-    "stynx-code-skills",
     "stynx-code-tui",
 ]
 resolver = "3"
@@ -59,8 +57,6 @@ stynx-code-memory = { version = "3.1.0", path = "stynx-code-memory" }
 stynx-code-config = { version = "3.1.0", path = "stynx-code-config" }
 stynx-code-services = { version = "3.1.0", path = "stynx-code-services" }
 stynx-code-compact = { version = "3.1.0", path = "stynx-code-compact" }
-stynx-code-coordinator = { version = "3.1.0", path = "stynx-code-coordinator" }
 stynx-code-bridge = { version = "3.1.0", path = "stynx-code-bridge" }
 stynx-code-plugins = { version = "3.1.0", path = "stynx-code-plugins" }
-stynx-code-skills = { version = "3.1.0", path = "stynx-code-skills" }
 stynx-code-tui = { version = "3.1.0", path = "stynx-code-tui" }

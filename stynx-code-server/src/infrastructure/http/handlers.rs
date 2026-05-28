@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::convert::Infallible;
 
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::http::HeaderMap;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use stynx_code_engine::{EngineEvent, QueryEngine};
@@ -20,6 +20,14 @@ pub struct AppState {
     pub started_at: std::time::Instant,
     pub model_name: String,
     pub auth_type: String,
+}
+
+fn new_request_id() -> String {
+    let mut bytes = [0u8; 8];
+    if getrandom::getrandom(&mut bytes).is_err() {
+        return "unknown".into();
+    }
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 fn check_auth(state: &AppState, headers: &HeaderMap) -> Result<(), AppError> {
@@ -50,12 +58,37 @@ fn build_conversation(req: ChatRequest) -> Result<Conversation, AppError> {
     Ok(conversation)
 }
 
-pub async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
+#[derive(serde::Deserialize, Default)]
+pub struct HealthQuery {
+    #[serde(default)]
+    pub deep: bool,
+}
+
+pub async fn health(
+    State(state): State<AppState>,
+    Query(q): Query<HealthQuery>,
+) -> Json<serde_json::Value> {
+    if !q.deep {
+        return Json(json!({
+            "status": "ok",
+            "uptime_seconds": state.started_at.elapsed().as_secs(),
+            "model": state.model_name,
+            "auth_type": state.auth_type,
+        }));
+    }
+    let cred_status = match stynx_code_auth::resolve_credential() {
+        Ok(_) => "valid",
+        Err(_) => "invalid_or_expired",
+    };
+    let overall = if cred_status == "valid" { "ok" } else { "degraded" };
     Json(json!({
-        "status": "ok",
+        "status": overall,
         "uptime_seconds": state.started_at.elapsed().as_secs(),
         "model": state.model_name,
         "auth_type": state.auth_type,
+        "checks": {
+            "credentials": cred_status
+        }
     }))
 }
 
@@ -64,6 +97,9 @@ pub async fn chat(
     headers: HeaderMap,
     Json(req): Json<ChatRequest>,
 ) -> AppResult<Json<ChatResponse>> {
+    let request_id = new_request_id();
+    let span = tracing::info_span!("chat", request_id = %request_id);
+    let _entered = span.enter();
     check_auth(&state, &headers)?;
     let conversation = build_conversation(req)?;
     let result = state.engine.run(conversation, |_| {}).await?;
@@ -94,6 +130,8 @@ pub async fn stream_chat(
     headers: HeaderMap,
     Json(req): Json<ChatRequest>,
 ) -> AppResult<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>> {
+    let request_id = new_request_id();
+    tracing::info!(request_id = %request_id, "stream_chat start");
     check_auth(&state, &headers)?;
     let conversation = build_conversation(req)?;
 

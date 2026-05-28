@@ -33,26 +33,49 @@ impl AppError {
     pub fn is_interrupted(&self) -> bool {
         matches!(self, AppError::Interrupted)
     }
+
+    pub fn code(&self) -> &'static str {
+        match self {
+            AppError::Provider(_) => "provider_error",
+            AppError::Tool(_) => "tool_error",
+            AppError::PermissionDenied(_) => "permission_denied",
+            AppError::BadRequest(_) => "bad_request",
+            AppError::MaxTurnsExceeded(_) => "max_turns_exceeded",
+            AppError::Interrupted => "interrupted",
+            AppError::Unauthorized => "unauthorized",
+            AppError::Internal(_) => "internal_error",
+        }
+    }
+
+    pub fn http_status(&self) -> StatusCode {
+        match self {
+            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::PermissionDenied(_) => StatusCode::FORBIDDEN,
+            AppError::MaxTurnsExceeded(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::Interrupted => StatusCode::OK,
+            AppError::Unauthorized => StatusCode::UNAUTHORIZED,
+            AppError::Provider(_) | AppError::Tool(_) | AppError::Internal(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, msg) = match &self {
-            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            AppError::PermissionDenied(_) => (StatusCode::FORBIDDEN, self.to_string()),
-            AppError::MaxTurnsExceeded(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
-            AppError::Interrupted => (StatusCode::OK, "Interrupted".into()),
-            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
+        let code = self.code();
+        let status = self.http_status();
+        let public_message = match &self {
             AppError::Provider(_) | AppError::Tool(_) | AppError::Internal(_) => {
-                tracing::error!(%self, "internal error");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".into(),
-                )
+                tracing::error!(error.code = %code, error = %self, "internal error");
+                "Internal server error".to_string()
             }
+            _ => self.to_string(),
         };
-
-        let body = axum::Json(json!({ "error": msg }));
+        let body = axum::Json(json!({
+            "error": public_message,
+            "code": code,
+        }));
         (status, body).into_response()
     }
 }

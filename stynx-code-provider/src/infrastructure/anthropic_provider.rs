@@ -251,12 +251,25 @@ impl Provider for AnthropicProvider {
 
         let status = response.status();
         if !status.is_success() {
+            let retry_after = response.headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
             let body = response
                 .text()
                 .await
                 .unwrap_or_else(|_| "failed to read body".into());
+            let prefix = if status.as_u16() == 429 {
+                let ms = retry_after.as_deref()
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .map(|s| (s * 1000.0) as u64)
+                    .unwrap_or(60_000);
+                format!("[retry_after_ms={ms}] ")
+            } else {
+                String::new()
+            };
             return Err(AppError::Provider(format!(
-                "API returned {status}: {body}"
+                "{prefix}API returned {status}: {body}"
             )));
         }
 

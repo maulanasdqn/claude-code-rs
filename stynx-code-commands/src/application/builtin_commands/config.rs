@@ -112,19 +112,6 @@ pub(super) fn register(registry: &mut CommandRegistry) {
         }),
     });
 
-    registry.register(CommandDefinition {
-        name: "/sandbox-toggle".to_string(),
-        aliases: vec![],
-        description: "Toggle sandbox mode".to_string(),
-        command_type: CommandType::Local,
-        argument_hint: None,
-        is_hidden: false,
-        availability: vec![CommandAvailability::Universal],
-        source: CommandSource::Builtin,
-        handler: local_handler(|_args| {
-            Ok(CommandOutput::Text("Sandbox mode toggled".to_string()))
-        }),
-    });
 
     registry.register(CommandDefinition {
         name: "/env".to_string(),
