@@ -105,7 +105,22 @@ impl Tool for InternTool {
             return Ok("[intern] no task provided".into());
         }
         tracing::info!(intern = %self.label, task_len = task.len(), "delegating to intern");
-        let result = self.inner.run(&self.label, INTERN_SYSTEM, &task).await?;
+        let timeout_secs = std::env::var("INTERN_TIMEOUT_SECS")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(600);
+        let fut = self.inner.run(&self.label, INTERN_SYSTEM, &task);
+        let timed = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), fut).await;
+        let result = match timed {
+            Ok(r) => r?,
+            Err(_) => {
+                tracing::warn!(intern = %self.label, secs = timeout_secs, "intern timed out");
+                return Ok(format!(
+                    "[{label} intern]\n[TIMEOUT] intern did not finish in {timeout_secs}s. The work was aborted. Either re-delegate with sharper acceptance criteria, pick a different intern, or do it yourself.",
+                    label = self.label,
+                ));
+            }
+        };
         Ok(format!("[{label} intern]\n{result}", label = self.label))
     }
 }

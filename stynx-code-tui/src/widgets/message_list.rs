@@ -46,40 +46,44 @@ impl<'a> Widget for MessageList<'a> {
 
         let mut lines: Vec<Line<'static>> = Vec::new();
 
+        let bar = "▌";
+        let body_indent = "  ";
+
         for msg in &self.state.messages {
             match msg.role.as_str() {
                 "user" => {
-                    for (i, raw) in msg.content.lines().enumerate() {
-                        let line = if i == 0 {
-                            Line::from(vec![
-                                Span::styled("  ❯ ", Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)),
-                                Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::TEXT())),
-                            ])
-                        } else {
-                            Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::TEXT())))
-                        };
-                        lines.push(line);
+                    lines.push(Line::from(vec![
+                        Span::styled(bar, Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)),
+                        Span::styled(" You", Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)),
+                    ]));
+                    for raw in msg.content.lines() {
+                        lines.push(Line::from(Span::styled(
+                            format!("{body_indent}{}", raw.trim_end()),
+                            Style::default().fg(theme::TEXT()),
+                        )));
                     }
                 }
                 "error" => {
-                    for (i, raw) in msg.content.lines().enumerate() {
-                        let line = if i == 0 {
-                            Line::from(vec![
-                                Span::styled("  ✗ ", Style::default().fg(theme::LOVE()).add_modifier(Modifier::BOLD)),
-                                Span::styled(raw.trim_end().to_string(), Style::default().fg(theme::LOVE())),
-                            ])
-                        } else {
-                            Line::from(Span::styled(format!("    {}", raw.trim_end()), Style::default().fg(theme::LOVE())))
-                        };
-                        lines.push(line);
+                    lines.push(Line::from(vec![
+                        Span::styled(bar, Style::default().fg(theme::LOVE()).add_modifier(Modifier::BOLD)),
+                        Span::styled(" Error", Style::default().fg(theme::LOVE()).add_modifier(Modifier::BOLD)),
+                    ]));
+                    for raw in msg.content.lines() {
+                        lines.push(Line::from(Span::styled(
+                            format!("{body_indent}{}", raw.trim_end()),
+                            Style::default().fg(theme::LOVE()),
+                        )));
                     }
                 }
                 "system" => {
                     for raw in msg.content.lines() {
-                        lines.push(Line::from(Span::styled(
-                            format!("  · {}", raw.trim_end()),
-                            Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
-                        )));
+                        lines.push(Line::from(vec![
+                            Span::styled(bar, Style::default().fg(theme::SUBTLE())),
+                            Span::styled(
+                                format!(" {}", raw.trim_end()),
+                                Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
+                            ),
+                        ]));
                     }
                 }
                 "done" => {
@@ -101,6 +105,10 @@ impl<'a> Widget for MessageList<'a> {
                     }
                 }
                 _ => {
+                    lines.push(Line::from(vec![
+                        Span::styled(bar, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
+                        Span::styled(" Claude", Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
+                    ]));
                     if !msg.thinking.is_empty() && !msg.is_streaming {
                         let lc = msg.thinking.lines().count();
                         lines.push(Line::from(Span::styled(

@@ -45,6 +45,7 @@ pub struct AppState {
     pub git_branch: Option<String>,
     pub cwd: String,
     pub is_streaming: bool,
+    pub is_paused: bool,
     pub spinner_frame: usize,
     pub spinner_tick: u8,
     pub total_input: u64,
@@ -104,6 +105,7 @@ impl AppState {
                 .and_then(|p| p.to_str().map(|s| s.to_string()))
                 .unwrap_or_default(),
             is_streaming: false,
+            is_paused: false,
             spinner_frame: 0,
             spinner_tick: 0,
             total_input: 0,
@@ -119,6 +121,7 @@ impl AppState {
 
     pub fn push_user_message(&mut self, text: impl Into<String>) {
         self.last_summary = None;
+        self.is_paused = false;
         self.conversation.messages.push(DisplayMessage {
             role: "user".to_string(),
             content: text.into(),

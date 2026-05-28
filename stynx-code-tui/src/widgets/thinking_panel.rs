@@ -84,23 +84,110 @@ impl<'a> Widget for ThinkingPanel<'a> {
         };
 
         let mut lines: Vec<Line<'static>> = vec![header];
-        let body_inner_w = inner_width.saturating_sub(4);
         for raw in body_lines {
-            let text = if raw.len() > body_inner_w {
-                format!("{}…", &raw[..body_inner_w.saturating_sub(1)])
-            } else {
-                raw.trim_end().to_string()
-            };
-            lines.push(Line::from(Span::styled(
-                format!("    {text}"),
-                Style::default()
-                    .fg(theme::MUTED())
-                    .add_modifier(Modifier::ITALIC),
-            )));
+            lines.push(render_thinking_line(raw.trim_end()));
         }
 
         Paragraph::new(lines)
             .wrap(Wrap { trim: false })
             .render(inner_area, buf);
     }
+}
+
+fn render_thinking_line(raw: &str) -> Line<'static> {
+    let trimmed = raw.trim_start();
+    let indent_w = raw.len() - trimmed.len();
+    let indent = " ".repeat(4 + indent_w);
+
+    let (prefix, body, prefix_style) = if let Some(rest) = trimmed.strip_prefix("### ") {
+        (
+            "### ".to_string(),
+            rest,
+            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
+        )
+    } else if let Some(rest) = trimmed.strip_prefix("## ") {
+        (
+            "## ".to_string(),
+            rest,
+            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
+        )
+    } else if let Some(rest) = trimmed.strip_prefix("# ") {
+        (
+            "# ".to_string(),
+            rest,
+            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
+        )
+    } else if let Some(rest) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+        ("• ".to_string(), rest, Style::default().fg(theme::SUBTLE()))
+    } else if let Some((num, rest)) = split_numbered(trimmed) {
+        (format!("{num}. "), rest, Style::default().fg(theme::SUBTLE()))
+    } else {
+        (String::new(), trimmed, Style::default())
+    };
+
+    let mut spans: Vec<Span<'static>> = vec![Span::styled(indent, Style::default())];
+    if !prefix.is_empty() {
+        spans.push(Span::styled(prefix, prefix_style));
+    }
+    spans.extend(parse_thinking_inline(body));
+    Line::from(spans)
+}
+
+fn split_numbered(s: &str) -> Option<(String, &str)> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() && bytes[i].is_ascii_digit() { i += 1; }
+    if i == 0 || i >= bytes.len() { return None; }
+    if bytes[i] == b'.' && i + 1 < bytes.len() && bytes[i + 1] == b' ' {
+        let num = s[..i].to_string();
+        let rest = &s[i + 2..];
+        Some((num, rest))
+    } else {
+        None
+    }
+}
+
+fn parse_thinking_inline(text: &str) -> Vec<Span<'static>> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let mut buf = String::new();
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    let base = Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC);
+    let bold = Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD);
+    let code = Style::default().fg(theme::FOAM()).add_modifier(Modifier::ITALIC);
+
+    let flush = |buf: &mut String, spans: &mut Vec<Span<'static>>| {
+        if !buf.is_empty() {
+            spans.push(Span::styled(std::mem::take(buf), base));
+        }
+    };
+
+    while i < chars.len() {
+        if i + 1 < chars.len() && chars[i] == '*' && chars[i + 1] == '*' {
+            flush(&mut buf, &mut spans);
+            i += 2;
+            let mut inner = String::new();
+            while i + 1 < chars.len() && !(chars[i] == '*' && chars[i + 1] == '*') {
+                inner.push(chars[i]);
+                i += 1;
+            }
+            spans.push(Span::styled(inner, bold));
+            i += 2;
+        } else if chars[i] == '`' {
+            flush(&mut buf, &mut spans);
+            i += 1;
+            let mut inner = String::new();
+            while i < chars.len() && chars[i] != '`' {
+                inner.push(chars[i]);
+                i += 1;
+            }
+            spans.push(Span::styled(inner, code));
+            if i < chars.len() { i += 1; }
+        } else {
+            buf.push(chars[i]);
+            i += 1;
+        }
+    }
+    flush(&mut buf, &mut spans);
+    spans
 }

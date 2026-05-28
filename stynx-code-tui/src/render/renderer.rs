@@ -79,6 +79,7 @@ impl Renderer {
                 cost: state.total_cost,
                 git_branch: state.git_branch.as_deref(),
                 is_streaming: state.is_streaming,
+                is_paused: state.is_paused,
                 spinner_frame: state.spinner_frame,
             },
             layout.footer,

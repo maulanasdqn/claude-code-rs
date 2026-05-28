@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 
 use crate::state::{InputMode, InputState};
@@ -23,19 +23,26 @@ impl<'a> InputBox<'a> {
 impl<'a> Widget for InputBox<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let (mode_label, mode_color) = match self.state.mode {
-            InputMode::Insert => (" INSERT ", theme::PINE()),
-            InputMode::Normal => (" NORMAL ", theme::GOLD()),
+            InputMode::Insert => (" › INSERT ", theme::FOAM()),
+            InputMode::Normal => (" ‹ NORMAL ", theme::GOLD()),
         };
 
-        let border_color = if self.focused { theme::PINE() } else { theme::HL_MED() };
+        let border_color = if self.focused { theme::IRIS() } else { theme::OVERLAY() };
+
+        let hint = Span::styled(
+            " ↵ send  esc · ",
+            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::DIM),
+        );
 
         let block = Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(border_color))
             .title(Span::styled(
                 mode_label,
                 Style::default().fg(mode_color).add_modifier(Modifier::BOLD),
-            ));
+            ))
+            .title_bottom(hint);
 
         let inner = block.inner(area);
 
@@ -47,13 +54,13 @@ impl<'a> Widget for InputBox<'a> {
 
         let lines: Vec<Line<'static>> = if buffer_lines.is_empty() {
             let hint = if self.state.suggestion.is_empty() {
-                "Type a message…".to_string()
+                " Type a message…".to_string()
             } else {
-                self.state.suggestion.clone()
+                format!(" {}", self.state.suggestion)
             };
             vec![Line::from(Span::styled(
                 hint,
-                Style::default().fg(theme::MUTED()),
+                Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
             ))]
         } else {
             buffer_lines
@@ -62,7 +69,7 @@ impl<'a> Widget for InputBox<'a> {
                 .map(|(i, l)| {
                     if i == buffer_lines.len() - 1 && !self.state.suggestion.is_empty() {
                         Line::from(vec![
-                            Span::styled(l.to_string(), Style::default().fg(theme::TEXT())),
+                            Span::styled(format!(" {l}"), Style::default().fg(theme::TEXT())),
                             Span::styled(
                                 self.state.suggestion.clone(),
                                 Style::default()
@@ -71,7 +78,7 @@ impl<'a> Widget for InputBox<'a> {
                             ),
                         ])
                     } else {
-                        Line::from(Span::styled(l.to_string(), Style::default().fg(theme::TEXT())))
+                        Line::from(Span::styled(format!(" {l}"), Style::default().fg(theme::TEXT())))
                     }
                 })
                 .collect()
@@ -84,7 +91,7 @@ impl<'a> Widget for InputBox<'a> {
 
         if self.focused && inner.width > 0 && inner.height > 0 {
             let (line, col) = self.state.cursor_line_col();
-            let cx = inner.x.saturating_add(u16::try_from(col).unwrap_or(u16::MAX));
+            let cx = inner.x.saturating_add(1).saturating_add(u16::try_from(col).unwrap_or(u16::MAX));
             let cy = inner.y.saturating_add(u16::try_from(line).unwrap_or(u16::MAX));
             let right = inner.x.saturating_add(inner.width);
             let bottom = inner.y.saturating_add(inner.height);

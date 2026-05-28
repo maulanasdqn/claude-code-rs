@@ -447,6 +447,8 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                     if let Some((task, _, _)) = engine_task.as_ref() {
                         task.abort();
                         tui.state.is_streaming = false;
+                        tui.state.is_paused = true;
+                        tui.state.sub_agents.clear();
                         tui.state.toasts.warn("interrupted");
                     }
 
