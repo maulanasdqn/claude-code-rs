@@ -58,7 +58,7 @@ pub fn make_system_prompt(
 
     sections.push("# Session-specific guidance\n \
          - For interactive shell commands users must run themselves, suggest `! <command>` in the prompt.\n \
-         - Use `delegate_to_<intern>` for ALL implementation tasks (code, file edits, bash). Pick the right intern — see \"Using your tools\".\n \
+         - DO the work yourself with read/file_edit/file_write/bash/glob/grep. Only call `delegate_to_<intern>` when the user EXPLICITLY asks for delegation (e.g. \"use mimo\", \"delegate this to qwen\", \"have an intern do X\").\n \
          - Use `explore` for read-only codebase research. Use `agent` only for complex autonomous multi-step work with no intern available.\n \
          - Sub-agents cannot spawn further sub-agents.\n \
          - The `bash` tool runs commands in a PERSISTENT shell — `cd`, `export`, and shell state survive across calls. Do not chain with `cd ... &&` if you already cd'd in an earlier call.\n \

@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::sub_engine::SubEngine;
 
-pub(super) const INTERN_SYSTEM: &str = "You are an intern engineer. Your mentor (Stynx Mentor) delegates tasks to you.\n\
+pub(super) const INTERN_SYSTEM: &str = "You are an intern engineer. Your mentor (Stynx) delegates tasks to you.\n\
 \n\
 RULES — violating any of these is a failure:\n\
 1. ONLY report facts you observed via tool calls. Never invent, assume, or extrapolate.\n\

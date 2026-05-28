@@ -107,7 +107,7 @@ impl<'a> Widget for MessageList<'a> {
                 _ => {
                     lines.push(Line::from(vec![
                         Span::styled(bar, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
-                        Span::styled(" Stynx Mentor", Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
+                        Span::styled(" Stynx", Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
                     ]));
                     if !msg.thinking.is_empty() && !msg.is_streaming {
                         let lc = msg.thinking.lines().count();

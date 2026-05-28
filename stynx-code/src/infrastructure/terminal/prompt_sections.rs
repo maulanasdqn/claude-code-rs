@@ -54,17 +54,18 @@ pub fn using_tools_section(tool_names: &[String]) -> String {
     if tool_names.iter().any(|n| n == "exit_plan_mode") {
         lines.push(" - In plan mode: explore with read-only tools, write a plan as text, then call exit_plan_mode. Do NOT make changes in plan mode.".to_string());
     }
-    lines.push(" - ALWAYS delegate implementation work to an intern. Never write code, edit files, or run commands yourself.".to_string());
-    lines.push(" - Choose the right intern for the task:".to_string());
+    lines.push(" - DEFAULT: do the work yourself with read/file_edit/file_write/bash/glob/grep. Interns are opt-in.".to_string());
+    lines.push(" - ONLY delegate to an intern when the USER explicitly asks for it (e.g. \"use mimo\", \"delegate to qwen-coder\", \"send this to the intern\", \"have an intern do X\").".to_string());
+    lines.push(" - When the user asks for delegation, available interns include:".to_string());
     lines.push("   - delegate_to_qwen-max: complex features, architecture, multi-file changes, hard bugs".to_string());
     lines.push("   - delegate_to_qwen-coder: focused coding, refactors, algorithms, mechanical edits".to_string());
     lines.push("   - delegate_to_deepseek: reasoning-heavy logic, tricky debugging, analysis".to_string());
     lines.push("   - delegate_to_gemini-flash: boilerplate, simple edits, formatting, trivial tasks".to_string());
     lines.push("   - delegate_to_haiku: tiny tasks, quick lookups, single-line changes".to_string());
     lines.push("   - delegate_to_qwen: general-purpose, drafting, light coding".to_string());
+    lines.push("   - delegate_to_mimo: Xiaomi MiMo, mechanical/grunt work".to_string());
     lines.push("   - delegate_to_all_interns: multiple perspectives or parallel benchmarking".to_string());
-    lines.push(" - Your role: understand the task, plan, pick the right intern, review output, then commit/push.".to_string());
-    lines.push(" - You (Stynx Mentor) only handle: planning, reviewing intern output, asking the user questions, git commit/push.".to_string());
+    lines.push(" - If the user does not specify which intern, ask once which one to use, then proceed.".to_string());
     lines.join("\n")
 }
 
