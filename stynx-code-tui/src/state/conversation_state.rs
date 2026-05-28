@@ -29,6 +29,7 @@ pub struct DisplayToolUse {
     pub input_summary: String,
     pub output_excerpt: Vec<String>,
     pub diff: Vec<DiffLine>,
+    pub sub_progress: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -60,7 +60,7 @@ impl InternTool {
     pub fn label(&self) -> &str { &self.label }
 
     pub async fn run_task(&self, task: &str) -> AppResult<String> {
-        self.inner.run(INTERN_SYSTEM, task).await
+        self.inner.run(&self.label, INTERN_SYSTEM, task).await
     }
 }
 
@@ -95,7 +95,7 @@ impl Tool for InternTool {
             return Ok("[intern] no task provided".into());
         }
         tracing::info!(intern = %self.label, task_len = task.len(), "delegating to intern");
-        let result = self.inner.run(INTERN_SYSTEM, &task).await?;
+        let result = self.inner.run(&self.label, INTERN_SYSTEM, &task).await?;
         Ok(format!("[{label} intern]\n{result}", label = self.label))
     }
 }

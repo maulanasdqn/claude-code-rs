@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use stynx_code_engine::sub_agent_sink::SUB_AGENT_SINK;
 use stynx_code_errors::AppResult;
 use stynx_code_types::{InterruptBehavior, PermissionLevel, Tool};
 use serde_json::{Value, json};
@@ -64,13 +65,21 @@ impl Tool for AllInternsTool {
         tracing::info!(intern_count = self.interns.len(), task_len = task.len(), "fanning out to all interns");
 
         let task_arc = Arc::new(task);
+        let parent_sink = SUB_AGENT_SINK.try_with(|s| s.clone()).ok();
         let futures: Vec<_> = self.interns.iter().map(|tool| {
             let t = tool.clone();
             let task = task_arc.clone();
+            let sink = parent_sink.clone();
             tokio::spawn(async move {
                 let label = t.label().to_string();
-                let result = t.run_task(&task).await;
-                (label, result)
+                let fut = async {
+                    let result = t.run_task(&task).await;
+                    (label, result)
+                };
+                match sink {
+                    Some(s) => SUB_AGENT_SINK.scope(s, fut).await,
+                    None => fut.await,
+                }
             })
         }).collect();
 

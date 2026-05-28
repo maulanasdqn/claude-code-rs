@@ -1,6 +1,7 @@
 pub mod autocomplete;
 pub mod banner;
 pub mod cost_display;
+pub mod delegate_bar;
 pub mod dialog_select;
 pub mod footer;
 pub mod info_dialog;

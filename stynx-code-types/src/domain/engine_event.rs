@@ -12,5 +12,7 @@ pub enum EngineEvent {
     Compacted { original_turns: usize },
     ModeChanged { mode: PermissionMode },
     HookOutput { source: String, output: String },
+    SubAgentProgress { label: String, summary: String },
+    SubAgentDone { label: String },
     Error(String),
 }

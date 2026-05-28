@@ -5,6 +5,7 @@ use ratatui::widgets::Block;
 use crate::layout::MainLayout;
 use crate::state::{AppState, ModalKind};
 use crate::theme;
+use crate::widgets::delegate_bar::DelegateBar;
 use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, Sidebar, SlashPopover, ThinkingPanel, ToastStack};
 
 pub struct Renderer;
@@ -29,11 +30,13 @@ impl Renderer {
             0
         };
 
+        let delegate_lines = state.sub_agents.len();
         let layout = MainLayout::split(
             full,
             state.sidebar.visible,
             state.input.line_count(),
             thinking_lines,
+            delegate_lines,
         );
 
         if let Some(sidebar_area) = layout.sidebar {
@@ -49,6 +52,12 @@ impl Renderer {
             frame.render_widget(
                 ThinkingPanel::new(&state.live_thinking, state.spinner_frame),
                 thinking_area,
+            );
+        }
+        if let Some(delegate_area) = layout.delegate {
+            frame.render_widget(
+                DelegateBar::new(&state.sub_agents, state.spinner_frame),
+                delegate_area,
             );
         }
         frame.render_widget(InputBox::new(&state.input, !state.is_streaming), layout.input);

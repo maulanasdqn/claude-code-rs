@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 
-use stynx_code_engine::{EngineEvent, QueryEngine};
+use stynx_code_engine::{EngineEvent, QueryEngine, sub_agent_sink};
 use stynx_code_errors::AppError;
 use stynx_code_types::Conversation;
 use tokio::sync::mpsc;
@@ -14,6 +14,7 @@ pub(super) async fn run_engine_tui(
 ) -> Result<Conversation, AppError> {
     let in_counter = total_input.clone();
     let out_counter = total_output.clone();
+    let sink = event_tx.clone();
     let result = engine.run(conversation, move |event| {
         if let EngineEvent::Usage { input_tokens, output_tokens } = &event {
             if *input_tokens > 0 { in_counter.fetch_add(*input_tokens, Ordering::Relaxed); }
@@ -21,8 +22,9 @@ pub(super) async fn run_engine_tui(
         }
         let _ = event_tx.send(event);
     });
+    let scoped = sub_agent_sink::SUB_AGENT_SINK.scope(sink, result);
     tokio::select! {
-        r = result => r,
+        r = scoped => r,
         _ = tokio::signal::ctrl_c() => Err(AppError::Interrupted),
     }
 }

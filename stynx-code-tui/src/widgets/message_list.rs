@@ -284,6 +284,28 @@ impl<'a> Widget for MessageList<'a> {
                             ]));
                         }
 
+                        if !tool.sub_progress.is_empty() && self.tool_details {
+                            let progress_w = (area.width as usize).saturating_sub(9).max(20);
+                            let recent = tool.sub_progress.iter().rev().take(8).collect::<Vec<_>>();
+                            for (i, line) in recent.iter().rev().enumerate() {
+                                let truncated = truncate_to_width(line, progress_w);
+                                let prefix = if i == 0 { "     ↪ " } else { "       " };
+                                lines.push(Line::from(vec![
+                                    Span::styled(prefix, Style::default().fg(theme::IRIS())),
+                                    Span::styled(truncated, Style::default().fg(theme::SUBTLE())),
+                                ]));
+                            }
+                            if tool.sub_progress.len() > recent.len() {
+                                lines.push(Line::from(vec![
+                                    Span::styled("       ", Style::default()),
+                                    Span::styled(
+                                        format!("… +{} earlier steps", tool.sub_progress.len() - recent.len()),
+                                        Style::default().fg(theme::TEXT_MUTED()).add_modifier(Modifier::ITALIC),
+                                    ),
+                                ]));
+                            }
+                        }
+
                         lines.push(Line::from(""));
                     }
                 }

@@ -60,5 +60,15 @@ pub fn render_stream_event(event: &EngineEvent, json_mode: bool) {
                 eprintln!("  {DIM}[{source}] {output}{RESET}");
             }
         }
+        EngineEvent::SubAgentProgress { label, summary } => {
+            if !json_mode {
+                eprintln!("  {DIM}↪ {label}: {summary}{RESET}");
+            }
+        }
+        EngineEvent::SubAgentDone { label } => {
+            if !json_mode {
+                eprintln!("  {DIM}↪ {label}: done{RESET}");
+            }
+        }
     }
 }

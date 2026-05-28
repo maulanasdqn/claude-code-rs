@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
 use stynx_code_config::HooksConfig;
-use stynx_code_engine::{EngineEvent, QueryEngine};
+use stynx_code_engine::{EngineEvent, QueryEngine, sub_agent_sink};
 use stynx_code_errors::AppResult;
 use stynx_code_types::{Conversation, Message, PermissionChecker, Role};
 use stynx_code_tools::ToolRegistry;
@@ -22,7 +22,7 @@ struct Activity {
 }
 
 impl SubEngine {
-    pub(super) async fn run(&self, system: &str, task: &str) -> AppResult<String> {
+    pub(super) async fn run(&self, label: &str, system: &str, task: &str) -> AppResult<String> {
         let sub_registry = Arc::new(self.registry.clone_excluding(&["agent", "explore"]));
         let engine = QueryEngine::new(
             self.provider.clone(),
@@ -43,12 +43,17 @@ impl SubEngine {
             current_tool: None,
         }));
         let act_ref = activity.clone();
+        let label_for_cb = label.to_string();
         engine
             .run(conv, move |event| {
                 let mut a = act_ref.lock().unwrap();
                 match event {
                     EngineEvent::TextDelta(text) => a.text.push_str(&text),
                     EngineEvent::ToolStart { name, .. } => {
+                        sub_agent_sink::send(EngineEvent::SubAgentProgress {
+                            label: label_for_cb.clone(),
+                            summary: format!("calling {name}…"),
+                        });
                         a.current_tool = Some((name, String::new()));
                     }
                     EngineEvent::ToolInput { json_chunk } => {
@@ -64,12 +69,18 @@ impl SubEngine {
                             .map(|(_, j)| j)
                             .unwrap_or_default();
                         let summary = summarize_action(&name, &input, &output, is_error);
+                        sub_agent_sink::send(EngineEvent::SubAgentProgress {
+                            label: label_for_cb.clone(),
+                            summary: summary.clone(),
+                        });
                         a.actions.push(summary);
                     }
                     _ => {}
                 }
             })
             .await?;
+
+        sub_agent_sink::send(EngineEvent::SubAgentDone { label: label.to_string() });
 
         let act = activity.lock().unwrap();
         let mut out = String::new();

@@ -53,6 +53,8 @@ pub struct AppState {
     pub tool_details: bool,
 
     pub live_thinking: String,
+
+    pub sub_agents: Vec<(String, String)>,
 }
 
 impl AppState {
@@ -97,6 +99,7 @@ impl AppState {
             recent_models: Vec::new(),
             tool_details: true,
             live_thinking: String::new(),
+            sub_agents: Vec::new(),
         }
     }
 
@@ -148,6 +151,7 @@ impl AppState {
                     input_summary: String::new(),
                     output_excerpt: Vec::new(),
                     diff: Vec::new(),
+                    sub_progress: Vec::new(),
                 };
                 match self.conversation.messages.last_mut().filter(|m| m.role == "assistant") {
                     Some(m) => m.tool_uses.push(tool),
@@ -274,6 +278,28 @@ impl AppState {
             }
             EngineEvent::ModeChanged { mode } => {
                 self.permission_mode = mode.label().to_string();
+            }
+            EngineEvent::SubAgentProgress { label, summary } => {
+                match self.sub_agents.iter_mut().find(|(l, _)| l == &label) {
+                    Some((_, s)) => *s = summary.clone(),
+                    None => self.sub_agents.push((label.clone(), summary.clone())),
+                }
+                if let Some(m) = self.conversation.messages.last_mut() {
+                    if let Some(t) = m.tool_uses.iter_mut().rev()
+                        .find(|t| t.status == ToolUseStatus::Running
+                            && (t.name == "agent" || t.name == "explore"
+                                || t.name.starts_with("delegate_to_")))
+                    {
+                        t.sub_progress.push(format!("{label}: {summary}"));
+                        if t.sub_progress.len() > 50 {
+                            let drop = t.sub_progress.len() - 50;
+                            t.sub_progress.drain(0..drop);
+                        }
+                    }
+                }
+            }
+            EngineEvent::SubAgentDone { label } => {
+                self.sub_agents.retain(|(l, _)| l != &label);
             }
             _ => {}
         }
