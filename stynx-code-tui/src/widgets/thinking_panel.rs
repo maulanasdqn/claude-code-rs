@@ -56,13 +56,14 @@ impl<'a> Widget for ThinkingPanel<'a> {
                 .set_style(Style::default().fg(accent).bg(theme::BACKGROUND()));
         }
 
-        let inner_x = area.x + 2;
-        let inner_width = area.width.saturating_sub(3) as usize;
+        let pad: u16 = if area.width >= 80 { 4 } else { 2 };
+        let inner_x = area.x + pad;
+        let inner_width = area.width.saturating_sub(pad as u16 + 1) as usize;
         let _ = bar_col;
 
         let header = Line::from(vec![
             Span::styled(
-                format!("{frame} "),
+                format!("  {frame} "),
                 Style::default()
                     .fg(accent)
                     .add_modifier(Modifier::BOLD),
@@ -83,14 +84,15 @@ impl<'a> Widget for ThinkingPanel<'a> {
         };
 
         let mut lines: Vec<Line<'static>> = vec![header];
+        let body_inner_w = inner_width.saturating_sub(4);
         for raw in body_lines {
-            let text = if raw.len() > inner_width {
-                format!("{}…", &raw[..inner_width.saturating_sub(1)])
+            let text = if raw.len() > body_inner_w {
+                format!("{}…", &raw[..body_inner_w.saturating_sub(1)])
             } else {
                 raw.trim_end().to_string()
             };
             lines.push(Line::from(Span::styled(
-                text,
+                format!("    {text}"),
                 Style::default()
                     .fg(theme::MUTED())
                     .add_modifier(Modifier::ITALIC),
