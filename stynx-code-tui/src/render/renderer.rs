@@ -6,7 +6,7 @@ use crate::layout::MainLayout;
 use crate::state::{AppState, ModalKind};
 use crate::theme;
 use crate::widgets::delegate_bar::DelegateBar;
-use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, Sidebar, SlashPopover, ThinkingPanel, ToastStack};
+use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, Sidebar, SlashPopover, SummaryBar, ThinkingPanel, ToastStack};
 
 pub struct Renderer;
 
@@ -31,12 +31,14 @@ impl Renderer {
         };
 
         let delegate_lines = state.sub_agents.len();
+        let has_summary = state.last_summary.is_some();
         let layout = MainLayout::split(
             full,
             state.sidebar.visible,
             state.input.line_count(),
             thinking_lines,
             delegate_lines,
+            has_summary,
         );
 
         if let Some(sidebar_area) = layout.sidebar {
@@ -59,6 +61,9 @@ impl Renderer {
                 DelegateBar::new(&state.sub_agents, state.spinner_frame),
                 delegate_area,
             );
+        }
+        if let (Some(summary_area), Some(text)) = (layout.summary, state.last_summary.as_deref()) {
+            frame.render_widget(SummaryBar::new(text), summary_area);
         }
         frame.render_widget(InputBox::new(&state.input, !state.is_streaming), layout.input);
         if !state.input.slash_matches.is_empty() {

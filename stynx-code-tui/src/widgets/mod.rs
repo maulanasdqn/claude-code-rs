@@ -19,6 +19,7 @@ pub mod spinner;
 pub mod status_bar;
 pub mod thinking_panel;
 pub mod toast;
+pub mod summary_bar;
 pub mod tool_progress;
 
 pub use dialog_select::DialogSelect;
@@ -34,4 +35,5 @@ pub use slash_popover::SlashPopover;
 pub use spinner::Spinner;
 pub use status_bar::StatusBar;
 pub use thinking_panel::ThinkingPanel;
+pub use summary_bar::SummaryBar;
 pub use toast::ToastStack;

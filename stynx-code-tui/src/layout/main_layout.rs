@@ -5,6 +5,7 @@ pub struct LayoutResult {
     pub messages: Rect,
     pub thinking: Option<Rect>,
     pub delegate: Option<Rect>,
+    pub summary: Option<Rect>,
     pub input: Rect,
     pub footer: Rect,
 }
@@ -20,6 +21,7 @@ impl MainLayout {
         input_lines: usize,
         thinking_lines: usize,
         delegate_lines: usize,
+        has_summary: bool,
     ) -> LayoutResult {
         let (sidebar, main) = if sidebar_visible && area.width > Self::SIDEBAR_WIDTH + 20 {
             let chunks = Layout::horizontal([
@@ -44,6 +46,7 @@ impl MainLayout {
         let mut constraints: Vec<Constraint> = vec![Constraint::Min(1)];
         if thinking_h > 0 { constraints.push(Constraint::Length(thinking_h)); }
         if delegate_h > 0 { constraints.push(Constraint::Length(delegate_h)); }
+        if has_summary { constraints.push(Constraint::Length(1)); }
         constraints.push(Constraint::Length(input_h));
         constraints.push(Constraint::Length(1));
 
@@ -52,9 +55,10 @@ impl MainLayout {
         let messages = rows[idx]; idx += 1;
         let thinking = if thinking_h > 0 { let r = Some(rows[idx]); idx += 1; r } else { None };
         let delegate = if delegate_h > 0 { let r = Some(rows[idx]); idx += 1; r } else { None };
+        let summary = if has_summary { let r = Some(rows[idx]); idx += 1; r } else { None };
         let input = rows[idx]; idx += 1;
         let footer = rows[idx];
 
-        LayoutResult { sidebar, messages, thinking, delegate, input, footer }
+        LayoutResult { sidebar, messages, thinking, delegate, summary, input, footer }
     }
 }

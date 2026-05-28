@@ -55,6 +55,8 @@ pub struct AppState {
     pub live_thinking: String,
 
     pub sub_agents: Vec<(String, String)>,
+
+    pub last_summary: Option<String>,
 }
 
 impl AppState {
@@ -100,10 +102,12 @@ impl AppState {
             tool_details: true,
             live_thinking: String::new(),
             sub_agents: Vec::new(),
+            last_summary: None,
         }
     }
 
     pub fn push_user_message(&mut self, text: impl Into<String>) {
+        self.last_summary = None;
         self.conversation.messages.push(DisplayMessage {
             role: "user".to_string(),
             content: text.into(),
@@ -254,6 +258,7 @@ impl AppState {
                 }
                 self.live_thinking.clear();
                 if let Some(summary) = tool_summary {
+                    self.last_summary = Some(summary.clone());
                     self.conversation.messages.push(DisplayMessage {
                         role: "done".to_string(),
                         content: summary,
