@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-services"
-version = "3.8.1"
+version = "3.8.2"
 edition = "2024"
 description = "Service layer orchestrating provider calls and tool execution"
 license = "MIT"

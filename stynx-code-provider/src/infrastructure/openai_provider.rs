@@ -26,8 +26,15 @@ impl OpenAiProvider {
         api_key: impl Into<String>,
         model: impl Into<String>,
     ) -> Self {
+        let client = Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .tcp_keepalive(std::time::Duration::from_secs(60))
+            .read_timeout(std::time::Duration::from_secs(180))
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
-            client: Client::new(),
+            client,
             base_url: base_url.into().trim_end_matches('/').to_string(),
             api_key: api_key.into(),
             model: Mutex::new(model.into()),

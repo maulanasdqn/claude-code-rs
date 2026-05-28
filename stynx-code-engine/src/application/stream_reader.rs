@@ -21,7 +21,17 @@ pub async fn read_stream(
     let mut stream_error: Option<String> = None;
     let mut last_input_tokens: u64 = 0;
 
-    while let Some(event) = stream.next().await {
+    let idle_timeout = std::time::Duration::from_secs(180);
+    loop {
+        let next = tokio::time::timeout(idle_timeout, stream.next()).await;
+        let event = match next {
+            Ok(Some(e)) => e,
+            Ok(None) => break,
+            Err(_) => {
+                stream_error = Some("provider stream idle for 180s — aborting".to_string());
+                break;
+            }
+        };
         match event {
             StreamEvent::ContentDelta { text } => {
                 if !thinking_buf.is_empty() {
