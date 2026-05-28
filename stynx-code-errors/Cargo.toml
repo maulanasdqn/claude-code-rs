@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-errors"
-version = "3.6.2"
+version = "3.7.0"
 edition = "2024"
 description = "Centralized error types for the stynx-code workspace"
 license = "MIT"

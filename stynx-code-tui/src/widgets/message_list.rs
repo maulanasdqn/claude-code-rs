@@ -8,9 +8,8 @@ use ratatui::{
 
 use ratatui::layout::Alignment;
 
-use crate::state::{ConversationState, DiffLineKind, ToolUseStatus};
+use crate::state::ConversationState;
 use crate::theme;
-use crate::widgets::spinner::FRAMES;
 use super::markdown::render_md_line;
 
 pub struct MessageList<'a> {
@@ -112,8 +111,6 @@ impl<'a> Widget for MessageList<'a> {
                         )));
                         lines.push(Line::from(""));
                     }
-                    let has_content = !msg.content.trim().is_empty();
-                    let has_tools = !msg.tool_uses.is_empty();
                     let mut in_code = false;
                     let mut in_mermaid = false;
                     let mut prev_blank = false;
@@ -154,166 +151,6 @@ impl<'a> Widget for MessageList<'a> {
                         }
                     }
                     let _ = in_code;
-                    if has_content && has_tools {
-                        lines.push(Line::from(""));
-                    }
-                    for tool in &msg.tool_uses {
-                        let (dot, col) = match tool.status {
-                            ToolUseStatus::Running => (
-                                FRAMES[self.spinner_frame % FRAMES.len()].to_string(),
-                                theme::GOLD(),
-                            ),
-                            ToolUseStatus::Completed => ("●".into(), theme::SUCCESS()),
-                            ToolUseStatus::Error => ("●".into(), theme::ERROR()),
-                        };
-
-                        let pretty_name = pretty_tool_name(&tool.name);
-                        let header_text = if tool.input_summary.is_empty() {
-                            pretty_name.to_string()
-                        } else {
-                            format!("{pretty_name}({})", tool.input_summary)
-                        };
-                        lines.push(Line::from(vec![
-                            Span::styled(
-                                format!("  {dot} "),
-                                Style::default().fg(col).add_modifier(Modifier::BOLD),
-                            ),
-                            Span::styled(
-                                header_text,
-                                Style::default().fg(theme::TEXT()).add_modifier(Modifier::BOLD),
-                            ),
-                        ]));
-
-                        if self.tool_details && !tool.diff.is_empty() {
-
-                            let max_diff_show = 6usize;
-                            let total_diff = tool.diff.len();
-                            let show = total_diff.min(max_diff_show);
-                            for (i, d) in tool.diff.iter().take(show).enumerate() {
-                                let (sign, sign_fg, body_fg, body_bg) = match d.kind {
-                                    DiffLineKind::Added => (
-                                        "+",
-                                        theme::SUCCESS(),
-                                        theme::TEXT(),
-                                        Some(theme::HL_MED()),
-                                    ),
-                                    DiffLineKind::Removed => (
-                                        "-",
-                                        theme::ERROR(),
-                                        theme::TEXT(),
-                                        Some(theme::HL_MED()),
-                                    ),
-                                    DiffLineKind::Context => (
-                                        " ",
-                                        theme::TEXT_MUTED(),
-                                        theme::TEXT_MUTED(),
-                                        None,
-                                    ),
-                                };
-                                let prefix = if i == 0 { "  ⎿  " } else { "     " };
-                                let sign_style = Style::default()
-                                    .fg(sign_fg)
-                                    .add_modifier(Modifier::BOLD);
-                                let mut body_style = Style::default().fg(body_fg);
-                                if let Some(bg) = body_bg {
-                                    body_style = body_style.bg(bg);
-                                }
-                                lines.push(Line::from(vec![
-                                    Span::styled(
-                                        prefix,
-                                        Style::default().fg(theme::OVERLAY()),
-                                    ),
-                                    Span::styled(sign.to_string(), sign_style),
-                                    Span::styled(format!(" {}", d.text), body_style),
-                                ]));
-                            }
-                            if total_diff > show {
-                                lines.push(Line::from(vec![
-                                    Span::styled(
-                                        "     ",
-                                        Style::default().fg(theme::OVERLAY()),
-                                    ),
-                                    Span::styled(
-                                        format!("… +{} lines (ctrl+o to expand)", total_diff - show),
-                                        Style::default()
-                                            .fg(theme::TEXT_MUTED())
-                                            .add_modifier(Modifier::ITALIC),
-                                    ),
-                                ]));
-                            }
-                        }
-
-                        let suppress_body = matches!(tool.name.as_str(), "read");
-                        let body_lines: &[String] = if !self.tool_details {
-                            &[]
-                        } else if !tool.diff.is_empty() || suppress_body {
-                            &[]
-                        } else if tool.output_excerpt.is_empty()
-                            && !tool.output_preview.is_empty()
-                        {
-                            std::slice::from_ref(&tool.output_preview)
-                        } else {
-                            tool.output_excerpt.as_slice()
-                        };
-
-                        let max_body_show = 2usize;
-                        let total_body = body_lines.len();
-                        let show = total_body.min(max_body_show);
-                        let body_width = (area.width as usize).saturating_sub(7).max(20);
-                        for (i, body) in body_lines.iter().take(show).enumerate() {
-                            let cleaned = clean_tool_body_line(&tool.name, body);
-                            let truncated = truncate_to_width(&cleaned, body_width);
-                            let prefix = if i == 0 { "  ⎿  " } else { "     " };
-                            lines.push(Line::from(vec![
-                                Span::styled(
-                                    prefix,
-                                    Style::default().fg(theme::OVERLAY()),
-                                ),
-                                Span::styled(
-                                    truncated,
-                                    Style::default().fg(theme::TEXT_MUTED()),
-                                ),
-                            ]));
-                        }
-                        if total_body > show {
-                            lines.push(Line::from(vec![
-                                Span::styled(
-                                    "     ",
-                                    Style::default().fg(theme::OVERLAY()),
-                                ),
-                                Span::styled(
-                                    format!("… +{} lines (ctrl+o to expand)", total_body - show),
-                                    Style::default()
-                                        .fg(theme::TEXT_MUTED())
-                                        .add_modifier(Modifier::ITALIC),
-                                ),
-                            ]));
-                        }
-
-                        if !tool.sub_progress.is_empty() && self.tool_details {
-                            let progress_w = (area.width as usize).saturating_sub(9).max(20);
-                            let recent = tool.sub_progress.iter().rev().take(8).collect::<Vec<_>>();
-                            for (i, line) in recent.iter().rev().enumerate() {
-                                let truncated = truncate_to_width(line, progress_w);
-                                let prefix = if i == 0 { "     ↪ " } else { "       " };
-                                lines.push(Line::from(vec![
-                                    Span::styled(prefix, Style::default().fg(theme::IRIS())),
-                                    Span::styled(truncated, Style::default().fg(theme::SUBTLE())),
-                                ]));
-                            }
-                            if tool.sub_progress.len() > recent.len() {
-                                lines.push(Line::from(vec![
-                                    Span::styled("       ", Style::default()),
-                                    Span::styled(
-                                        format!("… +{} earlier steps", tool.sub_progress.len() - recent.len()),
-                                        Style::default().fg(theme::TEXT_MUTED()).add_modifier(Modifier::ITALIC),
-                                    ),
-                                ]));
-                            }
-                        }
-
-                        lines.push(Line::from(""));
-                    }
                 }
             }
             lines.push(Line::from(""));
@@ -347,86 +184,6 @@ impl<'a> Widget for MessageList<'a> {
     }
 }
 
-fn truncate_to_width(s: &str, max: usize) -> String {
-    use unicode_width::UnicodeWidthChar;
-    let mut out = String::with_capacity(s.len());
-    let mut width = 0usize;
-    let mut truncated = false;
-    for c in s.chars() {
-        let w = c.width().unwrap_or(0);
-        if width + w > max.saturating_sub(1) {
-            truncated = true;
-            break;
-        }
-        width += w;
-        out.push(c);
-    }
-    if truncated {
-        out.push('…');
-    }
-    out
-}
-
-fn pretty_tool_name(name: &str) -> String {
-    match name {
-        "bash" => "Bash".into(),
-        "read" => "Read".into(),
-        "file_write" => "Write".into(),
-        "file_edit" => "Edit".into(),
-        "glob" => "Glob".into(),
-        "grep" => "Grep".into(),
-        "web_fetch" => "WebFetch".into(),
-        "web_search" => "WebSearch".into(),
-        "todo_write" => "TodoWrite".into(),
-        "todo_read" => "TodoRead".into(),
-        "ask_user_question" => "AskUser".into(),
-        "agent" => "Agent".into(),
-        "explore" => "Explore".into(),
-        _ => {
-
-            name.split('_')
-                .map(|seg| {
-                    let mut chars = seg.chars();
-                    match chars.next() {
-                        Some(c) => c.to_ascii_uppercase().to_string() + chars.as_str(),
-                        None => String::new(),
-                    }
-                })
-                .collect()
-        }
-    }
-}
-
-fn clean_tool_body_line(tool: &str, raw: &str) -> String {
-    let line = raw.trim_end();
-    if tool == "read" {
-
-        if let Some(rest) = strip_read_prefix(line) {
-            return rest.to_string();
-        }
-    }
-    line.to_string()
-}
-
-fn strip_read_prefix(s: &str) -> Option<&str> {
-    let bytes = s.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() && bytes[i] == b' ' { i += 1; }
-    let digits_start = i;
-    while i < bytes.len() && bytes[i].is_ascii_digit() { i += 1; }
-    if i == digits_start { return None; }
-    if i >= bytes.len() { return None; }
-    if bytes[i] == b'\t' { return Some(&s[i + 1..]); }
-    if bytes[i] == b' ' {
-        let mut j = i;
-        while j < bytes.len() && bytes[j] == b' ' { j += 1; }
-        if j - i >= 2 {
-            return Some(&s[j..]);
-        }
-    }
-    None
-}
-
 const LOGO_ART: &[&str] = &[
     r" ____   _____ __   __ _   _ __  __",
     r"/ ___| |_   _|\ \ / /| \ | |\ \/ /",
@@ -438,7 +195,7 @@ const LOGO_SUBTITLE: &str = "c   o   d   e";
 
 const HINTS: &[(&str, &str)] = &[
     ("^P",    "command palette"),
-    ("^S",    "session list"),
+    ("^T",    "focus tools"),
     ("^M",    "switch model"),
     ("/help", "show help"),
 ];

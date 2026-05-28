@@ -4,11 +4,21 @@ use serde_json::Value;
 
 use super::message::Conversation;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StopReason {
     EndTurn,
     ToolUse,
     MaxTokens,
+}
+
+impl std::fmt::Display for StopReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EndTurn => f.write_str("end_turn"),
+            Self::ToolUse => f.write_str("tool_use"),
+            Self::MaxTokens => f.write_str("max_tokens"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

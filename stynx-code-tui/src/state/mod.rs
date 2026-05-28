@@ -4,7 +4,7 @@ pub mod input_state;
 pub mod modal_state;
 pub mod toast_state;
 
-pub use app_state::AppState;
+pub use app_state::{AppState, ToolHistoryState};
 pub use conversation_state::{ConversationState, DiffLine, DiffLineKind, DisplayMessage, DisplayToolUse, ToolUseStatus};
 pub use input_state::{InputMode, InputState};
 pub use modal_state::{

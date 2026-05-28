@@ -57,6 +57,16 @@ pub struct AppState {
     pub sub_agents: Vec<(String, String)>,
 
     pub last_summary: Option<String>,
+
+    pub tool_history: ToolHistoryState,
+}
+
+#[derive(Default)]
+pub struct ToolHistoryState {
+    pub selected: Option<usize>,
+    pub scroll: usize,
+    pub focused: bool,
+    pub detail_open: bool,
 }
 
 impl AppState {
@@ -103,6 +113,7 @@ impl AppState {
             live_thinking: String::new(),
             sub_agents: Vec::new(),
             last_summary: None,
+            tool_history: ToolHistoryState::default(),
         }
     }
 

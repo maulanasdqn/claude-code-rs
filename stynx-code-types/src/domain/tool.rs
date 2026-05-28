@@ -1,16 +1,34 @@
 use stynx_code_errors::AppResult;
 use serde_json::Value;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PermissionLevel {
     ReadOnly,
     Dangerous,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+impl std::fmt::Display for PermissionLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ReadOnly => f.write_str("ReadOnly"),
+            Self::Dangerous => f.write_str("Dangerous"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InterruptBehavior {
     Cancel,
     Block,
+}
+
+impl std::fmt::Display for InterruptBehavior {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Cancel => f.write_str("Cancel"),
+            Self::Block => f.write_str("Block"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -20,10 +38,19 @@ pub struct SearchReadInfo {
     pub is_list: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValidationResult {
     Ok,
     Error { message: String, error_code: i32 },
+}
+
+impl std::fmt::Display for ValidationResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ok => f.write_str("Ok"),
+            Self::Error { message, error_code } => write!(f, "Error {}: {}", error_code, message),
+        }
+    }
 }
 
 #[async_trait::async_trait]

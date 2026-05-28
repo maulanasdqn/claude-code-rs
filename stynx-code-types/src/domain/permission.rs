@@ -9,13 +9,28 @@ pub enum PermissionDecision {
     Deny(String),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+impl std::fmt::Display for PermissionDecision {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Allow => f.write_str("Allow"),
+            Self::Deny(reason) => write!(f, "Deny: {}", reason),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum PermissionMode {
     Normal = 0,
     AutoAccept = 1,
     Plan = 2,
     Bypass = 3,
+}
+
+impl std::fmt::Display for PermissionMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.label())
+    }
 }
 
 impl PermissionMode {

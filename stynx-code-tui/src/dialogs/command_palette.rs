@@ -80,11 +80,11 @@ pub const COMMANDS: &[PaletteCommand] = &[
         shortcut: Some("S-Tab"),
     },
     PaletteCommand {
-        name: "sidebar.toggle",
-        title: "Toggle sidebar",
-        desc: "Show or hide the left panel",
+        name: "tools.focus",
+        title: "Focus tool history",
+        desc: "Move focus to the left tool list",
         category: "View",
-        shortcut: Some("^B"),
+        shortcut: Some("^T"),
     },
     PaletteCommand {
         name: "theme.switch",

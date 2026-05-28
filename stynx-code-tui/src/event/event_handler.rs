@@ -124,7 +124,14 @@ fn dispatch_palette(state: &mut AppState, command: &str) -> UiAction {
         "model.list" => { open_model_picker(state); UiAction::None }
         "model.cycle_recent" => UiAction::RunCommand("model.cycle_recent".into()),
         "mode.cycle" => UiAction::CyclePermissionMode,
-        "sidebar.toggle" => UiAction::ToggleSidebar,
+        "tools.focus" => {
+            state.tool_history.focused = true;
+            if state.tool_history.selected.is_none() {
+                let total = crate::widgets::tool_history::flat_tools(state).len();
+                if total > 0 { state.tool_history.selected = Some(total - 1); }
+            }
+            UiAction::None
+        }
         "theme.switch" => { crate::dialogs::open_theme_picker(state); UiAction::None }
         "help.show" => UiAction::RunCommand("help.show".into()),
         "app.quit" => UiAction::Quit,
@@ -166,6 +173,9 @@ impl EventHandler {
             Event::Key(key) => {
                 if key.kind != KeyEventKind::Press { return UiAction::None; }
                 if state.modal.active.is_some() { return Self::modal_key(key, state); }
+                if state.tool_history.focused && !key.modifiers.contains(KeyModifiers::CONTROL) {
+                    return Self::tool_history_key(key, state);
+                }
                 if state.input.mode == InputMode::Normal {
                     return Self::normal_mode_key(key, state);
                 }
@@ -193,16 +203,17 @@ impl EventHandler {
                 open_model_picker(state);
                 UiAction::None
             }
-            (KeyCode::Char('b'), KeyModifiers::CONTROL) => UiAction::ToggleSidebar,
+            (KeyCode::Char('t'), KeyModifiers::CONTROL) => {
+                state.tool_history.focused = !state.tool_history.focused;
+                if state.tool_history.focused && state.tool_history.selected.is_none() {
+                    let total = crate::widgets::tool_history::flat_tools(state).len();
+                    if total > 0 { state.tool_history.selected = Some(total - 1); }
+                }
+                UiAction::None
+            }
             (KeyCode::Char('v'), KeyModifiers::CONTROL) => {
                 handle_ctrl_v(state);
                 update_suggestion(state);
-                UiAction::None
-            }
-            (KeyCode::Char('t'), KeyModifiers::CONTROL) => {
-                state.tool_details = !state.tool_details;
-                let label = if state.tool_details { "tool details on" } else { "tool details off" };
-                state.toasts.info(label);
                 UiAction::None
             }
             (KeyCode::Esc, _) => {
@@ -328,6 +339,48 @@ impl EventHandler {
         }
     }
 
+    fn tool_history_key(key: KeyEvent, state: &mut AppState) -> UiAction {
+        use crate::widgets::tool_history::flat_tools;
+        let total = flat_tools(state).len();
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('h') | KeyCode::Left => {
+                if state.tool_history.detail_open {
+                    state.tool_history.detail_open = false;
+                } else {
+                    state.tool_history.focused = false;
+                }
+                UiAction::None
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if total == 0 { return UiAction::None; }
+                let cur = state.tool_history.selected.unwrap_or(0);
+                state.tool_history.selected = Some(cur.saturating_sub(1));
+                UiAction::None
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if total == 0 { return UiAction::None; }
+                let cur = state.tool_history.selected.unwrap_or(total - 1);
+                state.tool_history.selected = Some((cur + 1).min(total - 1));
+                UiAction::None
+            }
+            KeyCode::Char('g') => {
+                if total > 0 { state.tool_history.selected = Some(0); }
+                UiAction::None
+            }
+            KeyCode::Char('G') => {
+                if total > 0 { state.tool_history.selected = Some(total - 1); }
+                UiAction::None
+            }
+            KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => {
+                if state.tool_history.selected.is_some() {
+                    state.tool_history.detail_open = true;
+                }
+                UiAction::None
+            }
+            _ => UiAction::None,
+        }
+    }
+
     fn normal_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
@@ -346,7 +399,7 @@ impl EventHandler {
                 open_model_picker(state);
                 UiAction::None
             }
-            (KeyCode::Char('b'), KeyModifiers::CONTROL) => UiAction::ToggleSidebar,
+            (KeyCode::Char('b'), KeyModifiers::CONTROL) => UiAction::None,
             (KeyCode::BackTab, _) => UiAction::CyclePermissionMode,
             (KeyCode::Tab, _) => { state.input.mode = InputMode::Insert; UiAction::None }
             (KeyCode::Char('i'), _) | (KeyCode::Char('a'), _) => {

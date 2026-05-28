@@ -1,7 +1,7 @@
 use ratatui::layout::{Constraint, Layout, Rect};
 
 pub struct LayoutResult {
-    pub sidebar: Option<Rect>,
+    pub tool_history: Option<Rect>,
     pub messages: Rect,
     pub thinking: Option<Rect>,
     pub delegate: Option<Rect>,
@@ -13,19 +13,19 @@ pub struct LayoutResult {
 pub struct MainLayout;
 
 impl MainLayout {
-    pub const SIDEBAR_WIDTH: u16 = 42;
+    pub const TOOL_HISTORY_WIDTH: u16 = 44;
+    pub const MIN_MAIN_WIDTH: u16 = 60;
 
     pub fn split(
         area: Rect,
-        sidebar_visible: bool,
         input_lines: usize,
         thinking_lines: usize,
         delegate_lines: usize,
         has_summary: bool,
     ) -> LayoutResult {
-        let (sidebar, main) = if sidebar_visible && area.width > Self::SIDEBAR_WIDTH + 20 {
+        let (tool_history, main) = if area.width > Self::TOOL_HISTORY_WIDTH + Self::MIN_MAIN_WIDTH {
             let chunks = Layout::horizontal([
-                Constraint::Length(Self::SIDEBAR_WIDTH),
+                Constraint::Length(Self::TOOL_HISTORY_WIDTH),
                 Constraint::Min(1),
             ])
             .split(area);
@@ -59,6 +59,6 @@ impl MainLayout {
         let input = rows[idx]; idx += 1;
         let footer = rows[idx];
 
-        LayoutResult { sidebar, messages, thinking, delegate, summary, input, footer }
+        LayoutResult { tool_history, messages, thinking, delegate, summary, input, footer }
     }
 }

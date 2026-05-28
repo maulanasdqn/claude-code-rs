@@ -20,6 +20,8 @@ pub mod status_bar;
 pub mod thinking_panel;
 pub mod toast;
 pub mod summary_bar;
+pub mod tool_detail;
+pub mod tool_history;
 pub mod tool_progress;
 
 pub use dialog_select::DialogSelect;
