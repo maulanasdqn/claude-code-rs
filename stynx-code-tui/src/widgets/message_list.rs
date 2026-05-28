@@ -169,7 +169,7 @@ impl<'a> Widget for MessageList<'a> {
                         };
                         lines.push(Line::from(vec![
                             Span::styled(
-                                format!("{dot} "),
+                                format!("  {dot} "),
                                 Style::default().fg(col).add_modifier(Modifier::BOLD),
                             ),
                             Span::styled(
