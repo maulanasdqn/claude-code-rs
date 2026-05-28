@@ -5,8 +5,8 @@ An interactive AI coding assistant for the terminal. Multi-provider, tool-using,
 ```
  ____   _____ __   __ _   _ __  __
 / ___| |_   _|\ \ / /| \ | |\ \/ /
-\___ \   | |   \ V / |  \| | \  / 
- ___) |  | |    | |  | |\  | /  \ 
+\___ \   | |   \ V / |  \| | \  /
+ ___) |  | |    | |  | |\  | /  \
 |____/   |_|    |_|  |_| \_|/_/\_\
             c o d e
 ```
