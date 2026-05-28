@@ -88,7 +88,7 @@ DEEPSEEK_MODEL=deepseek-chat                  # optional
 
 # OpenRouter — declare multiple interns via name:model pairs
 OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
+OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5,kimi:moonshotai/kimi-k2,gemini-flash:google/gemini-2.5-flash,mimo:mimo-v2.5-pro
 
 # Qwen / Alibaba DashScope (auto-registers a "qwen" intern; multi via QWEN_INTERNS)
 QWEN_API_KEY=sk-...
@@ -114,10 +114,34 @@ QWEN_MODEL=qwen-plus                         # optional; qwen-max / qwen-turbo /
       "description": "Coding specialist; strong at multi-file edits."
     },
     {
+      "name": "qwen-max",
+      "provider": "qwen",
+      "model": "qwen-max",
+      "description": "Complex features, architecture, hard bugs."
+    },
+    {
       "name": "haiku",
       "provider": "openrouter",
       "model": "anthropic/claude-haiku-4.5",
       "description": "Fast, well-balanced general intern."
+    },
+    {
+      "name": "kimi",
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2",
+      "description": "Strong reasoning and long-context tasks."
+    },
+    {
+      "name": "gemini-flash",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash",
+      "description": "Boilerplate, simple edits, formatting."
+    },
+    {
+      "name": "mimo",
+      "provider": "openrouter",
+      "model": "mimo-v2.5-pro",
+      "description": "Mechanical edits, grep/glob grunt work."
     },
     {
       "name": "local",
@@ -152,7 +176,7 @@ At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line p
 ```json
 {
   "model": "claude-sonnet-4-6",
-  "max_turns": 30,
+  "max_turns": 200,
   "max_tokens": 8192,
   "effort": "medium",
   "commit_attribution": false,
@@ -248,7 +272,7 @@ Mouse scroll wheel works in any terminal with mouse capture.
 # .env — quick mix of providers
 DEEPSEEK_API_KEY=sk-...
 OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5
+OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5,kimi:moonshotai/kimi-k2,gemini-flash:google/gemini-2.5-flash,mimo:mimo-v2.5-pro
 ```
 
 ```
@@ -323,7 +347,7 @@ The engine provides a rich set of tools categorized as follows:
 
 ### Engine loop
 
-The QueryEngine runs up to N turns (default 20, configurable via `max_turns`). Each turn:
+The QueryEngine runs up to N turns (default 200, configurable via `max_turns`). Each turn:
 
 1. Sends the conversation to the provider (with read-only tools only in plan mode)
 2. Streams the response and extracts tool calls
