@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::sub_engine::SubEngine;
 
-pub(super) const INTERN_SYSTEM: &str = "You are an intern engineer. A senior engineer (Claude) delegates tasks to you.\n\
+pub(super) const INTERN_SYSTEM: &str = "You are an intern engineer. Your mentor (Stynx Mentor) delegates tasks to you.\n\
 \n\
 RULES — violating any of these is a failure:\n\
 1. ONLY report facts you observed via tool calls. Never invent, assume, or extrapolate.\n\
@@ -46,6 +46,7 @@ pub struct InternTool {
     label: String,
     tool_name: String,
     description: String,
+    manager: Option<Arc<crate::infrastructure::intern_manager::InternManager>>,
 }
 
 impl InternTool {
@@ -64,7 +65,13 @@ impl InternTool {
             label: label.into(),
             tool_name: tool_name.into(),
             description: description.into(),
+            manager: None,
         }
+    }
+
+    pub fn with_manager(mut self, manager: Arc<crate::infrastructure::intern_manager::InternManager>) -> Self {
+        self.manager = Some(manager);
+        self
     }
 
     pub fn label(&self) -> &str { &self.label }
@@ -87,6 +94,10 @@ impl Tool for InternTool {
                 "task": {
                     "type": "string",
                     "description": "Crisp task description, including acceptance criteria and any files / context the intern should look at."
+                },
+                "background": {
+                    "type": "boolean",
+                    "description": "If true, the intern runs in the background and this call returns immediately with {handle, status}. Use intern_status/intern_wait/intern_kill to monitor and control it. Default false (blocks until done)."
                 }
             },
             "required": ["task"]
@@ -104,6 +115,40 @@ impl Tool for InternTool {
         if task.trim().is_empty() {
             return Ok("[intern] no task provided".into());
         }
+        let background = input.get("background").and_then(|v| v.as_bool()).unwrap_or(false);
+
+        if background {
+            let Some(manager) = self.manager.clone() else {
+                return Ok("[intern] background mode unavailable (no intern_manager wired)".into());
+            };
+            let (id, tx) = manager.register(self.label.clone(), task.clone());
+            tracing::info!(intern = %self.label, handle = %id, "delegating to intern in background");
+            let inner = self.inner.clone();
+            let label = self.label.clone();
+            let parent_sink = stynx_code_engine::sub_agent_sink::SUB_AGENT_SINK
+                .try_with(|s| s.clone())
+                .ok();
+            let handle = tokio::spawn(async move {
+                let fut = async {
+                    let result = inner.run(&label, INTERN_SYSTEM, &task).await
+                        .map(|out| format!("[{label} intern]\n{out}"))
+                        .map_err(|e| e.to_string());
+                    let _ = tx.send(result);
+                };
+                match parent_sink {
+                    Some(s) => stynx_code_engine::sub_agent_sink::SUB_AGENT_SINK.scope(s, fut).await,
+                    None => fut.await,
+                }
+            });
+            manager.attach_handle(&id, handle);
+            return Ok(json!({
+                "handle": id,
+                "intern": self.label,
+                "status": "spawned",
+                "note": "use intern_status / intern_wait / intern_kill to monitor or control this run."
+            }).to_string());
+        }
+
         tracing::info!(intern = %self.label, task_len = task.len(), "delegating to intern");
         let timeout_secs = std::env::var("INTERN_TIMEOUT_SECS")
             .ok()

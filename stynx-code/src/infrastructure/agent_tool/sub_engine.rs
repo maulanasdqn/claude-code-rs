@@ -7,6 +7,7 @@ use stynx_code_errors::AppResult;
 use stynx_code_types::{Conversation, Message, PermissionChecker, Role};
 use stynx_code_tools::ToolRegistry;
 
+#[derive(Clone)]
 pub(super) struct SubEngine {
     pub provider: Arc<dyn stynx_code_types::Provider>,
     pub registry: Arc<ToolRegistry>,

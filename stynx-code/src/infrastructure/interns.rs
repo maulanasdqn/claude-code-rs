@@ -6,6 +6,7 @@ use stynx_code_provider::OpenAiProvider;
 use stynx_code_tools::ToolRegistry;
 
 use crate::infrastructure::agent_tool::InternTool;
+use crate::infrastructure::intern_manager::InternManager;
 
 const INTERN_TOOLS: &[&str] = &[
     "bash", "read", "file_write", "file_edit", "glob", "grep",
@@ -26,6 +27,7 @@ pub fn build_intern_tools(
     permission: &Arc<ConfigAwarePermissionChecker>,
     mode_flag: &Arc<AtomicU8>,
     hooks: &stynx_code_config::HooksConfig,
+    manager: &Arc<InternManager>,
 ) -> Vec<Arc<InternTool>> {
     let resolved = resolve_interns(config);
     let intern_registry = Arc::new(sub_registry.keep_only(INTERN_TOOLS));
@@ -49,16 +51,18 @@ pub fn build_intern_tools(
             name = r.name, provider = r.provider_label, model = r.model,
         );
 
-        out.push(Arc::new(InternTool::new(
-            intern_provider,
-            intern_registry.clone(),
-            permission.clone(),
-            mode_flag.clone(),
-            hooks.clone(),
-            r.name.clone(),
-            tool_name,
-            r.description.clone(),
-        )));
+        out.push(Arc::new(
+            InternTool::new(
+                intern_provider,
+                intern_registry.clone(),
+                permission.clone(),
+                mode_flag.clone(),
+                hooks.clone(),
+                r.name.clone(),
+                tool_name,
+                r.description.clone(),
+            ).with_manager(manager.clone()),
+        ));
     }
     out
 }
@@ -84,6 +88,13 @@ fn resolve_interns(config: &stynx_code_config::Settings) -> Vec<ResolvedIntern> 
 
     if !names.contains("qwen") {
         if let Some(r) = legacy_qwen_intern() {
+            names.insert(r.name.clone());
+            out.push(r);
+        }
+    }
+
+    if !names.contains("mimo") {
+        if let Some(r) = legacy_mimo_intern() {
             names.insert(r.name.clone());
             out.push(r);
         }
@@ -188,6 +199,24 @@ fn legacy_qwen_intern() -> Option<ResolvedIntern> {
         name: "qwen".to_string(),
         provider_label: "qwen".to_string(),
         description: default_description("qwen", &model),
+        base_url,
+        api_key,
+        model,
+    })
+}
+
+fn legacy_mimo_intern() -> Option<ResolvedIntern> {
+    let api_key = std::env::var("MIMO_API_KEY").ok().filter(|s| !s.trim().is_empty())?;
+    let base_url = std::env::var("MIMO_BASE_URL")
+        .ok().filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "https://api.xiaomimimo.com/v1".to_string());
+    let model = std::env::var("MIMO_MODEL")
+        .ok().filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "mimo-v2.5-pro".to_string());
+    Some(ResolvedIntern {
+        name: "mimo".to_string(),
+        provider_label: "custom".to_string(),
+        description: default_description("mimo", &model),
         base_url,
         api_key,
         model,

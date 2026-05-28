@@ -11,6 +11,8 @@ pub mod command_usage;
 pub mod conductor;
 pub mod conductor_tools;
 pub mod event_renderer;
+pub mod intern_manager;
+pub mod intern_tools;
 pub mod interns;
 pub mod oneshot;
 pub mod pipe;

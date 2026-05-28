@@ -140,11 +140,19 @@ async fn main() {
         provider.clone(), explore_registry, permission.clone(), mode_flag.clone(), config.hooks.clone(),
     )));
 
+    let intern_manager = infrastructure::intern_manager::InternManager::new();
     let intern_tools: Vec<Arc<InternTool>> = build_intern_tools(
-        &config, &sub_registry, &permission, &mode_flag, &config.hooks,
+        &config, &sub_registry, &permission, &mode_flag, &config.hooks, &intern_manager,
     );
     for t in &intern_tools {
         registry.register(t.clone());
+    }
+
+    if !intern_tools.is_empty() {
+        use infrastructure::intern_tools::{InternKillTool, InternStatusTool, InternWaitTool};
+        registry.register(Arc::new(InternStatusTool::new(intern_manager.clone())));
+        registry.register(Arc::new(InternKillTool::new(intern_manager.clone())));
+        registry.register(Arc::new(InternWaitTool::new(intern_manager.clone())));
     }
 
     if intern_tools.len() >= 2 {

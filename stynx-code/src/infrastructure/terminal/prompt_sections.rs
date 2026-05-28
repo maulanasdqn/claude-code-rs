@@ -64,7 +64,7 @@ pub fn using_tools_section(tool_names: &[String]) -> String {
     lines.push("   - delegate_to_qwen: general-purpose, drafting, light coding".to_string());
     lines.push("   - delegate_to_all_interns: multiple perspectives or parallel benchmarking".to_string());
     lines.push(" - Your role: understand the task, plan, pick the right intern, review output, then commit/push.".to_string());
-    lines.push(" - You (Claude) only handle: planning, reviewing intern output, asking the user questions, git commit/push.".to_string());
+    lines.push(" - You (Stynx Mentor) only handle: planning, reviewing intern output, asking the user questions, git commit/push.".to_string());
     lines.join("\n")
 }
 

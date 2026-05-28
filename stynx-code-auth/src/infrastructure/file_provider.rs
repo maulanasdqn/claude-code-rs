@@ -6,12 +6,23 @@ pub fn resolve_file_oauth() -> AppResult<Credential> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| AppError::Provider("cannot determine home directory".to_string()))?;
+    let home = std::path::PathBuf::from(home);
 
-    let path = std::path::PathBuf::from(home)
-        .join(".claude")
-        .join(".credentials.json");
+    let candidates = [
+        home.join(".stynx").join(".credentials.json"),
+        home.join(".claude").join(".credentials.json"),
+    ];
 
-    let contents = std::fs::read_to_string(&path)
+    let path = candidates
+        .iter()
+        .find(|p| p.exists())
+        .ok_or_else(|| AppError::Provider(format!(
+            "no credentials file at {} or {}",
+            candidates[0].display(),
+            candidates[1].display(),
+        )))?;
+
+    let contents = std::fs::read_to_string(path)
         .map_err(|e| AppError::Provider(format!("cannot read {}: {e}", path.display())))?;
 
     let parsed: serde_json::Value = serde_json::from_str(&contents)
