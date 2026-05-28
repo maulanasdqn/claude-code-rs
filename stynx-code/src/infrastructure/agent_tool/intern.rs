@@ -161,7 +161,7 @@ impl Tool for InternTool {
             Err(_) => {
                 tracing::warn!(intern = %self.label, secs = timeout_secs, "intern timed out");
                 return Ok(format!(
-                    "[{label} intern]\n[TIMEOUT] intern did not finish in {timeout_secs}s. The work was aborted. Either re-delegate with sharper acceptance criteria, pick a different intern, or do it yourself.",
+                    "[{label} intern]\n[TIMEOUT] intern did not finish in {timeout_secs}s — task aborted. AUTO-RECOVER NOW (do not ask the user): re-delegate this task with sharper criteria, switch to a different intern, or do it yourself. See the Auto-recovery rules in your system prompt.",
                     label = self.label,
                 ));
             }
