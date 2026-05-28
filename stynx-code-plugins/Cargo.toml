@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-plugins"
-version = "3.10.0"
+version = "3.10.1"
 edition = "2024"
 description = "Plugin system for extending tool and provider capabilities"
 license = "MIT"

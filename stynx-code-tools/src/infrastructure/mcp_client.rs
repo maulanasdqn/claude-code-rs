@@ -56,10 +56,11 @@ impl McpClient {
 
     async fn read_msg(&mut self) -> AppResult<Value> {
         let mut line = String::new();
-        self.stdout
-            .read_line(&mut line)
+        let timeout = std::time::Duration::from_secs(30);
+        let read = tokio::time::timeout(timeout, self.stdout.read_line(&mut line))
             .await
-            .map_err(|e| AppError::Tool(format!("MCP read: {e}")))?;
+            .map_err(|_| AppError::Tool("MCP server timed out after 30s".into()))?;
+        read.map_err(|e| AppError::Tool(format!("MCP read: {e}")))?;
         if line.is_empty() {
             return Err(AppError::Tool("MCP server closed".into()));
         }

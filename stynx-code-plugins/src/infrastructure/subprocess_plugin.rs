@@ -45,12 +45,13 @@ impl SubprocessPlugin {
         })?;
 
         let mut response_line = String::new();
-        self.stdout
-            .read_line(&mut response_line)
+        let timeout = std::time::Duration::from_secs(30);
+        let read = tokio::time::timeout(timeout, self.stdout.read_line(&mut response_line))
             .await
-            .map_err(|e| {
-                AppError::Internal(anyhow::anyhow!("Failed to read plugin response: {e}"))
-            })?;
+            .map_err(|_| AppError::Internal(anyhow::anyhow!("plugin subprocess timed out after 30s")))?;
+        read.map_err(|e| {
+            AppError::Internal(anyhow::anyhow!("Failed to read plugin response: {e}"))
+        })?;
 
         if response_line.is_empty() {
             return Err(AppError::Internal(anyhow::anyhow!(

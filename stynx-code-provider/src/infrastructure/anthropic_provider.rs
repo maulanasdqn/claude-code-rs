@@ -63,8 +63,16 @@ impl AnthropicProvider {
             DEFAULT_MODEL
         };
 
+        let client = Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .tcp_keepalive(std::time::Duration::from_secs(60))
+            .read_timeout(std::time::Duration::from_secs(180))
+            .build()
+            .unwrap_or_else(|_| Client::new());
+
         Self {
-            client: Client::new(),
+            client,
             model: std::sync::Mutex::new(default_model.to_string()),
             credential,
             mode,

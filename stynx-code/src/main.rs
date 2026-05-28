@@ -38,8 +38,9 @@ async fn main() {
 
     let cli = Cli::parse();
 
+    let default_level = if cli.verbose { "debug" } else { "warn" };
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "warn".into());
+        .unwrap_or_else(|_| default_level.into());
     let is_tui = !Cli::is_piped() && cli.prompt.is_none();
     if is_tui {
 
