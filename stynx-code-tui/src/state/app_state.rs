@@ -258,14 +258,7 @@ impl AppState {
                 }
                 self.live_thinking.clear();
                 if let Some(summary) = tool_summary {
-                    self.last_summary = Some(summary.clone());
-                    self.conversation.messages.push(DisplayMessage {
-                        role: "done".to_string(),
-                        content: summary,
-                        thinking: String::new(),
-                        tool_uses: Vec::new(),
-                        is_streaming: false,
-                    });
+                    self.last_summary = Some(summary);
                     self.conversation.auto_scroll = true;
                 }
             }

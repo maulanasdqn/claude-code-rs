@@ -84,16 +84,22 @@ impl<'a> Widget for MessageList<'a> {
                     }
                 }
                 "done" => {
-                    lines.push(Line::from(vec![
-                        Span::styled(
-                            "  ✓ ",
-                            Style::default().fg(theme::SUCCESS()).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::styled(
-                            msg.content.clone(),
-                            Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
-                        ),
-                    ]));
+                    let parts: Vec<&str> = msg.content.split(", ").collect();
+                    for (i, part) in parts.iter().enumerate() {
+                        let prefix = if i == 0 { "  ✓ " } else { "    " };
+                        let prefix_style = if i == 0 {
+                            Style::default().fg(theme::SUCCESS()).add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default()
+                        };
+                        lines.push(Line::from(vec![
+                            Span::styled(prefix, prefix_style),
+                            Span::styled(
+                                part.to_string(),
+                                Style::default().fg(theme::MUTED()).add_modifier(Modifier::ITALIC),
+                            ),
+                        ]));
+                    }
                 }
                 _ => {
                     if !msg.thinking.is_empty() && !msg.is_streaming {

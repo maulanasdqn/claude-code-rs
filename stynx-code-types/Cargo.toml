@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-types"
-version = "3.6.0"
+version = "3.6.1"
 edition = "2024"
 description = "Shared domain types for messages, providers, tools, and permissions"
 license = "MIT"

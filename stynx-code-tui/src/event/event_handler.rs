@@ -275,8 +275,8 @@ impl EventHandler {
             (KeyCode::Char('w'), KeyModifiers::CONTROL) => {
                 state.input.move_word_left(); update_suggestion(state); UiAction::None
             }
-            (KeyCode::Up, KeyModifiers::SHIFT) => { scroll_up(state, 1); UiAction::None }
-            (KeyCode::Down, KeyModifiers::SHIFT) => { scroll_down(state, 1); UiAction::None }
+            (KeyCode::Up, KeyModifiers::SHIFT) => { state.input.history_prev(); UiAction::None }
+            (KeyCode::Down, KeyModifiers::SHIFT) => { state.input.history_next(); UiAction::None }
             (KeyCode::Char('u'), m) if m.contains(KeyModifiers::CONTROL) && m.contains(KeyModifiers::ALT) => {
                 scroll_up(state, 10); UiAction::None
             }
