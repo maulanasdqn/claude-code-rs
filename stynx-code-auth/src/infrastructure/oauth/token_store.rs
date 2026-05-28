@@ -54,6 +54,15 @@ impl TokenStore for FileTokenStore {
             ))
         })?;
 
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))
+                .map_err(|e| AppError::Provider(format!(
+                    "failed to set 0600 perms on {}: {e}", self.path.display(),
+                )))?;
+        }
+
         Ok(())
     }
 

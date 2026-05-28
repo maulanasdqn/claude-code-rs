@@ -1,4 +1,42 @@
 use std::collections::HashSet;
+
+fn input_signature(tool_name: &str, input: &Value) -> String {
+    match tool_name {
+        "bash" => {
+            let cmd = input.get("command").and_then(|v| v.as_str()).unwrap_or("");
+            let first = cmd.split_whitespace().next().unwrap_or("*");
+            format!("bash|{first}")
+        }
+        "file_edit" | "file_write" | "read" => {
+            let path = input.get("file_path").and_then(|v| v.as_str()).unwrap_or("*");
+            format!("{tool_name}|{path}")
+        }
+        other => format!("{other}|*"),
+    }
+}
+
+fn signature_label(tool_name: &str, input: &Value) -> String {
+    match tool_name {
+        "bash" => {
+            let cmd = input.get("command").and_then(|v| v.as_str()).unwrap_or("");
+            let first = cmd.split_whitespace().next().unwrap_or("");
+            if first.is_empty() {
+                format!("`bash` (any command)")
+            } else {
+                format!("`bash {first} ...` commands")
+            }
+        }
+        "file_edit" | "file_write" | "read" => {
+            let path = input.get("file_path").and_then(|v| v.as_str()).unwrap_or("");
+            if path.is_empty() {
+                format!("`{tool_name}` (any path)")
+            } else {
+                format!("`{tool_name}` on `{path}`")
+            }
+        }
+        other => format!("`{other}`"),
+    }
+}
 use std::io::Write;
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 
@@ -52,23 +90,27 @@ impl Default for InteractivePermissionChecker {
 #[async_trait::async_trait]
 impl PermissionChecker for InteractivePermissionChecker {
     async fn check(&self, tool_name: &str, input: &Value) -> AppResult<PermissionDecision> {
-        if self.session_allowed.lock().unwrap().contains(tool_name) {
+        let sig = input_signature(tool_name, input);
+        if self.session_allowed.lock().unwrap().contains(&sig) {
             return Ok(PermissionDecision::Allow);
         }
 
         let detail = format_permission_prompt(tool_name, input);
         let title = permission_title(tool_name);
+        let allow_scope = signature_label(tool_name, input);
         let tool_name = tool_name.to_string();
-        let tool_name_for_session = tool_name.clone();
+        let session_sig = sig;
+        let session_sig_blocking = session_sig.clone();
         let tool_name_for_deny = tool_name.clone();
 
         if let Some(bridge) = self.bridge.get() {
             let _guard = self.prompt_lock.lock().await;
-            let choice = bridge.request(title, detail).await;
+            let scoped_detail = format!("{detail}\n\n(\"don't ask again\" only covers {allow_scope})");
+            let choice = bridge.request(title, scoped_detail).await;
             return Ok(match choice {
                 Some(PromptChoice::AllowOnce) => PermissionDecision::Allow,
                 Some(PromptChoice::AllowAlways) => {
-                    self.session_allowed.lock().unwrap().insert(tool_name_for_session);
+                    self.session_allowed.lock().unwrap().insert(session_sig);
                     PermissionDecision::Allow
                 }
                 Some(PromptChoice::Deny) | None => PermissionDecision::Deny(format!(
@@ -82,10 +124,11 @@ impl PermissionChecker for InteractivePermissionChecker {
 
         let _guard = self.prompt_lock.lock().await;
 
+        let allow_scope_for_prompt = allow_scope.clone();
         let decision = tokio::task::spawn_blocking(move || -> AppResult<SelectResult> {
             paused.store(true, Ordering::Relaxed);
             std::thread::sleep(std::time::Duration::from_millis(80));
-            let result = prompt_select(&title, &detail, &tool_name);
+            let result = prompt_select(&title, &detail, &tool_name, &allow_scope_for_prompt);
             paused.store(false, Ordering::Relaxed);
             std::thread::sleep(std::time::Duration::from_millis(50));
             result
@@ -96,7 +139,7 @@ impl PermissionChecker for InteractivePermissionChecker {
         match decision {
             SelectResult::AllowOnce => Ok(PermissionDecision::Allow),
             SelectResult::AllowAlways => {
-                session_allowed.lock().unwrap().insert(tool_name_for_session);
+                session_allowed.lock().unwrap().insert(session_sig_blocking);
                 Ok(PermissionDecision::Allow)
             }
             SelectResult::Deny => Ok(PermissionDecision::Deny(
@@ -113,7 +156,7 @@ enum SelectResult {
     Deny,
 }
 
-fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<SelectResult> {
+fn prompt_select(title: &str, detail: &str, tool_name: &str, allow_scope: &str) -> AppResult<SelectResult> {
     let w = terminal::size()
         .map(|(w, _)| w as usize)
         .unwrap_or(80)
@@ -141,7 +184,8 @@ fn prompt_select(title: &str, detail: &str, tool_name: &str) -> AppResult<Select
     let title_prefix = format!("─── {title} ");
     let title_fill = inner.saturating_sub(title_prefix.len());
 
-    let always_label = format!("Yes, and don't ask again for {tool_name}");
+    let _ = tool_name;
+    let always_label = format!("Yes, and don't ask again for {allow_scope}");
     let options: Vec<(&str, SelectResult)> = vec![
         ("Yes", SelectResult::AllowOnce),
         (&always_label, SelectResult::AllowAlways),

@@ -484,6 +484,7 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
+ "subtle",
 ]
 
 [[package]]
@@ -842,6 +843,15 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hmac"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
+dependencies = [
+ "digest",
+]
 
 [[package]]
 name = "http"
@@ -2074,7 +2084,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "base64",
@@ -2103,9 +2113,10 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-auth"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "base64",
+ "getrandom 0.2.17",
  "serde",
  "serde_json",
  "sha2",
@@ -2116,22 +2127,25 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-bridge"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "base64",
+ "hmac",
  "serde",
  "serde_json",
+ "sha2",
  "stynx-code-errors",
  "stynx-code-types",
+ "subtle",
  "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "stynx-code-commands"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "base64",
  "regex",
@@ -2143,7 +2157,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-compact"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2158,7 +2172,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-config"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2166,7 +2180,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-coordinator"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -2180,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-engine"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "futures",
  "serde_json",
@@ -2194,7 +2208,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-errors"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2206,7 +2220,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-memory"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2221,7 +2235,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-permission"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "crossterm",
@@ -2234,7 +2248,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-plugins"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2249,7 +2263,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-provider"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2264,7 +2278,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-server"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "axum",
  "futures",
@@ -2274,6 +2288,7 @@ dependencies = [
  "stynx-code-config",
  "stynx-code-engine",
  "stynx-code-errors",
+ "stynx-code-permission",
  "stynx-code-provider",
  "stynx-code-tools",
  "stynx-code-types",
@@ -2284,7 +2299,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-services"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2299,7 +2314,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-skills"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2315,7 +2330,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-tools"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "crossterm",
@@ -2333,7 +2348,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-tui"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "arboard",
  "async-trait",
@@ -2353,7 +2368,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-types"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "async-trait",
  "futures",

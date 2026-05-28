@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-auth"
-version = "3.9.0"
+version = "3.10.0"
 edition = "2024"
 description = "Authentication with API keys and macOS Keychain OAuth"
 license = "MIT"
@@ -15,3 +15,4 @@ tracing = { workspace = true }
 base64 = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }
+getrandom = "0.2"

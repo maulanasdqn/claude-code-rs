@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-server"
-version = "3.9.0"
+version = "3.10.0"
 edition = "2024"
 description = "HTTP server with chat and health endpoints"
 license = "MIT"
@@ -15,6 +15,7 @@ stynx-code-types = { workspace = true }
 stynx-code-tools = { workspace = true }
 stynx-code-provider = { workspace = true }
 stynx-code-engine = { workspace = true }
+stynx-code-permission = { workspace = true }
 axum = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }
