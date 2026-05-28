@@ -31,7 +31,7 @@ impl<'a> MessageList<'a> {
 
 impl<'a> Widget for MessageList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let pad = if area.width >= 80 { 4 } else { 2 };
+        let pad = 1u16;
         let area = Rect {
             x: area.x + pad,
             width: area.width.saturating_sub(pad * 2),

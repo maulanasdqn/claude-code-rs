@@ -20,7 +20,7 @@ impl<'a> SummaryBar<'a> {
 
 impl<'a> Widget for SummaryBar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let pad = if area.width >= 80 { "    " } else { "  " };
+        let pad = " ";
         let line = Line::from(vec![
             Span::styled(format!("{pad}✓ "), Style::default().fg(theme::SUCCESS()).add_modifier(Modifier::BOLD)),
             Span::styled(self.text.to_string(), Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::ITALIC)),

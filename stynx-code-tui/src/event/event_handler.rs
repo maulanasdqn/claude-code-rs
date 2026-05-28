@@ -127,7 +127,7 @@ fn dispatch_palette(state: &mut AppState, command: &str) -> UiAction {
         "tools.focus" => {
             state.tool_history.focused = true;
             if state.tool_history.selected.is_none() {
-                let total = crate::widgets::tool_history::flat_tools(state).len();
+                let total = crate::widgets::tool_history::flat_rows(state).len();
                 if total > 0 { state.tool_history.selected = Some(total - 1); }
             }
             UiAction::None
@@ -206,7 +206,7 @@ impl EventHandler {
             (KeyCode::Char('t'), KeyModifiers::CONTROL) => {
                 state.tool_history.focused = !state.tool_history.focused;
                 if state.tool_history.focused && state.tool_history.selected.is_none() {
-                    let total = crate::widgets::tool_history::flat_tools(state).len();
+                    let total = crate::widgets::tool_history::flat_rows(state).len();
                     if total > 0 { state.tool_history.selected = Some(total - 1); }
                 }
                 UiAction::None
@@ -340,8 +340,8 @@ impl EventHandler {
     }
 
     fn tool_history_key(key: KeyEvent, state: &mut AppState) -> UiAction {
-        use crate::widgets::tool_history::flat_tools;
-        let total = flat_tools(state).len();
+        use crate::widgets::tool_history::flat_rows;
+        let total = flat_rows(state).len();
         match key.code {
             KeyCode::Esc | KeyCode::Char('h') | KeyCode::Left => {
                 if state.tool_history.detail_open {

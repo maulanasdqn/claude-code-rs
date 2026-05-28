@@ -39,7 +39,7 @@ impl MainLayout {
         let thinking_h: u16 = if thinking_lines == 0 {
             0
         } else {
-            (1 + thinking_lines.min(4)) as u16
+            (1 + thinking_lines.min(12)) as u16
         };
         let delegate_h: u16 = delegate_lines.min(4) as u16;
 

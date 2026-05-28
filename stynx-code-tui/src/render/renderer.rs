@@ -7,7 +7,7 @@ use crate::state::{AppState, ModalKind};
 use crate::theme;
 use crate::widgets::delegate_bar::DelegateBar;
 use crate::widgets::tool_detail::ToolDetail;
-use crate::widgets::tool_history::{flat_tools, ToolHistory};
+use crate::widgets::tool_history::{flat_rows, HistoryRow, ToolHistory};
 use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, SlashPopover, SummaryBar, ThinkingPanel, ToastStack};
 
 pub struct Renderer;
@@ -88,8 +88,12 @@ impl Renderer {
 
         if state.tool_history.detail_open {
             if let Some(idx) = state.tool_history.selected {
-                let flat = flat_tools(state);
-                if let Some(&(mi, ti)) = flat.get(idx) {
+                let rows = flat_rows(state);
+                if let Some(row) = rows.get(idx) {
+                    let (mi, ti) = match row {
+                        HistoryRow::Tool { msg, tool } => (*msg, *tool),
+                        HistoryRow::Sub { msg, tool, .. } => (*msg, *tool),
+                    };
                     let tool = &state.conversation.messages[mi].tool_uses[ti];
                     frame.render_widget(ToolDetail::new(tool), full);
                 }

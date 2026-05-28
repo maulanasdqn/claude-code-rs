@@ -56,9 +56,9 @@ impl<'a> Widget for ThinkingPanel<'a> {
                 .set_style(Style::default().fg(accent).bg(theme::BACKGROUND()));
         }
 
-        let pad: u16 = if area.width >= 80 { 4 } else { 2 };
+        let pad: u16 = 1;
         let inner_x = area.x + pad;
-        let inner_width = area.width.saturating_sub(pad as u16 + 1) as usize;
+        let inner_width = area.width.saturating_sub(pad + 1) as usize;
         let _ = bar_col;
 
         let header = Line::from(vec![

@@ -20,11 +20,30 @@ impl<'a> ToolHistory<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum HistoryRow {
+    Tool { msg: usize, tool: usize },
+    Sub { msg: usize, tool: usize, sub: usize },
+}
+
 pub fn flat_tools(state: &AppState) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     for (mi, m) in state.conversation.messages.iter().enumerate() {
         for (ti, _t) in m.tool_uses.iter().enumerate() {
             out.push((mi, ti));
+        }
+    }
+    out
+}
+
+pub fn flat_rows(state: &AppState) -> Vec<HistoryRow> {
+    let mut out = Vec::new();
+    for (mi, m) in state.conversation.messages.iter().enumerate() {
+        for (ti, t) in m.tool_uses.iter().enumerate() {
+            out.push(HistoryRow::Tool { msg: mi, tool: ti });
+            for (si, _) in t.sub_progress.iter().enumerate() {
+                out.push(HistoryRow::Sub { msg: mi, tool: ti, sub: si });
+            }
         }
     }
     out
@@ -97,13 +116,14 @@ impl<'a> Widget for ToolHistory<'a> {
 
         let mut lines: Vec<Line<'static>> = vec![header, Line::from("")];
 
-        let flat = flat_tools(self.state);
+        let rows = flat_rows(self.state);
         let row_width = inner.width.saturating_sub(2) as usize;
         let name_w = 10usize;
         let summary_w = row_width.saturating_sub(name_w + 4);
+        let sub_w = row_width.saturating_sub(4);
 
         let visible = (inner.height as usize).saturating_sub(2).max(1);
-        let total = flat.len();
+        let total = rows.len();
         let selected = self.state.tool_history.selected;
         if let Some(sel) = selected {
             let scr = &mut self.state.tool_history.scroll;
@@ -114,38 +134,47 @@ impl<'a> Widget for ToolHistory<'a> {
         }
         let scroll = self.state.tool_history.scroll.min(total.saturating_sub(visible));
 
-        for (i, (mi, ti)) in flat.iter().enumerate().skip(scroll).take(visible) {
-            let msg = &self.state.conversation.messages[*mi];
-            let tool = &msg.tool_uses[*ti];
+        for (i, row) in rows.iter().enumerate().skip(scroll).take(visible) {
             let is_selected = selected == Some(i);
-
-            let (dot, dot_col) = match tool.status {
-                ToolUseStatus::Running => (
-                    FRAMES[self.state.spinner_frame % FRAMES.len()].to_string(),
-                    theme::GOLD(),
-                ),
-                ToolUseStatus::Completed => ("●".into(), theme::SUCCESS()),
-                ToolUseStatus::Error => ("●".into(), theme::ERROR()),
-            };
-
-            let pretty = pretty_name(&tool.name);
-            let name_padded = format!("{:<name_w$}", pretty, name_w = name_w);
-            let summary = truncate_path(&tool.input_summary, summary_w);
-
             let row_style = if is_selected {
                 Style::default().bg(theme::HL_MED()).add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
-
             let prefix = if is_selected { "▶ " } else { "  " };
 
-            lines.push(Line::from(vec![
-                Span::styled(prefix, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("{dot} "), Style::default().fg(dot_col).add_modifier(Modifier::BOLD)),
-                Span::styled(name_padded, row_style.fg(theme::TEXT())),
-                Span::styled(summary, row_style.fg(theme::TEXT_MUTED())),
-            ]));
+            match row {
+                HistoryRow::Tool { msg, tool } => {
+                    let tool = &self.state.conversation.messages[*msg].tool_uses[*tool];
+                    let (dot, dot_col) = match tool.status {
+                        ToolUseStatus::Running => (
+                            FRAMES[self.state.spinner_frame % FRAMES.len()].to_string(),
+                            theme::GOLD(),
+                        ),
+                        ToolUseStatus::Completed => ("●".into(), theme::SUCCESS()),
+                        ToolUseStatus::Error => ("●".into(), theme::ERROR()),
+                    };
+                    let pretty = pretty_name(&tool.name);
+                    let name_padded = format!("{:<name_w$}", pretty, name_w = name_w);
+                    let summary = truncate_path(&tool.input_summary, summary_w);
+                    lines.push(Line::from(vec![
+                        Span::styled(prefix, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
+                        Span::styled(format!("{dot} "), Style::default().fg(dot_col).add_modifier(Modifier::BOLD)),
+                        Span::styled(name_padded, row_style.fg(theme::TEXT())),
+                        Span::styled(summary, row_style.fg(theme::TEXT_MUTED())),
+                    ]));
+                }
+                HistoryRow::Sub { msg, tool, sub } => {
+                    let parent = &self.state.conversation.messages[*msg].tool_uses[*tool];
+                    let text = parent.sub_progress.get(*sub).cloned().unwrap_or_default();
+                    let truncated = truncate_path(&text, sub_w);
+                    lines.push(Line::from(vec![
+                        Span::styled(prefix, Style::default().fg(theme::IRIS())),
+                        Span::styled("↪ ", Style::default().fg(theme::IRIS()).add_modifier(Modifier::DIM)),
+                        Span::styled(truncated, row_style.fg(theme::SUBTLE()).add_modifier(Modifier::ITALIC)),
+                    ]));
+                }
+            }
         }
 
         if total == 0 {
@@ -155,7 +184,7 @@ impl<'a> Widget for ToolHistory<'a> {
             )));
         } else if total > visible {
             lines.push(Line::from(Span::styled(
-                format!("  {} / {} tools", (scroll + visible).min(total), total),
+                format!("  {} / {} rows", (scroll + visible).min(total), total),
                 Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::DIM),
             )));
         }
