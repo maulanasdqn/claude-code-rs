@@ -155,6 +155,8 @@ impl EventHandler {
                 return UiAction::None;
             }
             Event::Paste(text) => {
+                let text = sanitize_paste(&text);
+                if text.is_empty() { return UiAction::None; }
                 if text.len() > 200 || text.matches('\n').count() > 4 {
                     let lines = text.lines().count().max(1);
                     let chars = text.chars().count();
@@ -628,4 +630,54 @@ impl EventHandler {
 
 impl Default for EventHandler {
     fn default() -> Self { Self }
+}
+
+fn sanitize_paste(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == 0x1b && i + 1 < bytes.len() {
+            let next = bytes[i + 1];
+            if next == b'[' || next == b']' || next == b'O' || next == b'P' {
+                i += 2;
+                while i < bytes.len() {
+                    let b = bytes[i];
+                    let terminator = match next {
+                        b'[' | b'O' => b.is_ascii_alphabetic() || b == b'~',
+                        b']' => b == 0x07 || b == 0x1b,
+                        b'P' => b == 0x1b,
+                        _ => false,
+                    };
+                    i += 1;
+                    if terminator {
+                        if next == b']' && i < bytes.len() && bytes[i - 1] == 0x1b && bytes[i] == b'\\' {
+                            i += 1;
+                        }
+                        break;
+                    }
+                }
+                continue;
+            }
+            if next == 0x1b {
+                i += 1;
+                continue;
+            }
+        }
+        let c = bytes[i];
+        if c == b'\n' || c == b'\t' || c == b'\r' || c >= 0x20 {
+            if c >= 0x80 {
+                let mut j = i + 1;
+                while j < bytes.len() && bytes[j] >= 0x80 && bytes[j] < 0xC0 { j += 1; }
+                if let Ok(s) = std::str::from_utf8(&bytes[i..j]) {
+                    out.push_str(s);
+                }
+                i = j;
+                continue;
+            }
+            out.push(c as char);
+        }
+        i += 1;
+    }
+    out
 }

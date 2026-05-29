@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-bridge"
-version = "3.12.0"
+version = "3.12.1"
 edition = "2024"
 description = "Bridge layer for external integrations and data encoding"
 license = "MIT"

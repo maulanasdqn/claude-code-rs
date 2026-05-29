@@ -44,6 +44,14 @@ impl ShellRegistry {
     }
 
     pub async fn run_sync(&self, command: &str, timeout: Option<Duration>) -> AppResult<String> {
+        if let Some(reason) = detect_interactive(command) {
+            return Err(AppError::Tool(format!(
+                "{reason}\n\
+                The persistent shell has no TTY — interactive prompts will deadlock and corrupt the TUI. \
+                Options: (a) use non-interactive flags (ssh: -o BatchMode=yes with key auth; sudo: -n with passwordless sudoers); \
+                (b) pre-share the secret via env / config; (c) suggest the user runs `! <command>` themselves to handle the prompt interactively."
+            )));
+        }
         let mut guard = self.persistent.lock().await;
         let need_spawn = match guard.as_mut() {
             None => true,
@@ -52,7 +60,14 @@ impl ShellRegistry {
         if need_spawn {
             *guard = Some(PersistentShell::spawn().await?);
         }
-        guard.as_mut().unwrap().run(command, timeout).await
+        let result = guard.as_mut().unwrap().run(command, timeout).await;
+        if let Err(AppError::Tool(ref msg)) = result {
+            if msg.starts_with("command timed out") {
+                tracing::warn!(command = %command, "bash command timed out, resetting persistent shell");
+                *guard = None;
+            }
+        }
+        result
     }
 
     pub async fn run_background(&self, command: &str) -> AppResult<String> {
@@ -302,6 +317,56 @@ the command with background:true if it's a long-running process."
             }
         }
     }
+}
+
+fn detect_interactive(command: &str) -> Option<String> {
+    let trimmed = command.trim();
+    let head = trimmed.split('|').next().unwrap_or("").trim();
+    let mut tokens = head.split_whitespace();
+    let Some(first) = tokens.next() else { return None; };
+    let rest: Vec<&str> = tokens.collect();
+
+    match first {
+        "ssh" => {
+            let has_batchmode = rest.windows(2).any(|w| w[0] == "-o" && w[1].eq_ignore_ascii_case("BatchMode=yes"));
+            let has_i_arg = rest.iter().any(|t| *t == "-i" || t.starts_with("-i") && t.len() > 2);
+            if !has_batchmode && !has_i_arg {
+                return Some("blocked: `ssh` without key auth or `-o BatchMode=yes` will hit a password prompt.".into());
+            }
+        }
+        "scp" | "sftp" | "rsync" => {
+            let has_batchmode = rest.windows(2).any(|w| w[0] == "-o" && w[1].eq_ignore_ascii_case("BatchMode=yes"));
+            if !has_batchmode && !rest.iter().any(|t| *t == "-i") {
+                return Some(format!("blocked: `{first}` will prompt for a password without key auth or `-o BatchMode=yes`."));
+            }
+        }
+        "sudo" => {
+            let has_n = rest.iter().any(|t| *t == "-n" || *t == "--non-interactive");
+            if !has_n {
+                return Some("blocked: `sudo` without `-n` will prompt for a password.".into());
+            }
+        }
+        "passwd" | "su" | "login" => {
+            return Some(format!("blocked: `{first}` is interactive and cannot run in the persistent shell."));
+        }
+        "vim" | "vi" | "nvim" | "nano" | "emacs" | "less" | "more" | "top" | "htop" | "btop" | "watch" | "tmux" | "screen" | "man" => {
+            return Some(format!("blocked: `{first}` is a TUI/curses program and will deadlock the persistent shell."));
+        }
+        "mysql" | "psql" | "sqlite3" | "redis-cli" | "mongo" | "mongosh" => {
+            let has_command_flag = rest.iter().any(|t| matches!(*t, "-c" | "--command" | "-e" | "--execute"));
+            if !has_command_flag {
+                return Some(format!("blocked: `{first}` without `-c`/`-e` opens an interactive REPL that will deadlock."));
+            }
+        }
+        "gpg" | "ssh-keygen" | "ssh-add" => {
+            let has_batch = rest.iter().any(|t| *t == "--batch" || *t == "--pinentry-mode=loopback" || *t == "-N");
+            if !has_batch {
+                return Some(format!("blocked: `{first}` may prompt for a passphrase — pass `--batch` or `-N \"\"` if you know what you're doing."));
+            }
+        }
+        _ => {}
+    }
+    None
 }
 
 fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
