@@ -1,0 +1,105 @@
+*stynx.txt*               Neovim plugin for stynx-code
+
+==============================================================================
+CONTENTS                                                  *stynx-contents*
+
+  1. Introduction .................................. |stynx-intro|
+  2. Setup ......................................... |stynx-setup|
+  3. Commands ...................................... |stynx-commands|
+  4. Keymaps ....................................... |stynx-keymaps|
+  5. Configuration ................................. |stynx-config|
+  6. Chat Buffer ................................... |stynx-chat|
+
+==============================================================================
+INTRODUCTION                                              *stynx-intro*
+
+stynx.nvim integrates the stynx-code AI coding assistant directly into
+Neovim. Send prompts, explain code, fix bugs, and refactor — all without
+leaving your editor.
+
+==============================================================================
+SETUP                                                     *stynx-setup*
+
+Using lazy.nvim: >
+    {
+      "maulanasdqn/stynx-code",
+      dir = "~/path/to/stynx-code",
+      lazy = false,
+      config = true,
+    }
+
+Manual: add `nvim/` to your runtimepath or symlink into
+`~/.local/share/nvim/site/pack/*/start/`.
+
+==============================================================================
+COMMANDS                                                  *stynx-commands*
+
+:Stynx {prompt}          Send a prompt to stynx. Current file and visual
+                         selection are sent as context.
+:SyntaxExplain           Explain the code in the current file or selection.
+:SyntaxFix               Find and fix bugs in the current file or selection.
+:SyntaxRefactor          Refactor the current file or selection.
+:StynxChat               Open a multi-turn chat buffer.
+
+When a visual range is active, the selected text is used as context
+instead of the full file.
+
+==============================================================================
+KEYMAPS                                                   *stynx-keymaps*
+
+Default keymaps (customizable via setup):
+
+  <leader>sc      Open stynx chat               |StynxChat|
+  <leader>se      Explain code                   |StynxExplain|
+  <leader>sf      Find and fix bugs              |StynxFix|
+  <leader>sr      Refactor code                  |StynxRefactor|
+
+Set a keymap to `false` to disable it.
+
+==============================================================================
+CONFIGURATION                                             *stynx-config*
+
+Default configuration: >
+
+  require("stynx").setup({
+    binary = "stynx",
+    max_turns = 10,
+    timeout_ms = 120000,
+    model = nil,
+    effort = nil,
+    float_win = {
+      width = 0.7,
+      height = 0.7,
+      border = "rounded",
+      title = " stynx ",
+      title_pos = "center",
+    },
+    keymaps = {
+      chat = "<leader>sc",
+      explain = "<leader>se",
+      fix = "<leader>sf",
+      refactor = "<leader>sr",
+    },
+    chat = {
+      split_cmd = "belowright split",
+      win_height = 15,
+    },
+  })
+
+- binary:       Path to the `stynx` executable.
+- max_turns:    Maximum agentic turns per request.
+- timeout_ms:   Job timeout in milliseconds.
+- model:        Override the model (e.g. "claude-sonnet-4-20250514").
+- effort:       Effort level: "low", "medium", "high", "max".
+- float_win:    Floating window appearance for results.
+- keymaps:      Keymap bindings. Set any to `false` to disable.
+- chat:         Chat buffer settings.
+
+==============================================================================
+CHAT BUFFER                                                *stynx-chat*
+
+`:StynxChat` opens a split buffer for multi-turn conversation. Each
+message is sent to stynx with the full conversation history. Press `<CR>`
+in normal or insert mode to send the current message.
+
+vim:tw=78:ts=8:ft=help:norl:
