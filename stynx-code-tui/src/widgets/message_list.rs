@@ -16,15 +16,21 @@ pub struct MessageList<'a> {
     pub state: &'a mut ConversationState,
     pub spinner_frame: usize,
     pub tool_details: bool,
+    pub thinking_active: bool,
 }
 
 impl<'a> MessageList<'a> {
     pub fn new(state: &'a mut ConversationState, spinner_frame: usize) -> Self {
-        Self { state, spinner_frame, tool_details: true }
+        Self { state, spinner_frame, tool_details: true, thinking_active: false }
     }
 
     pub fn with_tool_details(mut self, on: bool) -> Self {
         self.tool_details = on;
+        self
+    }
+
+    pub fn with_thinking_active(mut self, on: bool) -> Self {
+        self.thinking_active = on;
         self
     }
 }
@@ -48,6 +54,8 @@ impl<'a> Widget for MessageList<'a> {
 
         let bar = "▌";
         let body_indent = "  ";
+        let thinking_active = self.thinking_active;
+        let spin = super::spinner::FRAMES[self.spinner_frame % super::spinner::FRAMES.len()];
 
         for msg in &self.state.messages {
             match msg.role.as_str() {
@@ -109,6 +117,21 @@ impl<'a> Widget for MessageList<'a> {
                         Span::styled(bar, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
                         Span::styled(" Stynx", Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
                     ]));
+                    if msg.is_streaming && thinking_active && msg.content.trim().is_empty() {
+                        lines.push(Line::from(vec![
+                            Span::styled(
+                                format!("  {spin} "),
+                                Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD),
+                            ),
+                            Span::styled(
+                                "thinking…",
+                                Style::default()
+                                    .fg(theme::MUTED())
+                                    .add_modifier(Modifier::ITALIC),
+                            ),
+                        ]));
+                        lines.push(Line::from(""));
+                    }
                     if !msg.thinking.is_empty() && !msg.is_streaming {
                         let lc = msg.thinking.lines().count();
                         lines.push(Line::from(Span::styled(

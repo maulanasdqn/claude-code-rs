@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering}};
 use std::time::{Duration, Instant};
 
@@ -123,6 +124,13 @@ pub async fn run_loop(
     ask_user_bridge_handle.set(question_bridge);
     let mut pending_question: Option<oneshot::Sender<Option<String>>> = None;
 
+    // Prompts the user submits while the engine is busy. Replayed one at a
+    // time as each turn completes, so a prompt typed mid-stream is never lost.
+    let mut queued_prompts: VecDeque<String> = VecDeque::new();
+    // Actions to process this iteration that didn't come from a key event
+    // (e.g. a queued prompt being replayed once the engine frees up).
+    let mut deferred: VecDeque<UiAction> = VecDeque::new();
+
     loop {
         tui.sync_pause(&pause_flag);
 
@@ -193,6 +201,11 @@ pub async fn run_loop(
                     Err(_) => { conversation = pre; }
                 }
                 tui.state.is_streaming = false;
+
+                // The engine is now idle — replay the next queued prompt, if any.
+                if let Some(next) = queued_prompts.pop_front() {
+                    deferred.push_back(UiAction::Submit(next));
+                }
             }
         }
 
@@ -226,8 +239,17 @@ pub async fn run_loop(
         tui.tick_spinner();
         if tui.is_in_alt() { tui.draw().ok(); }
 
-        while let Ok(ev) = key_rx.try_recv() {
-            match EventHandler::handle(ev, &mut tui.state) {
+        loop {
+            // Live key events take priority; once they're drained, replay any
+            // deferred actions (e.g. a queued prompt freed up by turn completion).
+            let action = match key_rx.try_recv() {
+                Ok(ev) => EventHandler::handle(ev, &mut tui.state),
+                Err(_) => match deferred.pop_front() {
+                    Some(a) => a,
+                    None => break,
+                },
+            };
+            match action {
                 UiAction::Submit(text) if engine_task.is_none() => {
                     let trimmed = text.trim().to_string();
                     if let Some(rest) = trimmed.strip_prefix("/intern-bench").or_else(|| trimmed.strip_prefix("/bench")) {
@@ -364,6 +386,17 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         tokens_at_start = (total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
                         tui.state.is_pending = true;
                         tui.state.stale_warned = false;
+                    }
+                }
+                UiAction::Submit(text) => {
+                    // Engine is busy — queue the prompt instead of dropping it.
+                    let trimmed = text.trim().to_string();
+                    if !trimmed.is_empty() {
+                        queued_prompts.push_back(trimmed);
+                        tui.state.toasts.info(format!(
+                            "queued — will send after current response ({} pending)",
+                            queued_prompts.len(),
+                        ));
                     }
                 }
                 UiAction::CyclePermissionMode => {

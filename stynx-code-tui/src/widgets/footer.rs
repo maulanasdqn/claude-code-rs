@@ -1,13 +1,17 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Widget},
 };
 
 use crate::theme;
 use crate::widgets::spinner::FRAMES;
+
+/// Powerline separators (Nerd Font) — matches the user's tmux Rosé Pine bar.
+const SEP_RIGHT: &str = "\u{E0B0}"; //
+const SEP_LEFT: &str = "\u{E0B2}"; //
 
 pub struct Footer<'a> {
     pub cwd: &'a str,
@@ -58,121 +62,161 @@ fn fmt_elapsed_short(secs: u64) -> String {
     }
 }
 
+/// A single lualine/tmux-style segment: padded text on a solid color block.
+struct Seg {
+    text: String,
+    fg: Color,
+    bg: Color,
+    bold: bool,
+    italic: bool,
+}
+
+impl Seg {
+    fn new(text: impl Into<String>, fg: Color, bg: Color) -> Self {
+        Self { text: text.into(), fg, bg, bold: false, italic: false }
+    }
+    fn bold(mut self) -> Self {
+        self.bold = true;
+        self
+    }
+    fn italic(mut self) -> Self {
+        self.italic = true;
+        self
+    }
+    fn style(&self) -> Style {
+        let mut s = Style::default().fg(self.fg).bg(self.bg);
+        if self.bold {
+            s = s.add_modifier(Modifier::BOLD);
+        }
+        if self.italic {
+            s = s.add_modifier(Modifier::ITALIC);
+        }
+        s
+    }
+}
+
+/// Left-aligned bar: blocks grow rightward, joined with `` separators
+/// that fade each block's bg into the next.
+fn build_left(segs: &[Seg], bar_bg: Color) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    for (i, seg) in segs.iter().enumerate() {
+        spans.push(Span::styled(format!(" {} ", seg.text), seg.style()));
+        let next_bg = segs.get(i + 1).map(|s| s.bg).unwrap_or(bar_bg);
+        spans.push(Span::styled(
+            SEP_RIGHT,
+            Style::default().fg(seg.bg).bg(next_bg),
+        ));
+    }
+    Line::from(spans)
+}
+
+/// Right-aligned bar: blocks grow leftward, each prefixed with a ``
+/// separator that fades the previous bg into this block's bg.
+fn build_right(segs: &[Seg], bar_bg: Color) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    for (i, seg) in segs.iter().enumerate() {
+        let prev_bg = if i == 0 { bar_bg } else { segs[i - 1].bg };
+        spans.push(Span::styled(
+            SEP_LEFT,
+            Style::default().fg(seg.bg).bg(prev_bg),
+        ));
+        spans.push(Span::styled(format!(" {} ", seg.text), seg.style()));
+    }
+    Line::from(spans)
+}
+
 impl<'a> Widget for Footer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let bg = theme::SURFACE();
-        let fg_dim = theme::SUBTLE();
-        let dim_attr = Modifier::DIM;
+        // Match tmux `status-style 'bg=#191724 fg=#e0def4'` (base / text).
+        let bar_bg = theme::BASE();
+        let block_bg = theme::OVERLAY(); // #26233a — inactive / section blocks
+        let accent = theme::IRIS(); // #c4a7e7 — active tab + section_z
+        let base = theme::BASE();
 
         for x in area.x..area.x + area.width {
-            buf[(x, area.y)].set_style(Style::default().bg(bg));
+            buf[(x, area.y)].set_style(Style::default().bg(bar_bg));
         }
 
-        let max_path = (area.width as usize).saturating_sub(60).max(10);
-        let path = shrink_path(self.cwd, max_path);
+        // ---- left: [ mode? ]  [ path ]  [ branch ] ----
+        let mut left_segs: Vec<Seg> = Vec::new();
 
-        let mut left_spans: Vec<Span<'static>> = vec![
-            Span::styled(" ", Style::default().bg(bg)),
-            Span::styled(
-                path,
-                Style::default().fg(theme::TEXT_MUTED()).bg(bg),
-            ),
-        ];
-
-        if let Some(branch) = self.git_branch {
-            left_spans.push(Span::styled(
-                "  ",
-                Style::default().fg(fg_dim).bg(bg).add_modifier(dim_attr),
-            ));
-            left_spans.push(Span::styled(
-                "\u{E0A0} ",
-                Style::default().fg(theme::SUCCESS()).bg(bg),
-            ));
-            left_spans.push(Span::styled(
-                branch.to_string(),
-                Style::default().fg(theme::SUCCESS()).bg(bg),
-            ));
+        // Mode block — only for non-default modes (hidden in Normal so the bar
+        // stays clean), colored like its shift+tab cycle.
+        if self.mode != "Normal" {
+            let (icon, color) = match self.mode {
+                "Auto-accept" => ("\u{26A1}", theme::GOLD()), // ⚡
+                "Plan" => ("\u{25C6}", theme::IRIS()),        // ◆
+                "Bypass" => ("\u{26A0}", theme::LOVE()),      // ⚠
+                _ => ("\u{25CF}", theme::FOAM()),             // ●
+            };
+            left_segs.push(Seg::new(format!("{icon} {}", self.mode), base, color).bold());
         }
 
-        let mut right_spans: Vec<Span<'static>> = Vec::new();
-        let sep = Span::styled(
-            "  ",
-            Style::default().fg(fg_dim).bg(bg).add_modifier(dim_attr),
+        // Path is the "active window" block (iris bg, base fg, bold).
+        let max_path = (area.width as usize).saturating_sub(46).max(10);
+        left_segs.push(
+            Seg::new(
+                format!("\u{F07C} {}", shrink_path(self.cwd, max_path)),
+                base,
+                accent,
+            )
+            .bold(),
         );
 
-        if self.is_paused {
-            right_spans.push(Span::styled(
-                "⏸ ",
-                Style::default().fg(theme::WARNING()).bg(bg).add_modifier(Modifier::BOLD),
+        if let Some(branch) = self.git_branch {
+            left_segs.push(Seg::new(
+                format!("\u{E0A0} {branch}"),
+                theme::FOAM(),
+                block_bg,
             ));
-            right_spans.push(Span::styled(
-                "paused",
-                Style::default().fg(theme::WARNING()).bg(bg).add_modifier(Modifier::ITALIC),
-            ));
-            right_spans.push(sep.clone());
-        } else if self.is_pending {
-            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
-            right_spans.push(Span::styled(
-                format!("{ch} "),
-                Style::default().fg(theme::SUBTLE()).bg(bg).add_modifier(Modifier::BOLD),
-            ));
-            right_spans.push(Span::styled(
-                "connecting…",
-                Style::default().fg(theme::SUBTLE()).bg(bg).add_modifier(Modifier::ITALIC),
-            ));
-            right_spans.push(sep.clone());
-        } else if self.is_streaming {
-            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
-            let elapsed_label = fmt_elapsed_short(self.elapsed_secs);
-            right_spans.push(Span::styled(
-                format!("{ch} "),
-                Style::default().fg(theme::PRIMARY()).bg(bg).add_modifier(Modifier::BOLD),
-            ));
-            right_spans.push(Span::styled(
-                format!("generating  {elapsed_label}"),
-                Style::default().fg(theme::PRIMARY()).bg(bg).add_modifier(Modifier::ITALIC),
-            ));
-            right_spans.push(sep.clone());
         }
 
-        let (mode_icon, mode_color) = match self.mode {
-            "Auto-accept" => ("⚡", theme::WARNING()),
-            "Plan" => ("◆", theme::PRIMARY()),
-            "Bypass" => ("⚠", theme::ERROR()),
-            _ => ("●", theme::ACCENT()),
-        };
-        right_spans.push(Span::styled(
-            format!("{mode_icon} "),
-            Style::default().fg(mode_color).bg(bg).add_modifier(Modifier::BOLD),
-        ));
-        right_spans.push(Span::styled(
-            self.mode.to_string(),
-            Style::default().fg(mode_color).bg(bg),
-        ));
-        right_spans.push(sep.clone());
+        // ---- right: [ status ]  [ model ]  [ cost ] ----
+        let mut right_segs: Vec<Seg> = Vec::new();
 
-        right_spans.push(Span::styled(
-            "◇ ",
-            Style::default().fg(theme::IRIS()).bg(bg),
-        ));
-        right_spans.push(Span::styled(
-            pretty_model(self.model),
-            Style::default().fg(theme::IRIS()).bg(bg).add_modifier(Modifier::BOLD),
-        ));
-        right_spans.push(sep.clone());
+        if self.is_paused {
+            right_segs.push(
+                Seg::new("\u{23F8} paused", theme::GOLD(), block_bg)
+                    .bold()
+                    .italic(),
+            );
+        } else if self.is_pending {
+            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
+            right_segs.push(
+                Seg::new(format!("{ch} connecting…"), theme::SUBTLE(), block_bg).italic(),
+            );
+        } else if self.is_streaming {
+            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
+            let elapsed = fmt_elapsed_short(self.elapsed_secs);
+            right_segs.push(
+                Seg::new(
+                    format!("{ch} generating  {elapsed}"),
+                    theme::FOAM(),
+                    block_bg,
+                )
+                .italic(),
+            );
+        }
 
-        right_spans.push(Span::styled(
-            format!("${:.4} ", self.cost),
-            Style::default().fg(theme::GOLD()).bg(bg),
-        ));
+        right_segs.push(
+            Seg::new(
+                format!("\u{25C7} {}", pretty_model(self.model)),
+                theme::TEXT(),
+                block_bg,
+            )
+            .bold(),
+        );
 
-        let left = Line::from(left_spans);
-        let right = Line::from(right_spans);
-        let right_width: u16 = right.width() as u16;
-        let left_width: u16 = left.width() as u16;
+        // Cost is the section_z block — iris, mirroring the path block.
+        right_segs.push(Seg::new(format!("${:.4}", self.cost), base, accent).bold());
+
+        let left = build_left(&left_segs, bar_bg);
+        let right = build_right(&right_segs, bar_bg);
+        let left_width = left.width() as u16;
+        let right_width = right.width() as u16;
 
         Paragraph::new(left)
-            .style(Style::default().bg(bg))
+            .style(Style::default().bg(bar_bg))
             .render(Rect { width: left_width.min(area.width), ..area }, buf);
 
         if area.width > right_width {
@@ -183,7 +227,7 @@ impl<'a> Widget for Footer<'a> {
                 height: 1,
             };
             Paragraph::new(right)
-                .style(Style::default().bg(bg))
+                .style(Style::default().bg(bar_bg))
                 .render(right_area, buf);
         }
     }

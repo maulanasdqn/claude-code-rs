@@ -220,16 +220,20 @@ fn handle_chunk(
     tool_calls: &mut Vec<StreamingToolCall>,
     out: &mut Vec<StreamEvent>,
 ) {
-    let Some(choice) = chunk.get("choices").and_then(|c| c.as_array()).and_then(|a| a.first()) else {
-        if let Some(usage) = chunk.get("usage") {
-            let input = usage.get("prompt_tokens").and_then(Value::as_u64).unwrap_or(0);
-            let output = usage.get("completion_tokens").and_then(Value::as_u64).unwrap_or(0);
-            if input > 0 || output > 0 {
-                out.push(StreamEvent::Usage {
-                    stats: UsageStats { input_tokens: input, output_tokens: output },
-                });
-            }
+    // Usage can ride on a trailing chunk with empty `choices` (include_usage)
+    // or be attached to the final finish_reason chunk by some OpenAI-compatible
+    // providers (e.g. DeepSeek). Read it either way.
+    if let Some(usage) = chunk.get("usage").filter(|u| !u.is_null()) {
+        let input = usage.get("prompt_tokens").and_then(Value::as_u64).unwrap_or(0);
+        let output = usage.get("completion_tokens").and_then(Value::as_u64).unwrap_or(0);
+        if input > 0 || output > 0 {
+            out.push(StreamEvent::Usage {
+                stats: UsageStats { input_tokens: input, output_tokens: output },
+            });
         }
+    }
+
+    let Some(choice) = chunk.get("choices").and_then(|c| c.as_array()).and_then(|a| a.first()) else {
         return;
     };
 

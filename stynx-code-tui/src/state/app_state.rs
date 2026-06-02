@@ -1,6 +1,29 @@
 use stynx_code_types::EngineEvent;
 use super::{ConversationState, DiffLine, DiffLineKind, DisplayMessage, DisplayToolUse, InputState, ModalState, ToastState, ToolUseStatus};
 
+/// USD price per million tokens `(input, output)` for a given model.
+///
+/// Matched on substrings so provider prefixes / date suffixes still resolve
+/// (e.g. `deepseek-chat`, `claude-opus-4-20250514`). Falls back to Claude
+/// Sonnet rates for unknown models.
+fn model_pricing(model: &str) -> (f64, f64) {
+    let m = model.to_ascii_lowercase();
+    match () {
+        // DeepSeek (per their published API pricing, cache-miss rates)
+        _ if m.contains("deepseek-reasoner") || m.contains("deepseek-r1") => (0.55, 2.19),
+        _ if m.contains("deepseek") => (0.27, 1.10),
+        // Anthropic
+        _ if m.contains("opus") => (15.0, 75.0),
+        _ if m.contains("haiku") => (0.80, 4.0),
+        _ if m.contains("sonnet") => (3.0, 15.0),
+        // OpenAI (common ones)
+        _ if m.contains("gpt-4o-mini") => (0.15, 0.60),
+        _ if m.contains("gpt-4o") => (2.50, 10.0),
+        // Unknown → assume Sonnet-class so the figure is non-zero but sane.
+        _ => (3.0, 15.0),
+    }
+}
+
 #[derive(Clone)]
 pub struct SessionSummary {
     pub id: String,
@@ -166,6 +189,17 @@ impl AppState {
             EngineEvent::ThinkingDelta(text) => {
                 self.is_streaming = true;
                 self.live_thinking.push_str(&text);
+                // Make sure a streaming assistant bubble exists so the "Stynx"
+                // header and its thinking indicator render while only reasoning
+                // (no text/tools yet) has streamed in.
+                if !matches!(self.conversation.messages.last(),
+                    Some(m) if m.role == "assistant" && m.is_streaming)
+                {
+                    self.conversation.messages.push(DisplayMessage {
+                        role: "assistant".to_string(), content: String::new(),
+                        thinking: String::new(), tool_uses: Vec::new(), is_streaming: true,
+                    });
+                }
             }
             EngineEvent::ToolStart { name, .. } => {
                 self.is_streaming = true;
@@ -287,7 +321,9 @@ impl AppState {
             EngineEvent::Usage { input_tokens, output_tokens } => {
                 if input_tokens > 0 { self.total_input += input_tokens; }
                 if output_tokens > 0 { self.total_output += output_tokens; }
-                self.total_cost = (self.total_input as f64 * 3.0 + self.total_output as f64 * 15.0) / 1_000_000.0;
+                let (in_price, out_price) = model_pricing(&self.model_name);
+                self.total_cost = (self.total_input as f64 * in_price
+                    + self.total_output as f64 * out_price) / 1_000_000.0;
             }
             EngineEvent::Error(e) => {
                 self.is_streaming = false;

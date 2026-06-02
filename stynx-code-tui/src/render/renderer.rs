@@ -50,7 +50,8 @@ impl Renderer {
 
         frame.render_widget(
             MessageList::new(&mut state.conversation, state.spinner_frame)
-                .with_tool_details(state.tool_details),
+                .with_tool_details(state.tool_details)
+                .with_thinking_active(state.is_streaming && !state.live_thinking.trim().is_empty()),
             layout.messages,
         );
         if let Some(thinking_area) = layout.thinking {
@@ -106,9 +107,18 @@ impl Renderer {
 
         match &state.modal.active {
             Some(ModalKind::Permission { tool_name, description, choice }) => {
+                // Constrain to the chat column width (matching the messages
+                // area) so the dialog doesn't span the whole terminal.
+                let chat = layout.messages;
+                let dialog_area = ratatui::layout::Rect {
+                    x: chat.x,
+                    y: full.y,
+                    width: chat.width,
+                    height: full.height,
+                };
                 frame.render_widget(
                     PermissionDialog::new(tool_name, description, *choice),
-                    full,
+                    dialog_area,
                 );
             }
             Some(ModalKind::Select {
