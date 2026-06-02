@@ -84,7 +84,7 @@ You can configure any number of interns concurrently — DeepSeek and OpenRouter
 ```bash
 # DeepSeek (legacy single-intern shortcut)
 DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-chat                  # optional
+INTERN_MODEL=deepseek-chat                    # optional (DEEPSEEK_MODEL also accepted)
 
 # OpenRouter — declare multiple interns via name:model pairs
 OPENROUTER_API_KEY=sk-or-...
