@@ -30,6 +30,8 @@ Highlights:
 - **Sessions** — automatic per-project persistence at `~/.stynx-code/projects/<slug>/session.json`.
 - **Hooks** — `session-start`, `pre-tool-use`, `post-tool-use`, `stop` shell hooks for integrations.
 
+> **On `.claude/` vs `.stynx/` directories:** stynx-code reuses `.claude/` paths (`.claude/skills/`, `.claude/.credentials.json`) for Claude Code compatibility — you can run both tools side by side without conflict. stynx-specific data (settings, logs, sessions, benchmark results) lives under `.stynx/`.
+
 ## Install
 
 ```bash
@@ -69,7 +71,7 @@ stynx --json -p "list files modified in the last commit"
 Resolved in order:
 
 1. macOS Keychain / Linux libsecret (the Claude Code OAuth token at `Claude Code-credentials`)
-2. `~/.claude/.credentials.json`
+2. `~/.stynx/.credentials.json` (also checks `~/.claude/.credentials.json` as fallback)
 3. `~/.claude/settings.json` → `auth_token`
 4. `ANTHROPIC_API_KEY` env var
 
@@ -94,6 +96,11 @@ OPENROUTER_INTERNS=qwen-coder:qwen/qwen3-coder,haiku:anthropic/claude-haiku-4.5,
 QWEN_API_KEY=sk-...
 QWEN_MODEL=qwen-plus                         # optional; qwen-max / qwen-turbo / qwen3-coder-plus
 # QWEN_INTERNS=qwen-max:qwen-max,qwen-coder:qwen3-coder-plus
+
+# Xiaomi MiMo (standalone provider)
+MIMO_API_KEY=sk-...
+MIMO_BASE_URL=https://api.xiaomimimo.com/v1
+MIMO_MODEL=mimo-v2.5-pro
 ```
 
 **Option 2 — `interns` array in `settings.json`** (full control):
@@ -163,15 +170,18 @@ QWEN_MODEL=qwen-plus                         # optional; qwen-max / qwen-turbo /
 | `openrouter` | `https://openrouter.ai/api/v1`                                 | `OPENROUTER_API_KEY`    |
 | `openai`     | `https://api.openai.com/v1`                                    | `OPENAI_API_KEY`        |
 | `qwen`       | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`       | `QWEN_API_KEY`          |
+| `mimo`       | `https://api.xiaomimimo.com/v1`                                | `MIMO_API_KEY`          |
 | `custom`     | (set via `base_url`)                                           | (set via `api_key_env`) |
 
 Copy `.env.example` to `.env` and fill in your API keys. Add `.env` to your `.gitignore` — `stynx` autoloads it on startup.
+
+Base URLs default to the values above. Override via `<PROVIDER>_BASE_URL` env vars — `DEEPSEEK_BASE_URL`, `QWEN_BASE_URL`, `MIMO_BASE_URL`, etc.
 
 At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line per intern that successfully resolved. Interns missing their API key are silently skipped (a `WARN` is emitted to logs).
 
 ### Settings file
 
-`~/.claude/settings.json` (global) and project-local settings get merged. Schema:
+`~/.stynx/settings.json` (global) and `.stynx/settings.json` (project-local) get merged. `~/.claude/settings.json` is only read for the `auth_token` field (Claude Code OAuth compatibility). Schema:
 
 ```json
 {
@@ -246,6 +256,8 @@ Mouse scroll wheel works in any terminal with mouse capture.
 /commit               generate a commit message
 /init                 create/update CLAUDE.md
 /memory               show CLAUDE.md
+
+> `CLAUDE.md` is used (not `STYNX.md`) for interoperability with Claude Code's project memory convention — both tools share the same file.
 
 /add <path>           pin a file into every message
 /files                list pinned files
@@ -355,16 +367,18 @@ Each can have an optional `matcher` (substring against tool name) and a required
 The engine provides a rich set of tools categorized as follows:
 
 - **File I/O**: `read`, `file_write`, `file_edit`
-- **Discovery**: `glob`, `grep`
-- **Shell**: `bash` (persistent session)
+- **Discovery**: `glob`, `grep`, `tool_search`
+- **Shell**: `bash` (persistent session), `powershell`
 - **Web**: `web_fetch`, `web_search`
 - **Tasks**: `todo_read`, `todo_write`
 - **Background tasks**: `task_create`, `task_get`, `task_list`, `task_stop`, `task_update`, `task_output`
 - **Scheduling**: `cron_create`, `cron_delete`
 - **Interaction**: `ask_user_question`
-- **Integration**: MCP (dynamic tools loaded per server), `lsp`
+- **Integration**: MCP (dynamic tools loaded per server), `lsp`, `remote_trigger`
 - **Skills**: `skill` invocation
-- **Misc**: `notebook_edit`, `repl`, `send_message`, `sleep`, `synthetic_output`, `plan_mode`
+- **Teams**: `team_create`, `team_delete`
+- **Workspace**: `enter_worktree`, `exit_worktree`
+- **Misc**: `notebook_edit`, `repl`, `send_message`, `sleep`, `synthetic_output`, `plan_mode`, `brief`, `config`
 
 ## How it works
 
@@ -396,7 +410,7 @@ The project is a 17-crate Rust workspace. Most crates follow Clean Architecture 
 
 - `stynx-code-errors`: Common application error types and results.
 - `stynx-code-types`: Core traits and structs for tools, providers, messages, and permissions.
-- `stynx-code-tools`: Implements 40 tools — 37 built-in (file I/O, shell, web, tasks, scheduling, LSP) plus 3 MCP dynamic tool wrappers.
+- `stynx-code-tools`: Implements 39 tools — 36 built-in (file I/O, shell, web, tasks, scheduling, LSP) plus 3 MCP dynamic tool wrappers.
 - `stynx-code-provider`: Anthropic SSE streaming and OpenAI-compatible provider integrations.
 - `stynx-code-engine`: Core query engine — multi-turn agentic loop, tool execution, context compaction, hooks, undo stack.
 - `stynx-code-server`: Axum HTTP API for headless operation.
