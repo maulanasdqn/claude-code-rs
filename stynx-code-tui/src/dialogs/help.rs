@@ -2,7 +2,7 @@ use crate::state::{AppState, DialogOption, SelectKind};
 
 const KEYS: &[(&str, &str)] = &[
     ("Enter", "Submit message"),
-    ("Esc", "Vim normal mode / close modal"),
+    ("Esc", "Interrupt / close modal"),
     ("Shift+Tab", "Cycle permission mode"),
     ("Ctrl+C", "Quit"),
     ("Ctrl+P", "Command palette"),
@@ -23,6 +23,7 @@ const KEYS: &[(&str, &str)] = &[
 const SLASH: &[(&str, &str)] = &[
     ("/help", "Show this help"),
     ("/intern <task>", "Delegate task to intern model (DeepSeek)"),
+    ("/intern-bench [name]", "Benchmark & rank interns by capability"),
     ("/quit, /exit", "Exit session"),
     ("/version", "Show version"),
     ("/model [name]", "Switch model"),

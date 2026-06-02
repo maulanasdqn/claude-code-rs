@@ -20,6 +20,7 @@ pub fn print_help(skills: &[Skill]) {
         ("/mode",        "Cycle permission mode"),
         ("/plan [task]", "Toggle plan mode, or plan a task"),
         ("/conductor <task>", "Orchestrate parallel worker agents"),
+        ("/intern-bench [name]", "Benchmark & rank interns by capability"),
         ("/reflect",          "Toggle self-correction (default: off)"),
         ("/diff",        "Show git diff"),
         ("/status",      "Show git status"),

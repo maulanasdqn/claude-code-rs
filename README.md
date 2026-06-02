@@ -252,6 +252,7 @@ Mouse scroll wheel works in any terminal with mouse capture.
 /skills               list available skills
 /intern <task>             hand work to the first intern
 /intern <name> <task>      hand work to a specific intern by name
+/intern-bench [name]       benchmark & rank interns by capability
 
 /session              list / load sessions
 /rewind [n]           remove last n exchanges
@@ -290,6 +291,28 @@ Direct invocation:
 ```
 
 When multiple interns are configured, the senior picks based on each tool's `description` — so write descriptions that say what each intern is good at (speed, cost, specialty). The intern's transcript is shown as a system message in the conversation, including any tool calls it made.
+
+### Benchmarking interns
+
+Not sure which intern is actually pulling its weight? Run the built-in benchmark:
+
+```
+/intern-bench                 # benchmark every configured intern
+/intern-bench qwen-coder      # benchmark just one
+```
+
+It runs a fixed suite of self-contained tasks (coding, debugging, an algorithm, reasoning, instruction-following, a refactor) against each intern, then has the **main model grade every answer** against a per-task rubric on a 0–10 scale (LLM-as-judge). Each run is timed. You get a ranked leaderboard plus a per-task score matrix:
+
+```
+🏁 Intern Benchmark — 3 intern(s) × 6 tasks
+
+Leaderboard (avg score, then speed):
+  🥇 #1  deepseek    8.5/10   pass 6/6     42.3s
+  🥈 #2  qwen-coder  7.2/10   pass 5/6     55.1s
+  🥉 #3  mimo        5.0/10   pass 4/6     88.0s
+```
+
+The full report — including the judge's one-line note for every task — is written to `.stynx/intern-bench.md`. The benchmark forces Auto-accept while it runs (the UI is blocked, so a permission prompt would otherwise deadlock it) and restores your previous permission mode afterward.
 
 ## Terminal sessions
 
@@ -359,16 +382,9 @@ The QueryEngine runs up to N turns (default 200, configurable via `max_turns`). 
 
 At 60% token threshold, the engine automatically invokes the compactor to free up context.
 
-### Context compaction (4-stage pipeline)
+### Context compaction
 
-When tokens exceed 60% of the limit:
-
-1. **Auto** — checks whether compaction is needed based on the token threshold
-2. **Micro** — truncates oversized individual tool results in-place
-3. **Session Memory** — extracts key memories before discarding content
-4. **Full** — sends older turns to the LLM for summarization, keeping the last 1–2 turns intact
-
-The compactor preserves key decisions and context needed to continue.
+When tokens exceed 60% of the limit, the engine builds a text summary of the conversation so far and sends it to the provider for summarization. If the provider call fails, it falls back to keeping the last 6 messages intact. The `stynx-code-compact` crate provides a deeper 4-stage pipeline (Auto → Micro → Session Memory → Full) available for additional compaction strategies.
 
 ### File edit undo stack
 
@@ -376,27 +392,25 @@ Every file write/edit is tracked on an undo stack. Use `/undo [n]` to restore th
 
 ## Architecture
 
-The project is structured as a 19-crate Rust workspace, each following Clean Architecture principles with `domain/`, `application/`, and `infrastructure/` layers.
+The project is a 17-crate Rust workspace. Most crates follow Clean Architecture with `domain/`, `application/`, and `infrastructure/` layers where it adds value.
 
-- `stynx-code-errors`: Defines common application error types and results.
-- `stynx-code-types`: Provides core traits and structs for tools, providers, messages, and permissions.
-- `stynx-code-tools`: Implements over 50 tools, including file operations, shell commands, and task management.
-- `stynx-code-provider`: Handles integrations with Anthropic SSE streaming and OpenAI-compatible providers.
-- `stynx-code-engine`: The core query engine, managing the multi-turn agentic loop, tool execution, context compaction, hooks, and undo stack.
-- `stynx-code-server`: Provides an Axum HTTP API for headless operation.
-- `stynx-code`: The main executable, handling CLI parsing and orchestrating the TUI and agent/intern interactions.
-- `stynx-code-auth`: Manages OAuth PKCE and API key credential resolution.
-- `stynx-code-permission`: Implements interactive and configuration-driven permission gating for tools.
-- `stynx-code-commands`: Handles slash-command expansion within the TUI.
-- `stynx-code-memory`: Manages per-project session persistence.
-- `stynx-code-config`: Loads and merges global and project-specific settings, including hook configurations.
-- `stynx-code-services`: Provides analytics, an LSP bridge, rate limiting, token estimation, diagnostics, and notifications.
-- `stynx-code-compact`: Implements the 4-stage conversation summarization pipeline.
-- `stynx-code-coordinator`: Facilitates multi-agent communication and task management via a message bus.
-- `stynx-code-bridge`: Handles inter-crate communication.
-- `stynx-code-plugins`: Manages the lifecycle of plugins.
-- `stynx-code-skills`: Loads both bundled and user-defined skills.
-- `stynx-code-tui`: Implements the `ratatui` terminal user interface, including state management and rendering.
+- `stynx-code-errors`: Common application error types and results.
+- `stynx-code-types`: Core traits and structs for tools, providers, messages, and permissions.
+- `stynx-code-tools`: Implements 40 tools — 37 built-in (file I/O, shell, web, tasks, scheduling, LSP) plus 3 MCP dynamic tool wrappers.
+- `stynx-code-provider`: Anthropic SSE streaming and OpenAI-compatible provider integrations.
+- `stynx-code-engine`: Core query engine — multi-turn agentic loop, tool execution, context compaction, hooks, undo stack.
+- `stynx-code-server`: Axum HTTP API for headless operation.
+- `stynx-code`: Main executable — CLI parsing, TUI orchestration, agent/intern delegation, skill loading, system prompt assembly.
+- `stynx-code-auth`: OAuth PKCE and API key credential resolution.
+- `stynx-code-permission`: Interactive and configuration-driven permission gating.
+- `stynx-code-commands`: Slash-command expansion and file reference resolution in the TUI.
+- `stynx-code-memory`: Per-project session persistence.
+- `stynx-code-config`: Global and project-specific settings, hooks, intern config.
+- `stynx-code-services`: Analytics, LSP bridge, rate limiting, token estimation, diagnostics, notifications.
+- `stynx-code-compact`: Conversation summarization pipeline (Auto → Micro → Session Memory → Full).
+- `stynx-code-bridge`: External integration bridge (stdio, WebSocket, JWT).
+- `stynx-code-plugins`: Plugin lifecycle — subprocess plugins, builtins, config.
+- `stynx-code-tui`: `ratatui` terminal UI — state management, rendering, themes, widgets.
 
 ## License
 

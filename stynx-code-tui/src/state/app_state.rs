@@ -57,9 +57,13 @@ pub struct AppState {
 
     pub sub_agents: Vec<(String, String)>,
 
-    pub last_summary: Option<String>,
+    pub last_summary: Option<Vec<String>>,
 
     pub tool_history: ToolHistoryState,
+
+    pub is_pending: bool,
+    pub elapsed_secs: u64,
+    pub stale_warned: bool,
 }
 
 #[derive(Default)]
@@ -116,6 +120,9 @@ impl AppState {
             sub_agents: Vec::new(),
             last_summary: None,
             tool_history: ToolHistoryState::default(),
+            is_pending: false,
+            elapsed_secs: 0,
+            stale_warned: false,
         }
     }
 
@@ -144,6 +151,7 @@ impl AppState {
     }
 
     pub fn apply_engine_event(&mut self, event: EngineEvent) {
+        self.is_pending = false;
         match event {
             EngineEvent::TextDelta(text) => {
                 self.is_streaming = true;
@@ -257,7 +265,7 @@ impl AppState {
                             format!("{}({})", pretty, t.input_summary)
                         }
                     }).collect();
-                    Some(parts.join(", "))
+                    if parts.is_empty() { None } else { Some(parts) }
                 });
                 if let Some(m) = self.conversation.messages.last_mut() {
                     m.is_streaming = false;

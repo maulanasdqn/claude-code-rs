@@ -34,6 +34,7 @@ impl Renderer {
 
         let delegate_lines = state.sub_agents.len();
         let has_summary = state.last_summary.is_some();
+        let summary_items: Option<Vec<String>> = state.last_summary.clone();
         let layout = MainLayout::split(
             full,
             state.input.line_count(),
@@ -64,8 +65,8 @@ impl Renderer {
                 delegate_area,
             );
         }
-        if let (Some(summary_area), Some(text)) = (layout.summary, state.last_summary.as_deref()) {
-            frame.render_widget(SummaryBar::new(text), summary_area);
+        if let (Some(summary_area), Some(items)) = (layout.summary, summary_items) {
+            frame.render_widget(SummaryBar::new(&items), summary_area);
         }
         frame.render_widget(InputBox::new(&state.input, !state.is_streaming), layout.input);
         if !state.input.slash_matches.is_empty() {
@@ -79,8 +80,10 @@ impl Renderer {
                 cost: state.total_cost,
                 git_branch: state.git_branch.as_deref(),
                 is_streaming: state.is_streaming,
+                is_pending: state.is_pending,
                 is_paused: state.is_paused,
                 spinner_frame: state.spinner_frame,
+                elapsed_secs: state.elapsed_secs,
             },
             layout.footer,
         );

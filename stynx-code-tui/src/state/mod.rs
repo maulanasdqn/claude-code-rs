@@ -6,7 +6,7 @@ pub mod toast_state;
 
 pub use app_state::{AppState, ToolHistoryState};
 pub use conversation_state::{ConversationState, DiffLine, DiffLineKind, DisplayMessage, DisplayToolUse, ToolUseStatus};
-pub use input_state::{InputMode, InputState};
+pub use input_state::{InputState};
 pub use modal_state::{
     DialogOption, InputKind, ModalKind, ModalState, PermissionChoice, SelectKind, filter_options,
 };

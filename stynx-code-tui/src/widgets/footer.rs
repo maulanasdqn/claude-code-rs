@@ -16,8 +16,10 @@ pub struct Footer<'a> {
     pub cost: f64,
     pub git_branch: Option<&'a str>,
     pub is_streaming: bool,
+    pub is_pending: bool,
     pub is_paused: bool,
     pub spinner_frame: usize,
+    pub elapsed_secs: u64,
 }
 
 fn shrink_path(cwd: &str, max: usize) -> String {
@@ -46,6 +48,14 @@ fn shrink_path(cwd: &str, max: usize) -> String {
 fn pretty_model(model: &str) -> String {
     let s = model.trim_start_matches("claude-");
     s.split('-').collect::<Vec<_>>().join("·")
+}
+
+fn fmt_elapsed_short(secs: u64) -> String {
+    if secs >= 60 {
+        format!("{}m {}s", secs / 60, secs % 60)
+    } else {
+        format!("{secs}s")
+    }
 }
 
 impl<'a> Widget for Footer<'a> {
@@ -100,14 +110,26 @@ impl<'a> Widget for Footer<'a> {
                 Style::default().fg(theme::WARNING()).bg(bg).add_modifier(Modifier::ITALIC),
             ));
             right_spans.push(sep.clone());
+        } else if self.is_pending {
+            let ch = FRAMES[self.spinner_frame % FRAMES.len()];
+            right_spans.push(Span::styled(
+                format!("{ch} "),
+                Style::default().fg(theme::SUBTLE()).bg(bg).add_modifier(Modifier::BOLD),
+            ));
+            right_spans.push(Span::styled(
+                "connecting…",
+                Style::default().fg(theme::SUBTLE()).bg(bg).add_modifier(Modifier::ITALIC),
+            ));
+            right_spans.push(sep.clone());
         } else if self.is_streaming {
             let ch = FRAMES[self.spinner_frame % FRAMES.len()];
+            let elapsed_label = fmt_elapsed_short(self.elapsed_secs);
             right_spans.push(Span::styled(
                 format!("{ch} "),
                 Style::default().fg(theme::PRIMARY()).bg(bg).add_modifier(Modifier::BOLD),
             ));
             right_spans.push(Span::styled(
-                "generating",
+                format!("generating  {elapsed_label}"),
                 Style::default().fg(theme::PRIMARY()).bg(bg).add_modifier(Modifier::ITALIC),
             ));
             right_spans.push(sep.clone());

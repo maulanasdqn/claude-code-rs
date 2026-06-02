@@ -1,5 +1,5 @@
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering}};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use stynx_code_commands::expand_message_content;
 use stynx_code_engine::{EngineEvent, QueryEngine};
@@ -18,6 +18,7 @@ use tokio::task::JoinHandle;
 
 use super::app_actions::{expand_with_pins, save_session};
 use super::command_handler::handle_slash_command;
+use super::intern_bench;
 use super::command_types::CommandAction;
 use super::run_engine::run_engine_tui;
 use super::skills::Skill;
@@ -110,6 +111,7 @@ pub async fn run_loop(
 
     let mut engine_task: EngineSlot = None;
     let mut engine_started: Option<std::time::Instant> = None;
+    let mut last_event_at: Option<Instant> = None;
     let mut tokens_at_start: (u64, u64) = (0, 0);
     let perm = permission.clone();
 
@@ -125,7 +127,28 @@ pub async fn run_loop(
         tui.sync_pause(&pause_flag);
 
         if let Some((task, ev_rx, _)) = &mut engine_task {
-            while let Ok(ev) = ev_rx.try_recv() { tui.state.apply_engine_event(ev); }
+            let had_event = {
+                let mut any = false;
+                while let Ok(ev) = ev_rx.try_recv() {
+                    tui.state.apply_engine_event(ev);
+                    any = true;
+                }
+                any
+            };
+            if had_event { last_event_at = Some(Instant::now()); }
+
+            if let Some(started) = engine_started {
+                tui.state.elapsed_secs = started.elapsed().as_secs();
+            }
+
+            if tui.state.is_streaming && !tui.state.stale_warned {
+                let silence = last_event_at.map(|t| t.elapsed()).unwrap_or(Duration::ZERO);
+                if silence > Duration::from_secs(30) {
+                    tui.state.stale_warned = true;
+                    tui.state.toasts.warn("model silent for 30s — press Esc to interrupt");
+                }
+            }
+
             if task.is_finished() {
                 let (task, _, pre) = engine_task.take().unwrap();
 
@@ -137,6 +160,10 @@ pub async fn run_loop(
                         tui.state.modal.close();
                     }
                 }
+                tui.state.is_pending = false;
+                tui.state.stale_warned = false;
+                tui.state.elapsed_secs = 0;
+                last_event_at = None;
                 let elapsed = engine_started.take()
                     .map(|t| t.elapsed())
                     .unwrap_or(std::time::Duration::ZERO);
@@ -203,6 +230,54 @@ pub async fn run_loop(
             match EventHandler::handle(ev, &mut tui.state) {
                 UiAction::Submit(text) if engine_task.is_none() => {
                     let trimmed = text.trim().to_string();
+                    if let Some(rest) = trimmed.strip_prefix("/intern-bench").or_else(|| trimmed.strip_prefix("/bench")) {
+                        let rest = rest.trim();
+                        if intern_tools.is_empty() {
+                            tui.state.push_system_message(
+                                "no interns configured. add `interns` to .stynx/settings.json, \
+or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
+                            );
+                            continue;
+                        }
+                        let filter = if rest.is_empty() { None } else { Some(rest) };
+                        let count = match filter {
+                            Some(f) => intern_tools.iter().filter(|t| t.label().eq_ignore_ascii_case(f)).count(),
+                            None => intern_tools.len(),
+                        };
+                        tui.state.push_system_message(format!(
+                            "🏁 benchmarking {count} intern(s) on {} tasks — this blocks the UI for a few minutes \
+(auto-accept is forced on during the run, then restored)…",
+                            intern_bench::BENCH_TASKS.len(),
+                        ));
+                        tui.draw().ok();
+
+                        // Force a non-prompting mode: the loop is blocked while the bench runs,
+                        // so a permission prompt would deadlock it. Restore the prior mode after.
+                        let prev_mode = PermissionMode::load(&mode_flag);
+                        PermissionMode::AutoAccept.store(&mode_flag);
+
+                        let (summary, markdown) = intern_bench::run_intern_bench(
+                            &intern_tools,
+                            provider.clone(),
+                            permission.clone(),
+                            mode_flag.clone(),
+                            config.hooks.clone(),
+                            filter,
+                        ).await;
+
+                        prev_mode.store(&mode_flag);
+
+                        let report_path = std::path::Path::new(&cwd).join(".stynx").join("intern-bench.md");
+                        if let Some(dir) = report_path.parent() {
+                            let _ = std::fs::create_dir_all(dir);
+                        }
+                        if let Err(e) = std::fs::write(&report_path, &markdown) {
+                            tui.state.push_system_message(format!("(couldn't write report file: {e})"));
+                        }
+
+                        tui.state.push_system_message(summary);
+                        continue;
+                    }
                     if let Some(rest) = trimmed.strip_prefix("/intern") {
                         let rest = rest.trim();
                         if intern_tools.is_empty() {
@@ -271,7 +346,10 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                                 if !tools.is_empty() { perm.set_skill_allow_rules(tools); }
                                 engine_task = spawn_engine(&msg, &mut conversation, &mut tui, &engine, &total_input, &total_output);
                                 engine_started = Some(std::time::Instant::now());
+                                last_event_at = Some(Instant::now());
                                 tokens_at_start = (total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
+                                tui.state.is_pending = true;
+                                tui.state.stale_warned = false;
                                 perm.clear_skill_allow_rules();
                             }
                             Some(CommandAction::Output(t)) => tui.state.push_system_message(t.trim_end()),
@@ -282,7 +360,10 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         let expanded = expand_with_pins(&trimmed, &pinned_files);
                         engine_task = spawn_engine(&expanded, &mut conversation, &mut tui, &engine, &total_input, &total_output);
                         engine_started = Some(std::time::Instant::now());
+                        last_event_at = Some(Instant::now());
                         tokens_at_start = (total_input.load(Ordering::Relaxed), total_output.load(Ordering::Relaxed));
+                        tui.state.is_pending = true;
+                        tui.state.stale_warned = false;
                     }
                 }
                 UiAction::CyclePermissionMode => {
@@ -449,8 +530,12 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                     if let Some((task, _, _)) = engine_task.as_ref() {
                         task.abort();
                         tui.state.is_streaming = false;
+                        tui.state.is_pending = false;
+                        tui.state.stale_warned = false;
+                        tui.state.elapsed_secs = 0;
                         tui.state.is_paused = true;
                         tui.state.sub_agents.clear();
+                        last_event_at = None;
                         tui.state.toasts.warn("interrupted");
                     }
 

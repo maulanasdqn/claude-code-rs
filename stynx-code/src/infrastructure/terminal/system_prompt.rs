@@ -2,7 +2,8 @@ use std::path::Path;
 
 use super::prompt_sections::{
     EnvInfo, actions_section, caveman_section, doing_tasks_section, efficiency_section,
-    environment_section, intro_section, system_section, tone_section, using_tools_section,
+    engineering_section, environment_section, intro_section, system_section, tone_section,
+    using_tools_section,
 };
 
 fn today_date() -> String {
@@ -45,6 +46,7 @@ pub fn make_system_prompt(
         intro_section(),
         system_section(),
         doing_tasks_section(),
+        engineering_section(),
         actions_section(),
         using_tools_section(tool_names),
         tone_section(),

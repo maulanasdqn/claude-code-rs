@@ -2,7 +2,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, Mou
 
 use crate::dialogs::{open_command_palette, open_file_mention, open_model_picker, open_session_list};
 use crate::state::{
-    AppState, InputMode, ModalKind, PermissionChoice, SelectKind, filter_options,
+    AppState, ModalKind, PermissionChoice, SelectKind, filter_options,
 };
 
 #[derive(Debug, Clone)]
@@ -34,6 +34,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/files",       "List pinned files"),
     ("/help",        "Show help"),
     ("/intern",      "Delegate task to intern (DeepSeek)"),
+    ("/intern-bench", "Benchmark & rank interns by capability"),
     ("/memory",      "Show CLAUDE.md"),
     ("/mode",        "Cycle permission mode"),
     ("/model",       "Switch model"),
@@ -178,16 +179,13 @@ impl EventHandler {
                 if state.tool_history.focused && !key.modifiers.contains(KeyModifiers::CONTROL) {
                     return Self::tool_history_key(key, state);
                 }
-                if state.input.mode == InputMode::Normal {
-                    return Self::normal_mode_key(key, state);
-                }
-                Self::insert_mode_key(key, state)
+                Self::input_key(key, state)
             }
             _ => UiAction::None,
         }
     }
 
-    fn insert_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
+    fn input_key(key: KeyEvent, state: &mut AppState) -> UiAction {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 state.modal.open_quit_confirm();
@@ -227,7 +225,6 @@ impl EventHandler {
                     state.input.slash_selected = 0;
                     return UiAction::None;
                 }
-                state.input.mode = InputMode::Normal;
                 UiAction::None
             }
             (KeyCode::BackTab, _) => UiAction::CyclePermissionMode,
@@ -378,64 +375,6 @@ impl EventHandler {
                     state.tool_history.detail_open = true;
                 }
                 UiAction::None
-            }
-            _ => UiAction::None,
-        }
-    }
-
-    fn normal_mode_key(key: KeyEvent, state: &mut AppState) -> UiAction {
-        match (key.code, key.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                state.modal.open_quit_confirm();
-                UiAction::None
-            }
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
-                open_command_palette(state);
-                UiAction::None
-            }
-            (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
-                open_session_list(state);
-                UiAction::None
-            }
-            (KeyCode::Char('m'), KeyModifiers::CONTROL) => {
-                open_model_picker(state);
-                UiAction::None
-            }
-            (KeyCode::Char('b'), KeyModifiers::CONTROL) => UiAction::None,
-            (KeyCode::BackTab, _) => UiAction::CyclePermissionMode,
-            (KeyCode::Tab, _) => { state.input.mode = InputMode::Insert; UiAction::None }
-            (KeyCode::Char('i'), _) | (KeyCode::Char('a'), _) => {
-                if key.code == KeyCode::Char('a') { state.input.move_cursor_right(); }
-                state.input.mode = InputMode::Insert; UiAction::None
-            }
-            (KeyCode::Char('I'), _) => {
-                state.input.cursor_pos = 0; state.input.mode = InputMode::Insert; UiAction::None
-            }
-            (KeyCode::Char('A'), _) => {
-                state.input.cursor_pos = state.input.buffer.len(); state.input.mode = InputMode::Insert; UiAction::None
-            }
-            (KeyCode::Char('h'), _) | (KeyCode::Left, _) => { state.input.move_cursor_left(); UiAction::None }
-            (KeyCode::Char('l'), _) | (KeyCode::Right, _) => { state.input.move_cursor_right(); UiAction::None }
-            (KeyCode::Char('0'), _) => { state.input.cursor_pos = 0; UiAction::None }
-            (KeyCode::Char('$'), _) => { state.input.cursor_pos = state.input.buffer.len(); UiAction::None }
-            (KeyCode::Char('w'), _) => { state.input.move_word_right(); UiAction::None }
-            (KeyCode::Char('b'), _) => { state.input.move_word_left(); UiAction::None }
-            (KeyCode::Char('x'), _) => { state.input.delete_char_forward(); UiAction::None }
-            (KeyCode::Char('k'), _) | (KeyCode::Up, _) => { scroll_up(state, 3); UiAction::None }
-            (KeyCode::Char('j'), _) | (KeyCode::Down, _) => { scroll_down(state, 3); UiAction::None }
-            (KeyCode::Char('K'), _) => { state.input.history_prev(); UiAction::None }
-            (KeyCode::Char('J'), _) => { state.input.history_next(); UiAction::None }
-            (KeyCode::Char('u'), KeyModifiers::CONTROL) => { state.input.clear(); UiAction::None }
-            (KeyCode::Char('d'), KeyModifiers::CONTROL) => { scroll_down(state, 20); UiAction::None }
-            (KeyCode::PageUp, _) => { scroll_up(state, 20); UiAction::None }
-            (KeyCode::PageDown, _) => { scroll_down(state, 20); UiAction::None }
-            (KeyCode::Enter, _) => {
-                let text = state.input.buffer.trim().to_string();
-                if text.is_empty() { return UiAction::None; }
-                state.input.push_history(text.clone());
-                state.input.clear();
-                state.input.mode = InputMode::Insert;
-                UiAction::Submit(text)
             }
             _ => UiAction::None,
         }
@@ -599,19 +538,16 @@ impl EventHandler {
                             if let Some(name) = value.strip_prefix("skill:") {
                                 state.input.buffer = format!("/{name} ");
                                 state.input.cursor_pos = state.input.buffer.len();
-                                state.input.mode = InputMode::Insert;
                             }
                             UiAction::None
                         }
                         SelectKind::FileMention => {
                             if value != "__empty__" {
-
                                 for c in value.chars() {
                                     state.input.insert_char(c);
                                 }
                                 state.input.insert_char(' ');
                             }
-                            state.input.mode = InputMode::Insert;
                             UiAction::None
                         }
                         SelectKind::ThemePicker => {

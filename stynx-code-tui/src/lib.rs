@@ -13,7 +13,7 @@ pub mod widgets;
 pub use event::event_handler::{EventHandler, UiAction};
 pub use render::renderer::Renderer;
 pub use state::{
-    AppState, ConversationState, DialogOption, DisplayMessage, DisplayToolUse, InputMode,
+    AppState, ConversationState, DialogOption, DisplayMessage, DisplayToolUse,
     InputState, ModalKind, ModalState, PermissionChoice, SelectKind, ToolUseStatus,
 };
 
@@ -92,9 +92,9 @@ impl TuiApp {
     pub fn is_in_alt(&self) -> bool { self.in_alt }
 
     pub fn tick_spinner(&mut self) {
-        if self.state.is_streaming {
+        if self.state.is_streaming || self.state.is_pending {
             self.state.spinner_tick = self.state.spinner_tick.wrapping_add(1);
-            if self.state.spinner_tick % 8 == 0 {
+            if self.state.spinner_tick.is_multiple_of(8) {
                 self.state.spinner_frame = self.state.spinner_frame.wrapping_add(1) % 10;
             }
         }

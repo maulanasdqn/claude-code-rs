@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 
-use crate::state::{InputMode, InputState};
+use crate::state::InputState;
 use crate::theme;
 
 pub struct InputBox<'a> {
@@ -22,11 +22,6 @@ impl<'a> InputBox<'a> {
 
 impl<'a> Widget for InputBox<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let (mode_label, mode_color) = match self.state.mode {
-            InputMode::Insert => (" › INSERT ", theme::FOAM()),
-            InputMode::Normal => (" ‹ NORMAL ", theme::GOLD()),
-        };
-
         let border_color = if self.focused { theme::IRIS() } else { theme::OVERLAY() };
 
         let hint = Span::styled(
@@ -39,8 +34,8 @@ impl<'a> Widget for InputBox<'a> {
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(border_color))
             .title(Span::styled(
-                mode_label,
-                Style::default().fg(mode_color).add_modifier(Modifier::BOLD),
+                " › ",
+                Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD),
             ))
             .title_bottom(hint);
 

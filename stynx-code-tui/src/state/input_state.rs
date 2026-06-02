@@ -1,13 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InputMode {
-    Insert,
-    Normal,
-}
-
 pub struct InputState {
     pub buffer: String,
     pub cursor_pos: usize,
-    pub mode: InputMode,
     pub history: Vec<String>,
     pub history_index: Option<usize>,
     pub suggestion: String,
@@ -25,7 +18,6 @@ impl InputState {
         Self {
             buffer: String::new(),
             cursor_pos: 0,
-            mode: InputMode::Insert,
             history: Vec::new(),
             history_index: None,
             suggestion: String::new(),
@@ -205,46 +197,38 @@ impl InputState {
     }
 
     pub fn line_count(&self) -> usize {
-        self.buffer.lines().count().max(1)
-            + if self.buffer.ends_with('\n') { 1 } else { 0 }
+        self.buffer.matches('\n').count() + 1
     }
 
     pub fn cursor_up_line(&mut self) -> bool {
-        let (line, col) = self.cursor_line_col();
-        if line == 0 { return false; }
-        let lines: Vec<&str> = self.buffer.split('\n').collect();
-        let target_line = line - 1;
-        let target_col = col.min(lines[target_line].chars().count());
-        let mut pos = 0usize;
-        for l in lines.iter().take(target_line) {
-            pos += l.len() + 1;
+        let pos = self.cursor_pos;
+        let before = &self.buffer[..pos];
+        if let Some(nl) = before.rfind('\n') {
+            let line_start = before[..nl].rfind('\n').map(|i| i + 1).unwrap_or(0);
+            let col = pos - (nl + 1);
+            let prev_line_len = nl - line_start;
+            self.cursor_pos = line_start + col.min(prev_line_len);
+            true
+        } else {
+            false
         }
-        pos += lines[target_line]
-            .char_indices()
-            .nth(target_col)
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| lines[target_line].len());
-        self.cursor_pos = pos;
-        true
     }
 
     pub fn cursor_down_line(&mut self) -> bool {
-        let (line, col) = self.cursor_line_col();
-        let lines: Vec<&str> = self.buffer.split('\n').collect();
-        if line + 1 >= lines.len() { return false; }
-        let target_line = line + 1;
-        let target_col = col.min(lines[target_line].chars().count());
-        let mut pos = 0usize;
-        for l in lines.iter().take(target_line) {
-            pos += l.len() + 1;
+        let pos = self.cursor_pos;
+        let before = &self.buffer[..pos];
+        let line_start = before.rfind('\n').map(|i| i + 1).unwrap_or(0);
+        let col = pos - line_start;
+        let after = &self.buffer[pos..];
+        if let Some(nl) = after.find('\n') {
+            let next_start = pos + nl + 1;
+            let next_line = &self.buffer[next_start..];
+            let next_len = next_line.find('\n').unwrap_or(next_line.len());
+            self.cursor_pos = next_start + col.min(next_len);
+            true
+        } else {
+            false
         }
-        pos += lines[target_line]
-            .char_indices()
-            .nth(target_col)
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| lines[target_line].len());
-        self.cursor_pos = pos;
-        true
     }
 }
 

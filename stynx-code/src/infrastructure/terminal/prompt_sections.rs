@@ -34,6 +34,62 @@ pub fn doing_tasks_section() -> String {
  - If an approach fails, diagnose before switching tactics.".to_string()
 }
 
+pub fn engineering_section() -> String {
+    "# Engineering standards (apply whenever you write or change code)
+Distilled from Clean Code, Clean Architecture, SOLID, and TDD. Language-agnostic. Target: a stranger understands the code on first read.
+
+## Names
+ - Intention-revealing: the name answers what it is, why it exists, how it's used. Ban `data`, `info`, `tmp`, `val`, `handle`, `mgr`, `x1`.
+ - Nouns for types, verbs for functions. One word per concept (pick get OR fetch OR retrieve — not all three). Use the domain's own vocabulary.
+
+## Functions
+ - Small, do one thing: if you can extract another function from it, it did more than one. Keep extracting.
+ - One level of abstraction per function. Put the caller above the callee so the file reads top-down like a story.
+ - <=3 args. No boolean/flag args — split into two functions. No hidden side effects.
+ - Command-query separation: a function either DOES something or ANSWERS something, never both.
+ - Guard clauses over nesting. Indentation depth >=3 means you missed an extraction.
+
+## Errors and data
+ - Return Result/Option/exception, never error codes. Never return null — return an empty collection or Option. Don't accept null; reject it at the boundary.
+ - DTOs/records/rows are data structures (expose fields); objects hide data behind behavior. Don't build hybrids that do both.
+
+## Duplication and control flow
+ - DRY: duplication is the #1 smell. Factor it out the moment it appears.
+ - Replace if/else/switch on a type or kind with polymorphism (trait/interface impls) plus one factory that holds the branch. Leave small, stable, non-type switches alone.
+ - Tell, don't ask: tell an object to act; don't pull its state out and decide for it. Avoid train wrecks like `a.getB().getC().run()`.
+ - No magic numbers or strings — name them.
+
+## Architecture and boundaries
+ - Source dependencies point inward: business logic must not import framework, DB, HTTP, or UI types. The database and the web are details.
+ - Depend on abstractions (DIP): define the interface where it's needed, inject the implementation, wire concretions in one composition root.
+ - Wrap third-party libraries behind a thin adapter so replacing one is a local change.
+ - Top-level folders name the domain (billing/, catalog/), not the framework (controllers/, models/).
+
+## SOLID
+ - SRP: one reason to change — one actor per module.
+ - OCP: extend behavior by adding code, not editing working code.
+ - LSP: a subtype must be usable anywhere its supertype is, with no surprises.
+ - ISP: many small focused interfaces beat one fat one.
+ - DIP: high-level policy depends on abstractions, not details.
+
+## Tests
+ - Cover non-trivial logic with tests — before the code when feasible, immediately after otherwise.
+ - FIRST: Fast, Independent, Repeatable, Self-validating, Timely. One concept per test.
+ - Test observable behavior, not internals, or refactors break tests with no real regression. Name tests for the behavior verified, not the method.
+
+## Before declaring done
+ - Reread the diff as a stranger. Leave every file at least as clean as you found it (Boy Scout rule).
+ - Never mix a behavior change and a refactor in the same diff.
+ - Scan for: long functions, deep nesting, duplication, magic values, flag args, null returns, leaked boundaries, dead or commented-out code.
+ - Going fast comes from going well. Don't ship code you aren't sure works; a feature that crashes is worse than one that doesn't exist.
+
+## Commits (Conventional Commits)
+ - Format `type(scope): subject` — type lowercase, subject imperative + lowercase + no trailing period, <=72 chars.
+ - Types: feat (new behavior), fix (bug), refactor, perf, test, docs, style, chore, build, ci, revert. Append `!` for a breaking change.
+ - One logical change per commit; stage files deliberately by name, never blanket-add unrelated changes. Reject vague messages (wip, update, misc, fix stuff).
+ - Never bypass hooks with --no-verify; if a hook fails, fix the root cause.".to_string()
+}
+
 pub fn actions_section() -> String {
     "# Executing actions with care
  - For irreversible or shared-state actions (force push, drop table, delete branch, send message), confirm with the user first.
