@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code"
-version = "3.12.2"
+version = "0.33.12"
 edition = "2024"
 description = "stynx-code — interactive AI coding assistant"
 license = "MIT"

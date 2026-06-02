@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-auth"
-version = "3.12.2"
+version = "0.33.12"
 edition = "2024"
 description = "Authentication with API keys and macOS Keychain OAuth"
 license = "MIT"

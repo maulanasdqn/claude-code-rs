@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-compact"
-version = "3.12.2"
+version = "0.33.12"
 edition = "2024"
 description = "Context compaction and conversation summarization"
 license = "MIT"
