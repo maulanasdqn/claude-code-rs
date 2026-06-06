@@ -1,58 +1,31 @@
+mod display;
+mod sidebar;
+mod slash_handler;
+
 use std::collections::VecDeque;
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering}};
 use std::time::{Duration, Instant};
 
-use stynx_code_commands::expand_message_content;
-use stynx_code_engine::{EngineEvent, QueryEngine};
-use stynx_code_errors::AppError;
+use stynx_code_engine::QueryEngine;
 use stynx_code_permission::{ConfigAwarePermissionChecker, PromptBridge, PromptChoice, PromptRequest};
 use stynx_code_tools::{QuestionBridge, QuestionRequest, SharedQuestionBridge};
 
 use super::agent_tool::InternTool;
-use stynx_code_types::{Conversation, Message, PermissionMode, Provider, Role};
-use stynx_code_tui::state::app_state::SessionSummary;
+use stynx_code_types::{Conversation, PermissionMode, Provider};
 use stynx_code_tui::state::InputKind;
-use stynx_code_tui::{DisplayMessage, EventHandler, PermissionChoice, TuiApp, UiAction};
+use stynx_code_tui::{EventHandler, PermissionChoice, TuiApp, UiAction};
 use tokio::sync::oneshot;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 use super::app_actions::{expand_with_pins, save_session};
-use super::command_handler::handle_slash_command;
 use super::intern_bench;
 use super::command_types::CommandAction;
-use super::run_engine::run_engine_tui;
 use super::skills::Skill;
 use super::terminal::set_current_model;
 
-type EngineTask = JoinHandle<Result<Conversation, AppError>>;
-type EngineSlot = Option<(EngineTask, mpsc::UnboundedReceiver<EngineEvent>, Conversation)>;
+use display::{conv_to_tui, export_transcript, fmt_elapsed, fmt_tokens};
+use sidebar::{spawn_engine, refresh_sidebar_sessions, EngineSlot};
 
-fn conv_to_tui(conversation: &Conversation) -> Vec<DisplayMessage> {
-    conversation.messages.iter().filter_map(|m| {
-        let role = match m.role { Role::User => "user", Role::Assistant => "assistant" };
-        let text = m.content.iter().filter_map(|b| {
-            if let stynx_code_types::ContentBlock::Text { text } = b { Some(text.as_str()) } else { None }
-        }).collect::<Vec<_>>().join("");
-        if text.is_empty() { return None; }
-        Some(DisplayMessage { role: role.to_string(), content: text, thinking: String::new(), tool_uses: Vec::new(), is_streaming: false })
-    }).collect()
-}
-
-fn spawn_engine(
-    text: &str, conversation: &mut Conversation, tui: &mut TuiApp,
-    engine: &Arc<QueryEngine>, total_input: &Arc<AtomicU64>, total_output: &Arc<AtomicU64>,
-) -> EngineSlot {
-    let pre = conversation.clone();
-    conversation.push(Message { role: Role::User, content: expand_message_content(text) });
-    tui.state.push_user_message(text);
-    let (ev_tx, ev_rx) = mpsc::unbounded_channel();
-    let task = tokio::spawn({
-        let (eng, conv, ti, to) = (engine.clone(), conversation.clone(), total_input.clone(), total_output.clone());
-        async move { run_engine_tui(&eng, conv, &ti, &to, ev_tx).await }
-    });
-    Some((task, ev_rx, pre))
-}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn run_loop(
@@ -357,7 +330,7 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         continue;
                     }
                     if trimmed.starts_with('/') {
-                        let action = handle_tui_slash(&trimmed, &provider, anthropic.as_deref(), &config, &mode_flag,
+                        let action = slash_handler::handle_tui_slash(&trimmed, &provider, anthropic.as_deref(), &config, &mode_flag,
                             &system_prompt, &cwd, &conversation, &skills, &mut pinned_files, &mut tui).await;
                         match action {
                             Some(CommandAction::ReplaceConversation(c)) => {
@@ -589,122 +562,4 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
     stynx_code_tui::persistence::save(&stynx_code_tui::persistence::snapshot(&tui.state));
 }
 
-async fn export_transcript(conversation: &Conversation, cwd: &str) -> Result<String, String> {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let filename = format!("transcript-{ts}.md");
-    let path = std::path::Path::new(cwd).join(&filename);
 
-    let mut out = String::new();
-    out.push_str(&format!("# stynx-code transcript — {ts}\n\n"));
-    for msg in &conversation.messages {
-        let header = match msg.role {
-            Role::User => "## User",
-            Role::Assistant => "## Assistant",
-        };
-        out.push_str(header);
-        out.push_str("\n\n");
-        for block in &msg.content {
-            if let stynx_code_types::ContentBlock::Text { text } = block {
-                out.push_str(text);
-                out.push_str("\n\n");
-            }
-        }
-    }
-
-    tokio::fs::write(&path, out)
-        .await
-        .map_err(|e| format!("write failed: {e}"))?;
-    Ok(path.display().to_string())
-}
-
-async fn refresh_sidebar_sessions(
-    repo: &Arc<dyn stynx_code_memory::SessionRepository>,
-    tui: &mut TuiApp,
-) {
-    let summaries = repo.list().await.unwrap_or_default();
-    let current = repo.current().await.ok().flatten();
-    tui.state.sidebar.sessions = summaries
-        .iter()
-        .map(|s| SessionSummary {
-            id: s.id.clone(),
-            title: s.title.clone(),
-            updated_at: s.updated_at,
-            pinned: false,
-        })
-        .collect();
-    if let Some(id) = current {
-        if let Some(s) = summaries.iter().find(|s| s.id == id) {
-            tui.state.sidebar.session_id = s.id.clone();
-            tui.state.sidebar.title = s.title.clone();
-        } else if let Some(first) = summaries.first() {
-            tui.state.sidebar.session_id = first.id.clone();
-            tui.state.sidebar.title = first.title.clone();
-        }
-    } else if let Some(first) = summaries.first() {
-        tui.state.sidebar.session_id = first.id.clone();
-        tui.state.sidebar.title = first.title.clone();
-    }
-}
-
-async fn handle_tui_slash(
-    cmd: &str,
-    provider: &Arc<dyn Provider>,
-    anthropic: Option<&stynx_code_provider::AnthropicProvider>,
-    config: &stynx_code_config::Settings,
-    mode_flag: &Arc<AtomicU8>,
-    system_prompt: &str,
-    cwd: &str,
-    conversation: &Conversation,
-    skills: &[Skill],
-    pinned_files: &mut Vec<String>,
-    tui: &mut TuiApp,
-) -> Option<CommandAction> {
-    use super::app_actions::{copy_last_response, handle_add, show_files, show_skills};
-    use super::app_help::print_help;
-
-    match cmd {
-        "/quit" | "/exit" => return Some(CommandAction::Quit),
-        "/version" => { tui.state.push_system_message(format!("stynx-code v{}", env!("CARGO_PKG_VERSION"))); return None; }
-        "/files" => { show_files(pinned_files); return None; }
-        "/copy" => { copy_last_response(conversation); return None; }
-        "/help" => {
-            tui.leave_alt(); print_help(skills); let _ = std::io::stdin().read_line(&mut String::new()); tui.enter_alt();
-            return None;
-        }
-        "/skills" => {
-            tui.leave_alt(); show_skills(skills); let _ = std::io::stdin().read_line(&mut String::new()); tui.enter_alt();
-            return None;
-        }
-        _ => {}
-    }
-    if let Some(path) = cmd.strip_prefix("/add ") { handle_add(path, pinned_files); return None; }
-
-    tui.leave_alt();
-    let result = handle_slash_command(cmd, &**provider, anthropic, config, mode_flag, system_prompt, cwd, conversation, skills).await;
-    tui.enter_alt();
-    result
-}
-
-fn fmt_elapsed(d: std::time::Duration) -> String {
-    let secs = d.as_secs();
-    let ms = d.subsec_millis();
-    if secs >= 60 {
-        let m = secs / 60;
-        let s = secs % 60;
-        format!("{m}m {s}s")
-    } else if secs >= 10 {
-        format!("{secs}s")
-    } else {
-        format!("{secs}.{:01}s", ms / 100)
-    }
-}
-
-fn fmt_tokens(n: u64) -> String {
-    if n >= 1_000_000 { format!("{:.1}M", n as f64 / 1_000_000.0) }
-    else if n >= 1_000 { format!("{:.1}k", n as f64 / 1_000.0) }
-    else { n.to_string() }
-}
