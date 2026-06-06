@@ -27,8 +27,18 @@ struct Activity {
     error_count: usize,
 }
 
+/// Called with a short description each time the sub-agent starts or finishes a
+/// tool, so a background runner (e.g. the intern manager) can surface live status.
+pub(super) type ActionReporter = Arc<dyn Fn(String) + Send + Sync>;
+
 impl SubEngine {
-    pub(super) async fn run(&self, label: &str, system: &str, task: &str) -> AppResult<String> {
+    pub(super) async fn run(
+        &self,
+        label: &str,
+        system: &str,
+        task: &str,
+        reporter: Option<ActionReporter>,
+    ) -> AppResult<String> {
         let sub_registry = Arc::new(self.registry.clone_excluding(&["agent", "explore"]));
         let engine = QueryEngine::new(
             self.provider.clone(),
@@ -65,6 +75,9 @@ impl SubEngine {
                             label: label_for_cb.clone(),
                             summary: format!("calling {name}…"),
                         });
+                        if let Some(r) = &reporter {
+                            r(format!("calling {name}…"));
+                        }
                         a.current_tool = Some((name, String::new()));
                     }
                     EngineEvent::ToolInput { json_chunk } => {
@@ -84,6 +97,9 @@ impl SubEngine {
                             label: label_for_cb.clone(),
                             summary: summary.clone(),
                         });
+                        if let Some(r) = &reporter {
+                            r(summary.clone());
+                        }
                         a.actions.push(summary);
                         if !is_error {
                             let parsed: Option<serde_json::Value> = serde_json::from_str(&input).ok();

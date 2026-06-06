@@ -74,7 +74,6 @@ impl InternManager {
         self.handles.lock().unwrap().insert(id.to_string(), handle);
     }
 
-    #[allow(dead_code)]
     pub fn update_last_action(&self, id: &str, action: String) {
         if let Some(r) = self.records.lock().unwrap().get_mut(id) {
             r.last_action = Some(action);

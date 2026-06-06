@@ -77,7 +77,7 @@ impl InternTool {
     pub fn label(&self) -> &str { &self.label }
 
     pub async fn run_task(&self, task: &str) -> AppResult<String> {
-        self.inner.run(&self.label, INTERN_SYSTEM, task).await
+        self.inner.run(&self.label, INTERN_SYSTEM, task, None).await
     }
 }
 
@@ -128,9 +128,15 @@ impl Tool for InternTool {
             let parent_sink = stynx_code_engine::sub_agent_sink::SUB_AGENT_SINK
                 .try_with(|s| s.clone())
                 .ok();
+            // Report each tool action to the manager so intern_status shows live
+            // progress instead of a permanent `last_action: null`.
+            let reporter_mgr = manager.clone();
+            let reporter_id = id.clone();
+            let reporter: super::sub_engine::ActionReporter =
+                std::sync::Arc::new(move |action| reporter_mgr.update_last_action(&reporter_id, action));
             let handle = tokio::spawn(async move {
                 let fut = async {
-                    let result = inner.run(&label, INTERN_SYSTEM, &task).await
+                    let result = inner.run(&label, INTERN_SYSTEM, &task, Some(reporter)).await
                         .map(|out| format!("[{label} intern]\n{out}"))
                         .map_err(|e| e.to_string());
                     let _ = tx.send(result);
@@ -154,7 +160,7 @@ impl Tool for InternTool {
             .ok()
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(600);
-        let fut = self.inner.run(&self.label, INTERN_SYSTEM, &task);
+        let fut = self.inner.run(&self.label, INTERN_SYSTEM, &task, None);
         let timed = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), fut).await;
         let result = match timed {
             Ok(r) => r?,
