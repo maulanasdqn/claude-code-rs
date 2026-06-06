@@ -252,11 +252,7 @@ impl Provider for AnthropicProvider {
             }
         };
 
-        let response = request
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| AppError::Provider(format!("request failed: {e}")))?;
+        let response = super::http_retry::send_with_retry(request.json(&body), "anthropic").await?;
 
         let status = response.status();
         if !status.is_success() {

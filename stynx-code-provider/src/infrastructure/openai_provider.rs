@@ -400,15 +400,13 @@ impl Provider for OpenAiProvider {
         let url = format!("{}/chat/completions", self.base_url);
         tracing::debug!(provider = %self.label, model = %model, url = %url, "sending OpenAI-compat request");
 
-        let response = self
+        let request = self
             .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("content-type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| AppError::Provider(format!("{} request failed: {e}", self.label)))?;
+            .json(&body);
+        let response = super::http_retry::send_with_retry(request, &self.label).await?;
 
         let status = response.status();
         if !status.is_success() {

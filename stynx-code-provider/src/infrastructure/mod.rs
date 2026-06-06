@@ -1,4 +1,5 @@
 pub mod anthropic_provider;
+mod http_retry;
 pub mod openai_provider;
 mod request_builder;
 pub mod sse_parser;
