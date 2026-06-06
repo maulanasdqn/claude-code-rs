@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-server"
-version = "0.33.14"
+version = "0.33.15"
 edition = "2024"
 description = "HTTP server with chat and health endpoints"
 license = "MIT"
