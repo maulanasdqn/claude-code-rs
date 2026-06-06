@@ -79,9 +79,68 @@ fn cell_text_width(cell: &str) -> usize {
     parse_inline(cell).iter().map(|s| s.content.chars().count()).sum()
 }
 
-/// Render a whole table block at once so columns align: measure each column's
-/// max rendered width across all rows, then pad every cell to that width.
-pub(super) fn render_table_block(rows: &[&str]) -> Vec<Line<'static>> {
+/// Greedy word-wrap a run of styled spans into lines no wider than `width`.
+/// Words longer than the column (e.g. long file paths) are hard-split so they
+/// never overflow. Returns at least one (possibly empty) line.
+fn wrap_spans(spans: &[Span<'static>], width: usize) -> Vec<Vec<Span<'static>>> {
+    let width = width.max(1);
+    let mut words: Vec<(String, Style)> = Vec::new();
+    for s in spans {
+        for w in s.content.split(' ') {
+            if !w.is_empty() {
+                words.push((w.to_string(), s.style));
+            }
+        }
+    }
+
+    let mut lines: Vec<Vec<Span<'static>>> = Vec::new();
+    let mut cur: Vec<Span<'static>> = Vec::new();
+    let mut cur_w = 0usize;
+
+    for (word, style) in words {
+        let wlen = word.chars().count();
+        if wlen > width {
+            // Hard-split an unbreakable token across as many lines as needed.
+            if cur_w > 0 {
+                lines.push(std::mem::take(&mut cur));
+                cur_w = 0;
+            }
+            let chars: Vec<char> = word.chars().collect();
+            let mut idx = 0;
+            while idx < chars.len() {
+                let take = (width - cur_w).min(chars.len() - idx).max(1);
+                let chunk: String = chars[idx..idx + take].iter().collect();
+                cur.push(Span::styled(chunk, style));
+                cur_w += take;
+                idx += take;
+                if idx < chars.len() {
+                    lines.push(std::mem::take(&mut cur));
+                    cur_w = 0;
+                }
+            }
+            continue;
+        }
+        let need = if cur_w == 0 { wlen } else { wlen + 1 };
+        if cur_w > 0 && cur_w + need > width {
+            lines.push(std::mem::take(&mut cur));
+            cur_w = 0;
+        }
+        if cur_w > 0 {
+            cur.push(Span::styled(" ".to_string(), Style::default()));
+            cur_w += 1;
+        }
+        cur.push(Span::styled(word, style));
+        cur_w += wlen;
+    }
+    lines.push(cur);
+    lines
+}
+
+/// Render a whole table block at once. Columns are measured across all rows and
+/// constrained to the viewport `avail_width`; cells that don't fit wrap *within
+/// their own column* (continuations stay under the column, never overflowing to
+/// the left edge), and each row grows to the tallest wrapped cell.
+pub(super) fn render_table_block(rows: &[&str], avail_width: usize) -> Vec<Line<'static>> {
     let parsed: Vec<(bool, Vec<String>)> = rows
         .iter()
         .map(|r| {
@@ -101,6 +160,7 @@ pub(super) fn render_table_block(rows: &[&str]) -> Vec<Line<'static>> {
         return Vec::new();
     }
 
+    // Natural (unconstrained) column widths from the rendered cell text.
     let mut widths = vec![0usize; ncols];
     for (sep, cells) in &parsed {
         if *sep {
@@ -110,7 +170,30 @@ pub(super) fn render_table_block(rows: &[&str]) -> Vec<Line<'static>> {
             widths[i] = widths[i].max(cell_text_width(c));
         }
     }
-    let table_w: usize = widths.iter().sum::<usize>() + 3 * ncols.saturating_sub(1);
+
+    // Fit within the viewport: 2-col left margin + " │ " (3 cols) between
+    // columns, with a little safety margin so the outer paragraph never re-wraps.
+    let margin = 2usize;
+    let sep_total = 3 * ncols.saturating_sub(1);
+    let budget = avail_width
+        .saturating_sub(margin + sep_total + 1)
+        .max(ncols * 4);
+    let min_col = 4usize;
+    let mut guard = 0;
+    while widths.iter().sum::<usize>() > budget && guard < 100_000 {
+        let widest = widths
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| **w > min_col)
+            .max_by_key(|(_, w)| **w)
+            .map(|(i, _)| i);
+        match widest {
+            Some(i) => widths[i] -= 1,
+            None => break,
+        }
+        guard += 1;
+    }
+    let table_w: usize = widths.iter().sum::<usize>() + sep_total;
 
     let mut out: Vec<Line<'static>> = Vec::new();
     let mut header_done = false;
@@ -125,26 +208,41 @@ pub(super) fn render_table_block(rows: &[&str]) -> Vec<Line<'static>> {
         let is_header = !header_done;
         header_done = true;
 
-        let mut spans: Vec<Span<'static>> = vec![Span::styled("  ", Style::default())];
-        for i in 0..ncols {
-            if i > 0 {
-                spans.push(Span::styled(" │ ", Style::default().fg(theme::OVERLAY())));
-            }
-            let empty = String::new();
-            let cell = cells.get(i).unwrap_or(&empty);
-            let w = cell_text_width(cell);
-            let mut cell_spans = parse_inline(cell);
-            if is_header {
-                for s in &mut cell_spans {
-                    s.style = s.style.fg(theme::ROSE()).add_modifier(Modifier::BOLD);
+        // Wrap every cell to its column width up front.
+        let wrapped: Vec<Vec<Vec<Span<'static>>>> = (0..ncols)
+            .map(|i| {
+                let empty = String::new();
+                let cell = cells.get(i).unwrap_or(&empty);
+                let mut spans = parse_inline(cell);
+                if is_header {
+                    for s in &mut spans {
+                        s.style = s.style.fg(theme::ROSE()).add_modifier(Modifier::BOLD);
+                    }
+                }
+                wrap_spans(&spans, widths[i])
+            })
+            .collect();
+
+        let row_h = wrapped.iter().map(|c| c.len()).max().unwrap_or(1).max(1);
+        for k in 0..row_h {
+            let mut spans: Vec<Span<'static>> = vec![Span::styled("  ".to_string(), Style::default())];
+            for i in 0..ncols {
+                if i > 0 {
+                    spans.push(Span::styled(" │ ", Style::default().fg(theme::OVERLAY())));
+                }
+                let seg = wrapped[i].get(k);
+                let seg_w: usize = seg
+                    .map(|ss| ss.iter().map(|s| s.content.chars().count()).sum())
+                    .unwrap_or(0);
+                if let Some(ss) = seg {
+                    spans.extend(ss.iter().cloned());
+                }
+                if widths[i] > seg_w {
+                    spans.push(Span::styled(" ".repeat(widths[i] - seg_w), Style::default()));
                 }
             }
-            spans.append(&mut cell_spans);
-            if widths[i] > w {
-                spans.push(Span::styled(" ".repeat(widths[i] - w), Style::default()));
-            }
+            out.push(Line::from(spans));
         }
-        out.push(Line::from(spans));
     }
     out
 }

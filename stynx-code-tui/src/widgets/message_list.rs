@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Widget, Wrap},
 };
@@ -61,16 +61,14 @@ impl<'a> Widget for MessageList<'a> {
         for msg in &self.state.messages {
             match msg.role.as_str() {
                 "user" => {
-                    lines.push(Line::from(vec![
-                        Span::styled(bar, Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)),
-                        Span::styled(" You", Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)),
-                    ]));
+                    let start = lines.len();
                     for raw in msg.content.lines() {
                         lines.push(Line::from(Span::styled(
                             format!("{body_indent}{}", raw.trim_end()),
                             Style::default().fg(theme::TEXT()),
                         )));
                     }
+                    stamp_role_bar(&mut lines, start, theme::FOAM());
                 }
                 "error" => {
                     lines.push(Line::from(vec![
@@ -114,10 +112,7 @@ impl<'a> Widget for MessageList<'a> {
                     }
                 }
                 _ => {
-                    lines.push(Line::from(vec![
-                        Span::styled(bar, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
-                        Span::styled(" Stynx", Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
-                    ]));
+                    let asst_start = lines.len();
                     if msg.is_streaming && thinking_active && msg.content.trim().is_empty() {
                         lines.push(Line::from(vec![
                             Span::styled(
@@ -189,7 +184,7 @@ impl<'a> Widget for MessageList<'a> {
                             while i < content_lines.len() && is_table_line(content_lines[i]) {
                                 i += 1;
                             }
-                            lines.extend(render_table_block(&content_lines[start..i]));
+                            lines.extend(render_table_block(&content_lines[start..i], area.width as usize));
                             continue;
                         } else {
                             lines.push(render_md_line(raw, in_code));
@@ -197,6 +192,7 @@ impl<'a> Widget for MessageList<'a> {
                         i += 1;
                     }
                     let _ = in_code;
+                    stamp_role_bar(&mut lines, asst_start, theme::IRIS());
                 }
             }
             lines.push(Line::from(""));
@@ -228,6 +224,30 @@ impl<'a> Widget for MessageList<'a> {
 
         Paragraph::new(lines).scroll((offset as u16, 0)).wrap(Wrap { trim: false }).render(area, buf);
     }
+}
+
+/// Stamp a colored role bar (▌) onto a message's first body line, replacing its
+/// leading indent. The bar's color is the sole role indicator (foam = user,
+/// iris = assistant) — no text label — so messages stay differentiable but clean.
+fn stamp_role_bar(lines: &mut [Line<'static>], start: usize, color: Color) {
+    let line = match lines.get_mut(start) {
+        Some(l) => l,
+        None => return,
+    };
+    if let Some(first) = line.spans.first_mut() {
+        let trimmed = first
+            .content
+            .strip_prefix("  ")
+            .or_else(|| first.content.strip_prefix(' '))
+            .map(|s| s.to_string());
+        if let Some(t) = trimmed {
+            first.content = t.into();
+        }
+    }
+    line.spans.insert(
+        0,
+        Span::styled("▌ ", Style::default().fg(color).add_modifier(Modifier::BOLD)),
+    );
 }
 
 const LOGO_ART: &[&str] = &[

@@ -56,14 +56,15 @@ impl<'a> Widget for ThinkingPanel<'a> {
                 .set_style(Style::default().fg(accent).bg(theme::BACKGROUND()));
         }
 
-        let pad: u16 = 1;
+        // Content sits at `bar + space` (col 2), aligning with chat message bodies.
+        let pad: u16 = 2;
         let inner_x = area.x + pad;
         let inner_width = area.width.saturating_sub(pad + 1) as usize;
         let _ = bar_col;
 
         let header = Line::from(vec![
             Span::styled(
-                format!("  {frame} "),
+                format!("{frame} "),
                 Style::default()
                     .fg(accent)
                     .add_modifier(Modifier::BOLD),
@@ -99,7 +100,7 @@ fn wrap_thinking_line(raw: &str, width: usize) -> Vec<Line<'static>> {
     let width = width.max(1);
     let trimmed = raw.trim_start();
     let indent_w = raw.len() - trimmed.len();
-    let base_indent = 4 + indent_w;
+    let base_indent = indent_w;
 
     let (prefix, body, prefix_style) = if let Some(rest) = trimmed.strip_prefix("### ") {
         ("### ".to_string(), rest, Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD))
