@@ -2084,7 +2084,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "base64",
@@ -2114,7 +2114,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-auth"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "base64",
  "getrandom 0.2.17",
@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-bridge"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2146,7 +2146,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-commands"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "base64",
  "regex",
@@ -2158,7 +2158,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-compact"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "futures",
@@ -2173,7 +2173,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-config"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "serde",
  "serde_json",
@@ -2181,7 +2181,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-engine"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "futures",
  "serde_json",
@@ -2195,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-errors"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "anyhow",
  "axum",
@@ -2207,7 +2207,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-memory"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2222,7 +2222,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-permission"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "crossterm",
@@ -2235,7 +2235,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-plugins"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2250,7 +2250,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-provider"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "futures",
@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-server"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "axum",
  "futures",
@@ -2287,7 +2287,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-services"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2302,7 +2302,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-tools"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "crossterm",
@@ -2320,7 +2320,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-tui"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "arboard",
  "async-trait",
@@ -2340,7 +2340,7 @@ dependencies = [
 
 [[package]]
 name = "stynx-code-types"
-version = "0.33.12"
+version = "0.33.13"
 dependencies = [
  "async-trait",
  "futures",
