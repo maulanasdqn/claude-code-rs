@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-config"
-version = "0.33.13"
+version = "0.33.14"
 edition = "2024"
 description = "Configuration loading and settings management"
 license = "MIT"
