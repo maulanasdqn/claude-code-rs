@@ -10,7 +10,7 @@ use ratatui::layout::Alignment;
 
 use crate::state::ConversationState;
 use crate::theme;
-use super::markdown::render_md_line;
+use super::markdown::{render_md_line, is_table_line, render_table_block};
 
 pub struct MessageList<'a> {
     pub state: &'a mut ConversationState,
@@ -37,10 +37,11 @@ impl<'a> MessageList<'a> {
 
 impl<'a> Widget for MessageList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let pad = 1u16;
+        // Align the role accent bar (▌) flush to the left edge (main.x), matching
+        // the thinking panel's bar and the tools border. Keep a 1-col right margin.
         let area = Rect {
-            x: area.x + pad,
-            width: area.width.saturating_sub(pad * 2),
+            x: area.x,
+            width: area.width.saturating_sub(1),
             y: area.y + 1,
             height: area.height.saturating_sub(1),
         };
@@ -142,16 +143,20 @@ impl<'a> Widget for MessageList<'a> {
                         )));
                         lines.push(Line::from(""));
                     }
+                    let content_lines: Vec<&str> = msg.content.lines().collect();
                     let mut in_code = false;
                     let mut in_mermaid = false;
                     let mut prev_blank = false;
-                    for raw in msg.content.lines() {
+                    let mut i = 0;
+                    while i < content_lines.len() {
+                        let raw = content_lines[i];
                         let trimmed_start = raw.trim_start();
                         let is_blank = raw.trim().is_empty();
 
                         if is_blank {
                             if !prev_blank { lines.push(Line::from("")); }
                             prev_blank = true;
+                            i += 1;
                             continue;
                         }
                         prev_blank = false;
@@ -177,9 +182,19 @@ impl<'a> Widget for MessageList<'a> {
                                 let label = if lang.is_empty() { "  ╭─ code".to_string() } else { format!("  ╭─ {lang}") };
                                 lines.push(Line::from(Span::styled(label, Style::default().fg(theme::OVERLAY()).add_modifier(Modifier::DIM))));
                             }
+                        } else if !in_code && is_table_line(raw) {
+                            // Gather the whole contiguous table block and render it
+                            // aligned (columns padded to a common width).
+                            let start = i;
+                            while i < content_lines.len() && is_table_line(content_lines[i]) {
+                                i += 1;
+                            }
+                            lines.extend(render_table_block(&content_lines[start..i]));
+                            continue;
                         } else {
                             lines.push(render_md_line(raw, in_code));
                         }
+                        i += 1;
                     }
                     let _ = in_code;
                 }

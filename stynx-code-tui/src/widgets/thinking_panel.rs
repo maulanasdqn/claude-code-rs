@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Paragraph, Widget, Wrap},
+    widgets::{Paragraph, Widget},
 };
 
 use crate::theme;
@@ -85,38 +85,28 @@ impl<'a> Widget for ThinkingPanel<'a> {
 
         let mut lines: Vec<Line<'static>> = vec![header];
         for raw in body_lines {
-            lines.push(render_thinking_line(raw.trim_end()));
+            lines.extend(wrap_thinking_line(raw.trim_end(), inner_width));
         }
 
-        Paragraph::new(lines)
-            .wrap(Wrap { trim: false })
-            .render(inner_area, buf);
+        Paragraph::new(lines).render(inner_area, buf);
     }
 }
 
-fn render_thinking_line(raw: &str) -> Line<'static> {
+/// Word-wrap a thinking body line to `width` columns with a hanging indent, so
+/// continuation lines align under the first line's text instead of overflowing
+/// to the left edge.
+fn wrap_thinking_line(raw: &str, width: usize) -> Vec<Line<'static>> {
+    let width = width.max(1);
     let trimmed = raw.trim_start();
     let indent_w = raw.len() - trimmed.len();
-    let indent = " ".repeat(4 + indent_w);
+    let base_indent = 4 + indent_w;
 
     let (prefix, body, prefix_style) = if let Some(rest) = trimmed.strip_prefix("### ") {
-        (
-            "### ".to_string(),
-            rest,
-            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
-        )
+        ("### ".to_string(), rest, Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD))
     } else if let Some(rest) = trimmed.strip_prefix("## ") {
-        (
-            "## ".to_string(),
-            rest,
-            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
-        )
+        ("## ".to_string(), rest, Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD))
     } else if let Some(rest) = trimmed.strip_prefix("# ") {
-        (
-            "# ".to_string(),
-            rest,
-            Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD),
-        )
+        ("# ".to_string(), rest, Style::default().fg(theme::SUBTLE()).add_modifier(Modifier::BOLD))
     } else if let Some(rest) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
         ("• ".to_string(), rest, Style::default().fg(theme::SUBTLE()))
     } else if let Some((num, rest)) = split_numbered(trimmed) {
@@ -125,12 +115,54 @@ fn render_thinking_line(raw: &str) -> Line<'static> {
         (String::new(), trimmed, Style::default())
     };
 
-    let mut spans: Vec<Span<'static>> = vec![Span::styled(indent, Style::default())];
-    if !prefix.is_empty() {
-        spans.push(Span::styled(prefix, prefix_style));
+    // Continuation lines indent to the first line's text column (hanging indent).
+    let hang = base_indent + prefix.chars().count();
+    let avail = width.saturating_sub(hang).max(1);
+
+    // Tokenize the styled body into words, collapsing runs of whitespace.
+    let mut words: Vec<(String, Style)> = Vec::new();
+    for span in parse_thinking_inline(body) {
+        let style = span.style;
+        for w in span.content.split(' ') {
+            if !w.is_empty() {
+                words.push((w.to_string(), style));
+            }
+        }
     }
-    spans.extend(parse_thinking_inline(body));
-    Line::from(spans)
+
+    let new_line = |first: bool| -> Vec<Span<'static>> {
+        if first {
+            let mut v = vec![Span::styled(" ".repeat(base_indent), Style::default())];
+            if !prefix.is_empty() {
+                v.push(Span::styled(prefix.clone(), prefix_style));
+            }
+            v
+        } else {
+            vec![Span::styled(" ".repeat(hang), Style::default())]
+        }
+    };
+
+    let mut out: Vec<Line<'static>> = Vec::new();
+    let mut spans = new_line(true);
+    let mut text_w = 0usize; // columns of wrappable text on the current line
+
+    for (word, style) in words {
+        let wlen = word.chars().count();
+        let need = if text_w == 0 { wlen } else { wlen + 1 };
+        if text_w > 0 && text_w + need > avail {
+            out.push(Line::from(std::mem::take(&mut spans)));
+            spans = new_line(false);
+            text_w = 0;
+        }
+        if text_w > 0 {
+            spans.push(Span::styled(" ".to_string(), Style::default()));
+            text_w += 1;
+        }
+        spans.push(Span::styled(word, style));
+        text_w += wlen;
+    }
+    out.push(Line::from(spans));
+    out
 }
 
 fn split_numbered(s: &str) -> Option<(String, &str)> {
