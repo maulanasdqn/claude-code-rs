@@ -134,7 +134,79 @@ fn translate_messages(conv: &Conversation) -> Vec<Value> {
             }
         }
     }
-    out
+    sanitize_tool_calls(out)
+}
+
+/// The OpenAI/DeepSeek API requires every assistant message that contains
+/// `tool_calls` to be immediately followed by one `tool` message per
+/// `tool_call_id`. When a tool call was interrupted (e.g. the user sent a new
+/// message before the tools finished), those results are missing and the API
+/// rejects the request with a 400. This pass enforces the invariant by:
+///   - emitting exactly one `tool` message per expected `tool_call_id`, in
+///     order, synthesizing a placeholder for any that are missing, and
+///   - dropping orphaned `tool` messages that don't answer a preceding call.
+fn sanitize_tool_calls(messages: Vec<Value>) -> Vec<Value> {
+    let tool_role = Value::String("tool".into());
+    let assistant_role = Value::String("assistant".into());
+    let mut result: Vec<Value> = Vec::with_capacity(messages.len());
+    let mut i = 0;
+
+    while i < messages.len() {
+        let msg = &messages[i];
+        let role = msg.get("role");
+
+        // Drop any `tool` message that isn't consumed by a preceding assistant
+        // tool_calls block below — it would be an orphaned tool response.
+        if role == Some(&tool_role) {
+            i += 1;
+            continue;
+        }
+
+        result.push(msg.clone());
+
+        let calls = if role == Some(&assistant_role) {
+            msg.get("tool_calls").and_then(Value::as_array)
+        } else {
+            None
+        };
+
+        if let Some(calls) = calls {
+            let expected: Vec<String> = calls
+                .iter()
+                .filter_map(|c| c.get("id").and_then(Value::as_str).map(str::to_string))
+                .collect();
+
+            // Collect the run of tool messages immediately following this one.
+            let mut provided: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+            let mut j = i + 1;
+            while j < messages.len() && messages[j].get("role") == Some(&tool_role) {
+                if let Some(id) = messages[j].get("tool_call_id").and_then(Value::as_str) {
+                    provided.insert(id.to_string(), messages[j].clone());
+                }
+                j += 1;
+            }
+
+            // Emit one tool message per expected id, synthesizing missing ones.
+            for id in &expected {
+                if let Some(found) = provided.remove(id) {
+                    result.push(found);
+                } else {
+                    result.push(json!({
+                        "role": "tool",
+                        "tool_call_id": id,
+                        "content": "[no result: the tool call was interrupted before completion]",
+                    }));
+                }
+            }
+
+            i = j;
+            continue;
+        }
+
+        i += 1;
+    }
+
+    result
 }
 
 fn push_user(msg: &Message, out: &mut Vec<Value>) {
