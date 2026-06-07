@@ -25,7 +25,7 @@ pub struct Footer<'a> {
     pub elapsed_secs: u64,
 }
 
-fn shrink_path(cwd: &str, max: usize) -> String {
+pub(super) fn shrink_path(cwd: &str, max: usize) -> String {
     let with_tilde = if let Some(home) = std::env::var_os("HOME") {
         if let Some(home) = home.to_str() {
             if cwd.starts_with(home) {
@@ -48,7 +48,7 @@ fn shrink_path(cwd: &str, max: usize) -> String {
     format!("…{}", &with_tilde[start..])
 }
 
-fn pretty_model(model: &str) -> String {
+pub(super) fn pretty_model(model: &str) -> String {
     // Drop any provider prefix ("anthropic/…"), a leading "claude-" vendor word,
     // and a trailing date/build segment ("-20250514") so the bar stays compact:
     // e.g. "anthropic/claude-sonnet-4-20250514" -> "sonnet·4".
@@ -60,7 +60,7 @@ fn pretty_model(model: &str) -> String {
         .join("·")
 }
 
-fn fmt_elapsed_short(secs: u64) -> String {
+pub(super) fn fmt_elapsed_short(secs: u64) -> String {
     if secs >= 60 {
         format!("{}m {}s", secs / 60, secs % 60)
     } else {

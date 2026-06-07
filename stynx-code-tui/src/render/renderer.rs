@@ -8,7 +8,7 @@ use crate::theme;
 use crate::widgets::delegate_bar::DelegateBar;
 use crate::widgets::tool_detail::ToolDetail;
 use crate::widgets::tool_history::{flat_rows, HistoryRow, ToolHistory};
-use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, SlashPopover, SummaryBar, ThinkingPanel, ToastStack};
+use crate::widgets::{DialogSelect, Footer, InfoDialog, InputBox, InputDialog, MessageList, PermissionDialog, SidebarInfo, SlashPopover, SummaryBar, ThinkingPanel, ToastStack};
 
 pub struct Renderer;
 
@@ -47,6 +47,23 @@ impl Renderer {
         if let Some(area) = tool_area {
             frame.render_widget(ToolHistory::new(state), area);
         }
+        if let Some(info_area) = layout.tool_info {
+            frame.render_widget(
+                SidebarInfo {
+                    cwd: &state.cwd,
+                    model: &state.model_name,
+                    mode: &state.permission_mode,
+                    cost: state.total_cost,
+                    git_branch: state.git_branch.as_deref(),
+                    is_streaming: state.is_streaming,
+                    is_pending: state.is_pending,
+                    is_paused: state.is_paused,
+                    spinner_frame: state.spinner_frame,
+                    elapsed_secs: state.elapsed_secs,
+                },
+                info_area,
+            );
+        }
 
         frame.render_widget(
             MessageList::new(&mut state.conversation, state.spinner_frame)
@@ -73,21 +90,23 @@ impl Renderer {
         if !state.input.slash_matches.is_empty() {
             frame.render_widget(SlashPopover::new(&state.input, layout.input), full);
         }
-        frame.render_widget(
-            Footer {
-                cwd: &state.cwd,
-                model: &state.model_name,
-                mode: &state.permission_mode,
-                cost: state.total_cost,
-                git_branch: state.git_branch.as_deref(),
-                is_streaming: state.is_streaming,
-                is_pending: state.is_pending,
-                is_paused: state.is_paused,
-                spinner_frame: state.spinner_frame,
-                elapsed_secs: state.elapsed_secs,
-            },
-            layout.footer,
-        );
+        if let Some(footer_area) = layout.footer {
+            frame.render_widget(
+                Footer {
+                    cwd: &state.cwd,
+                    model: &state.model_name,
+                    mode: &state.permission_mode,
+                    cost: state.total_cost,
+                    git_branch: state.git_branch.as_deref(),
+                    is_streaming: state.is_streaming,
+                    is_pending: state.is_pending,
+                    is_paused: state.is_paused,
+                    spinner_frame: state.spinner_frame,
+                    elapsed_secs: state.elapsed_secs,
+                },
+                footer_area,
+            );
+        }
 
         frame.render_widget(ToastStack::new(&state.toasts), full);
 
