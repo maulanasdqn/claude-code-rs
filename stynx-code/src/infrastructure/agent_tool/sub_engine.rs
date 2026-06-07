@@ -130,12 +130,15 @@ impl SubEngine {
         sub_agent_sink::send(EngineEvent::SubAgentDone { label: label.to_string() });
 
         let act = activity.lock().unwrap();
+        let has_text = !act.text.trim().is_empty();
+        let took_actions = !act.actions.is_empty();
+
         let mut out = String::new();
-        if !act.text.trim().is_empty() {
+        if has_text {
             out.push_str(act.text.trim());
             out.push('\n');
         }
-        if !act.actions.is_empty() {
+        if took_actions {
             if !out.is_empty() { out.push('\n'); }
             out.push_str("Actions taken:\n");
             for a in &act.actions {
@@ -144,33 +147,29 @@ impl SubEngine {
                 out.push('\n');
             }
         }
-        if out.trim().is_empty() {
+
+        // Genuine failure is ONLY "nothing said and nothing done". An intern that
+        // read files and wrote an analysis (but skipped a rigid label) did real
+        // work — don't discard it. Whether the task needed file writes is the
+        // mentor's call; the ground-truth block below states the facts plainly.
+        if !has_text && !took_actions {
             out.push_str(
-                "[FAILED] intern produced ZERO output and took ZERO tool actions — it is broken, hung mid-thought, or refused the task. \
-                 AUTO-RECOVER NOW (do not ask the user): take over yourself with bash/read/file_edit/file_write, or pick a different intern. \
-                 Do not retry this intern with the same task."
+                "[FAILED] intern produced no output and took no tool actions — it stalled or refused the task. \
+                 AUTO-RECOVER NOW (do not ask the user): take over yourself, or try a different intern. \
+                 Do not re-run this intern with the same task."
             );
-        }
-        let missing_summary = !out.contains("Summary:");
-        let missing_files = !out.contains("Files changed:");
-        let no_tool_actions = !out.contains("Actions taken:");
-        if missing_summary || missing_files || no_tool_actions {
-            out.push_str("\n\n[MALFORMED] intern skipped required closing blocks (Summary / Files changed / Actions taken). \
-            Treat any claims above as unverified. Verify by reading the files yourself before trusting the result.");
         }
 
         let mut truth = String::new();
-        truth.push_str("\n\n--- Ground truth (recorded by stynx engine, NOT by the intern) ---\n");
-        truth.push_str(&format!("  read:    {} files {}\n", act.read_paths.len(), dedupe_compact(&act.read_paths)));
-        truth.push_str(&format!("  edited:  {} files {}\n", act.edited_paths.len(), dedupe_compact(&act.edited_paths)));
-        truth.push_str(&format!("  wrote:   {} files {}\n", act.written_paths.len(), dedupe_compact(&act.written_paths)));
-        truth.push_str(&format!("  bash:    {} commands\n", act.bash_commands.len()));
-        truth.push_str(&format!("  errors:  {}\n", act.error_count));
-        if act.edited_paths.is_empty() && act.written_paths.is_empty() && act.bash_commands.is_empty() {
-            truth.push_str("\n[NO WRITES] intern modified ZERO files and ran ZERO commands. \
-                If its reply claims any file change, that claim is FALSE. \
-                Trust only the ground truth above.\n");
-        }
+        truth.push_str("\n\n--- Ground truth (recorded by stynx, not the intern) ---\n");
+        truth.push_str(&format!("  read:   {} files {}\n", act.read_paths.len(), dedupe_compact(&act.read_paths)));
+        truth.push_str(&format!("  edited: {} files {}\n", act.edited_paths.len(), dedupe_compact(&act.edited_paths)));
+        truth.push_str(&format!("  wrote:  {} files {}\n", act.written_paths.len(), dedupe_compact(&act.written_paths)));
+        truth.push_str(&format!("  bash:   {} commands\n", act.bash_commands.len()));
+        truth.push_str(&format!("  errors: {}\n", act.error_count));
+
+        // Only flag the precise, verifiable problem: a claimed file change that
+        // never actually happened. Everything else is trusted as-is.
         if out.contains("Files changed:") {
             let claimed_files = extract_claimed_files(&out);
             let real_changed: std::collections::HashSet<&str> = act.edited_paths.iter()
@@ -181,11 +180,10 @@ impl SubEngine {
                 .filter(|p| !real_changed.contains(p.as_str()))
                 .collect();
             if !fake.is_empty() {
-                truth.push_str("\n[FALSE CLAIMS] intern's 'Files changed' list contains paths that were NEVER actually edited/written:\n");
+                truth.push_str("\n[UNVERIFIED] these paths were listed under 'Files changed' but no edit/write was recorded — verify before trusting:\n");
                 for f in fake {
-                    truth.push_str(&format!("  ✗ {f}\n"));
+                    truth.push_str(&format!("  • {f}\n"));
                 }
-                truth.push_str("Treat the entire intern output as suspect. Verify the real changes via the ground-truth list above.\n");
             }
         }
         out.push_str(&truth);
