@@ -81,7 +81,7 @@ impl<'a> Widget for InputBox<'a> {
 
         Paragraph::new(lines)
             .block(block)
-            .style(Style::default().bg(theme::SURFACE()))
+            .style(Style::default().bg(theme::BACKGROUND()))
             .render(area, buf);
 
         if self.focused && inner.width > 0 && inner.height > 0 {
