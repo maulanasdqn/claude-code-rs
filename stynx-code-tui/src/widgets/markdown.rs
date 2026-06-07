@@ -247,6 +247,76 @@ pub(super) fn render_table_block(rows: &[&str], avail_width: usize) -> Vec<Line<
     out
 }
 
+/// Assemble wrapped body segments into lines with a hanging indent: the first
+/// line carries `prefix`; continuation lines are indented to the prefix width so
+/// wrapped text aligns under the content instead of overflowing to the left.
+fn assemble_wrapped(
+    prefix: &str,
+    prefix_style: Style,
+    body_lines: Vec<Vec<Span<'static>>>,
+    hang: usize,
+) -> Vec<Line<'static>> {
+    let mut out: Vec<Line<'static>> = Vec::new();
+    for (k, segs) in body_lines.into_iter().enumerate() {
+        let mut spans: Vec<Span<'static>> = Vec::new();
+        if k == 0 {
+            spans.push(Span::styled(prefix.to_string(), prefix_style));
+        } else {
+            spans.push(Span::styled(" ".repeat(hang), Style::default()));
+        }
+        spans.extend(segs);
+        out.push(Line::from(spans));
+    }
+    if out.is_empty() {
+        out.push(Line::from(Span::styled(prefix.to_string(), prefix_style)));
+    }
+    out
+}
+
+/// Width-aware markdown line: wraps the content to `width` with a hanging indent
+/// so continuation lines align under the bullet/heading/paragraph text.
+pub(super) fn render_md_line_wrapped(raw: &str, in_code: bool, width: usize) -> Vec<Line<'static>> {
+    let trimmed = raw.trim_end();
+    let width = width.max(8);
+
+    // Code, horizontal rules and table rows keep their existing single-line form
+    // (tables are intercepted as a block by the caller before reaching here).
+    if in_code || is_hr(trimmed) || is_table_line(trimmed) {
+        return vec![render_md_line(trimmed, in_code)];
+    }
+
+    // Headings: whole line styled, indented 2.
+    let heading = if let Some(r) = trimmed.strip_prefix("### ") {
+        Some((r, Style::default().fg(theme::FOAM()).add_modifier(Modifier::BOLD)))
+    } else if let Some(r) = trimmed.strip_prefix("## ") {
+        Some((r, Style::default().fg(theme::ROSE()).add_modifier(Modifier::BOLD)))
+    } else if let Some(r) = trimmed.strip_prefix("# ") {
+        Some((r, Style::default().fg(theme::GOLD()).add_modifier(Modifier::BOLD)))
+    } else {
+        None
+    };
+    if let Some((text, style)) = heading {
+        let hang = 2;
+        let segs = wrap_spans(&[Span::styled(text.to_string(), style)], width.saturating_sub(hang).max(1));
+        return assemble_wrapped("  ", Style::default(), segs, hang);
+    }
+
+    // Bullets (nested) and plain paragraphs.
+    let (prefix, body) = if let Some(r) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+        ("  • ", r)
+    } else if let Some(r) = trimmed.strip_prefix("  - ").or_else(|| trimmed.strip_prefix("  * ")) {
+        ("    ◦ ", r)
+    } else if let Some(r) = trimmed.strip_prefix("    - ").or_else(|| trimmed.strip_prefix("    * ")) {
+        ("      · ", r)
+    } else {
+        ("  ", trimmed)
+    };
+    let hang = prefix.chars().count();
+    let body_spans = parse_inline(body);
+    let segs = wrap_spans(&body_spans, width.saturating_sub(hang).max(1));
+    assemble_wrapped(prefix, Style::default().fg(theme::PINE()), segs, hang)
+}
+
 pub(super) fn render_md_line(raw: &str, in_code: bool) -> Line<'static> {
     let trimmed = raw.trim_end();
     if in_code {

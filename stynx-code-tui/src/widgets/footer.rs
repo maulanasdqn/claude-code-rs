@@ -11,7 +11,6 @@ use crate::widgets::spinner::FRAMES;
 
 /// Powerline separators (Nerd Font) — matches the user's tmux Rosé Pine bar.
 const SEP_RIGHT: &str = "\u{E0B0}"; //
-const SEP_LEFT: &str = "\u{E0B2}"; //
 
 pub struct Footer<'a> {
     pub cwd: &'a str,
@@ -110,21 +109,6 @@ fn build_left(segs: &[Seg], bar_bg: Color) -> Line<'static> {
     Line::from(spans)
 }
 
-/// Right-aligned bar: blocks grow leftward, each prefixed with a ``
-/// separator that fades the previous bg into this block's bg.
-fn build_right(segs: &[Seg], bar_bg: Color) -> Line<'static> {
-    let mut spans: Vec<Span<'static>> = Vec::new();
-    for (i, seg) in segs.iter().enumerate() {
-        let prev_bg = if i == 0 { bar_bg } else { segs[i - 1].bg };
-        spans.push(Span::styled(
-            SEP_LEFT,
-            Style::default().fg(seg.bg).bg(prev_bg),
-        ));
-        spans.push(Span::styled(format!(" {} ", seg.text), seg.style()));
-    }
-    Line::from(spans)
-}
-
 impl<'a> Widget for Footer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         // Match tmux `status-style 'bg=#191724 fg=#e0def4'` (base / text).
@@ -210,25 +194,14 @@ impl<'a> Widget for Footer<'a> {
         // Cost is the section_z block — iris, mirroring the path block.
         right_segs.push(Seg::new(format!("${:.4}", self.cost), base, accent).bold());
 
-        let left = build_left(&left_segs, bar_bg);
-        let right = build_right(&right_segs, bar_bg);
-        let left_width = left.width() as u16;
-        let right_width = right.width() as u16;
+        // One contiguous left-aligned powerline strip at the bottom-left: mode,
+        // path, branch, then status, model, cost — each in its own segment.
+        left_segs.extend(right_segs);
+        let bar = build_left(&left_segs, bar_bg);
+        let bar_width = bar.width() as u16;
 
-        Paragraph::new(left)
+        Paragraph::new(bar)
             .style(Style::default().bg(bar_bg))
-            .render(Rect { width: left_width.min(area.width), ..area }, buf);
-
-        if area.width > right_width {
-            let right_area = Rect {
-                x: area.x + area.width - right_width,
-                y: area.y,
-                width: right_width,
-                height: 1,
-            };
-            Paragraph::new(right)
-                .style(Style::default().bg(bar_bg))
-                .render(right_area, buf);
-        }
+            .render(Rect { width: bar_width.min(area.width), ..area }, buf);
     }
 }

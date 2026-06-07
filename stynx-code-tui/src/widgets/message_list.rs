@@ -10,7 +10,7 @@ use ratatui::layout::Alignment;
 
 use crate::state::ConversationState;
 use crate::theme;
-use super::markdown::{render_md_line, is_table_line, render_table_block};
+use super::markdown::{render_md_line_wrapped, is_table_line, render_table_block};
 
 pub struct MessageList<'a> {
     pub state: &'a mut ConversationState,
@@ -187,7 +187,7 @@ impl<'a> Widget for MessageList<'a> {
                             lines.extend(render_table_block(&content_lines[start..i], area.width as usize));
                             continue;
                         } else {
-                            lines.push(render_md_line(raw, in_code));
+                            lines.extend(render_md_line_wrapped(raw, in_code, (area.width as usize).saturating_sub(1)));
                         }
                         i += 1;
                     }
@@ -212,6 +212,20 @@ impl<'a> Widget for MessageList<'a> {
 
         let visible = area.height as usize;
         self.state.total_lines = total_rows;
+
+        // When the conversation doesn't fill the viewport, anchor it to the
+        // bottom (growing upward from the input) instead of leaving a large
+        // empty gap below the messages.
+        if total_rows < visible {
+            let pad = visible - total_rows;
+            let mut anchored: Vec<Line<'static>> = Vec::with_capacity(pad + lines.len());
+            anchored.resize(pad, Line::from(""));
+            anchored.extend(lines);
+            self.state.scroll_offset = 0;
+            Paragraph::new(anchored).wrap(Wrap { trim: false }).render(area, buf);
+            return;
+        }
+
         let max_offset = total_rows.saturating_sub(visible);
         let offset = if self.state.auto_scroll {
             self.state.scroll_offset = max_offset;
