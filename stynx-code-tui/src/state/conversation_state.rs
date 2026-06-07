@@ -30,6 +30,8 @@ pub struct DisplayToolUse {
     pub output_excerpt: Vec<String>,
     pub diff: Vec<DiffLine>,
     pub sub_progress: Vec<String>,
+    /// Raw output streamed live from a running tool (e.g. bash stdout).
+    pub live_output: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

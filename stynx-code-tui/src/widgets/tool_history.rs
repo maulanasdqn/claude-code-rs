@@ -156,7 +156,15 @@ impl<'a> Widget for ToolHistory<'a> {
                     };
                     let pretty = pretty_name(&tool.name);
                     let name_padded = format!("{:<name_w$}", pretty, name_w = name_w);
-                    let summary = truncate_path(&tool.input_summary, summary_w);
+                    // While a tool is running and producing output, stream the
+                    // latest output line in place of the static input summary.
+                    let summary = if tool.status == ToolUseStatus::Running
+                        && !tool.output_preview.trim().is_empty()
+                    {
+                        truncate_path(tool.output_preview.trim(), summary_w)
+                    } else {
+                        truncate_path(&tool.input_summary, summary_w)
+                    };
                     lines.push(Line::from(vec![
                         Span::styled(prefix, Style::default().fg(theme::IRIS()).add_modifier(Modifier::BOLD)),
                         Span::styled(format!("{dot} "), Style::default().fg(dot_col).add_modifier(Modifier::BOLD)),

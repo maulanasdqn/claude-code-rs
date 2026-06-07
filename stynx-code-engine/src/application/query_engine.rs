@@ -183,8 +183,26 @@ impl QueryEngine {
                 } else if let Some(result) = result_map.remove(&i) {
                     exec_results.push(result);
                 } else {
-
-                    let result = execute_tool(&registry, &permission, name, input, &undo).await;
+                    // Run the tool with a streaming sink scoped so incremental
+                    // output (e.g. bash stdout) flows to the UI as it arrives.
+                    let (otx, mut orx) = tokio::sync::mpsc::unbounded_channel::<String>();
+                    let exec = stynx_code_types::domain::tool_stream::TOOL_STREAM
+                        .scope(otx, execute_tool(&registry, &permission, name, input, &undo));
+                    tokio::pin!(exec);
+                    let result = loop {
+                        tokio::select! {
+                            biased;
+                            Some(chunk) = orx.recv() => {
+                                on_event(EngineEvent::ToolOutput { name: name.clone(), chunk });
+                            }
+                            r = &mut exec => {
+                                while let Ok(chunk) = orx.try_recv() {
+                                    on_event(EngineEvent::ToolOutput { name: name.clone(), chunk });
+                                }
+                                break r;
+                            }
+                        }
+                    };
                     exec_results.push(Ok(result));
                 }
             }

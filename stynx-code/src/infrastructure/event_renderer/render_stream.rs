@@ -20,6 +20,12 @@ pub fn render_stream_event(event: &EngineEvent, json_mode: bool) {
             }
         }
         EngineEvent::ToolInput { .. } => {}
+        EngineEvent::ToolOutput { chunk, .. } => {
+            if !json_mode {
+                eprint!("{DIM}{chunk}{RESET}");
+                io::stderr().flush().ok();
+            }
+        }
         EngineEvent::ToolResult { name, is_error, .. } => {
             if !json_mode {
                 let icon = if *is_error {

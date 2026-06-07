@@ -6,6 +6,8 @@ pub enum EngineEvent {
     ThinkingDelta(String),
     ToolStart { name: String, id: String },
     ToolInput { json_chunk: String },
+    /// Incremental output streamed from a running tool (e.g. bash stdout).
+    ToolOutput { name: String, chunk: String },
     ToolResult { name: String, output: String, is_error: bool },
     Usage { input_tokens: u64, output_tokens: u64 },
     TurnComplete,

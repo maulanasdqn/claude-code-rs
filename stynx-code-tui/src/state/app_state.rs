@@ -212,6 +212,7 @@ impl AppState {
                     output_excerpt: Vec::new(),
                     diff: Vec::new(),
                     sub_progress: Vec::new(),
+                    live_output: String::new(),
                 };
                 match self.conversation.messages.last_mut().filter(|m| m.role == "assistant") {
                     Some(m) => m.tool_uses.push(tool),
@@ -228,6 +229,30 @@ impl AppState {
                     {
                         t.input_json.push_str(&json_chunk);
                         t.input_summary = summarize_tool_input(&t.name, &t.input_json);
+                    }
+                }
+            }
+            EngineEvent::ToolOutput { name, chunk } => {
+                if let Some(m) = self.conversation.messages.last_mut() {
+                    if let Some(t) = m.tool_uses.iter_mut().rev()
+                        .find(|t| t.name == name && t.status == ToolUseStatus::Running)
+                    {
+                        t.live_output.push_str(&chunk);
+                        // Cap the retained buffer so a noisy command can't grow it forever.
+                        if t.live_output.len() > 64_000 {
+                            let cut = t.live_output.len() - 48_000;
+                            t.live_output = t.live_output.split_off(cut);
+                        }
+                        let clean = crate::util::strip_ansi(&t.live_output);
+                        t.output_preview = clean
+                            .lines()
+                            .rev()
+                            .find(|l| !l.trim().is_empty())
+                            .unwrap_or("")
+                            .chars()
+                            .take(80)
+                            .collect();
+                        t.output_excerpt = excerpt_lines(&clean, 6, 200);
                     }
                 }
             }
@@ -355,7 +380,20 @@ impl AppState {
                 }
             }
             EngineEvent::SubAgentDone { label } => {
+                // Surface a notify card when a delegated agent/intern finishes,
+                // carrying its last recorded action as the card body.
+                let last = self
+                    .sub_agents
+                    .iter()
+                    .find(|(l, _)| l == &label)
+                    .map(|(_, s)| s.clone())
+                    .filter(|s| !s.trim().is_empty());
                 self.sub_agents.retain(|(l, _)| l != &label);
+                let msg = match last {
+                    Some(s) => format!("{label} done\n{s}"),
+                    None => format!("{label} done"),
+                };
+                self.toasts.success(msg);
             }
             _ => {}
         }

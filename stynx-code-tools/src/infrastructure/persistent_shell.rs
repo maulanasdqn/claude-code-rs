@@ -268,6 +268,8 @@ impl PersistentShell {
 
         let mut buf = std::mem::take(&mut self.leftover);
         let deadline = timeout.map(|d| Instant::now() + d);
+        // How many bytes of real output we've already streamed to the engine.
+        let mut emitted = 0usize;
 
         loop {
             while let Ok(chunk) = self.out_rx.try_recv() {
@@ -275,6 +277,9 @@ impl PersistentShell {
             }
 
             if let Some(pos) = find_subslice(&buf, needle_bytes) {
+                if pos > emitted {
+                    stream_output(&buf[emitted..pos]);
+                }
                 let after = pos + needle_bytes.len();
                 if let Some(nl_rel) = buf[after..].iter().position(|&b| b == b'\n') {
                     let nl_abs = after + nl_rel;
@@ -291,6 +296,14 @@ impl PersistentShell {
                     }
                     return Ok(format!("{text}\n[exit {exit_code}]"));
                 }
+            }
+
+            // Stream new output as it arrives, but hold back the last few bytes
+            // in case they are the start of the end-marker (which we never emit).
+            let safe = buf.len().saturating_sub(needle_bytes.len().saturating_sub(1));
+            if safe > emitted {
+                stream_output(&buf[emitted..safe]);
+                emitted = safe;
             }
 
             if let Some(d) = deadline {
@@ -317,6 +330,15 @@ the command with background:true if it's a long-running process."
             }
         }
     }
+}
+
+/// Forward a slice of shell output to the engine's tool stream (no-op when not
+/// running under the engine).
+fn stream_output(bytes: &[u8]) {
+    if bytes.is_empty() {
+        return;
+    }
+    stynx_code_types::domain::tool_stream::emit(String::from_utf8_lossy(bytes).into_owned());
 }
 
 fn detect_interactive(command: &str) -> Option<String> {

@@ -3,6 +3,7 @@ pub mod message;
 pub mod permission;
 pub mod provider;
 pub mod tool;
+pub mod tool_stream;
 pub mod tool_ui;
 
 pub use engine_event::EngineEvent;
