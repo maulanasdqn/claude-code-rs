@@ -49,8 +49,15 @@ fn shrink_path(cwd: &str, max: usize) -> String {
 }
 
 fn pretty_model(model: &str) -> String {
-    let s = model.trim_start_matches("claude-");
-    s.split('-').collect::<Vec<_>>().join("·")
+    // Drop any provider prefix ("anthropic/…"), a leading "claude-" vendor word,
+    // and a trailing date/build segment ("-20250514") so the bar stays compact:
+    // e.g. "anthropic/claude-sonnet-4-20250514" -> "sonnet·4".
+    let s = model.rsplit('/').next().unwrap_or(model);
+    let s = s.trim_start_matches("claude-");
+    s.split('-')
+        .filter(|p| !(p.len() >= 6 && p.chars().all(|c| c.is_ascii_digit())))
+        .collect::<Vec<_>>()
+        .join("·")
 }
 
 fn fmt_elapsed_short(secs: u64) -> String {
