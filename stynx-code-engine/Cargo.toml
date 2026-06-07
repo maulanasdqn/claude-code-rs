@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-engine"
-version = "0.33.15"
+version = "0.33.16"
 edition = "2024"
 description = "Agentic query engine with tool-use loop"
 license = "MIT"

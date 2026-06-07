@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-tools"
-version = "0.33.15"
+version = "0.33.16"
 edition = "2024"
 description = "Tool implementations for bash and file operations"
 license = "MIT"
