@@ -1,0 +1,32 @@
+[package]
+name = "stynx-code-ffi"
+version = "0.33.17"
+edition = "2024"
+description = "uniffi bindings exposing the stynx engine to Swift"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/stynx-code"
+readme = "../README.md"
+
+[lib]
+name = "stynx_code_ffi"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+
+[dependencies]
+stynx-code-app = { workspace = true }
+stynx-code-engine = { workspace = true }
+stynx-code-types = { workspace = true }
+stynx-code-permission = { workspace = true }
+stynx-code-tools = { workspace = true }
+stynx-code-memory = { workspace = true }
+stynx-code-provider = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+uniffi = { version = "0.28", features = ["tokio", "cli"] }
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }

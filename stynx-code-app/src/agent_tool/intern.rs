@@ -46,7 +46,7 @@ pub struct InternTool {
     label: String,
     tool_name: String,
     description: String,
-    manager: Option<Arc<crate::infrastructure::intern_manager::InternManager>>,
+    manager: Option<Arc<crate::intern_manager::InternManager>>,
 }
 
 impl InternTool {
@@ -69,7 +69,7 @@ impl InternTool {
         }
     }
 
-    pub fn with_manager(mut self, manager: Arc<crate::infrastructure::intern_manager::InternManager>) -> Self {
+    pub fn with_manager(mut self, manager: Arc<crate::intern_manager::InternManager>) -> Self {
         self.manager = Some(manager);
         self
     }

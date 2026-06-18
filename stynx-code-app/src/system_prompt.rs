@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::prompt_sections::{
+use crate::prompt_sections::{
     EnvInfo, actions_section, caveman_section, doing_tasks_section, efficiency_section,
     engineering_section, environment_section, intro_section, system_section, tone_section,
     using_tools_section,
@@ -257,7 +257,7 @@ fn dirs_or_home() -> std::path::PathBuf {
 }
 
 pub fn build_env_info(cwd: String, model_id: String) -> EnvInfo {
-    use super::git::{git_status_snapshot, is_git_repo};
+    use crate::git::{git_status_snapshot, is_git_repo};
 
     let platform = std::env::consts::OS.to_string();
 

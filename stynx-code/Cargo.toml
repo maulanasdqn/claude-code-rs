@@ -33,6 +33,7 @@ syntect = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
 stynx-code-tui = { workspace = true }
+stynx-code-app = { workspace = true }
 clap = { workspace = true }
 dotenvy = "0.15"
 getrandom = "0.2"

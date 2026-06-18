@@ -17,6 +17,8 @@ members = [
     "stynx-code-bridge",
     "stynx-code-plugins",
     "stynx-code-tui",
+    "stynx-code-app",
+    "stynx-code-ffi",
 ]
 resolver = "3"
 
@@ -60,3 +62,4 @@ stynx-code-compact = { version = "0.33.17", path = "stynx-code-compact" }
 stynx-code-bridge = { version = "0.33.17", path = "stynx-code-bridge" }
 stynx-code-plugins = { version = "0.33.17", path = "stynx-code-plugins" }
 stynx-code-tui = { version = "0.33.17", path = "stynx-code-tui" }
+stynx-code-app = { version = "0.33.17", path = "stynx-code-app" }
