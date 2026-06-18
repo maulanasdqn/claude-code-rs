@@ -1,0 +1,41 @@
+name: Stynx
+options:
+  bundleIdPrefix: dev.stynx
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+targets:
+  Stynx:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Generated/stynx_code_ffi.swift
+        group: Generated
+    dependencies:
+      - framework: Frameworks/StynxCoreFFI.xcframework
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.stynx.desktop
+        PRODUCT_NAME: Stynx
+        MARKETING_VERSION: "0.33.17"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_DEBUG_DYLIB: NO
+        SWIFT_VERSION: "5.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHumanReadableCopyright: "MIT"
+        OTHER_LDFLAGS:
+          - "-framework"
+          - "SystemConfiguration"
+          - "-framework"
+          - "Security"
+          - "-framework"
+          - "CoreFoundation"
+          - "-liconv"
+          - "-lresolv"
