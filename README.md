@@ -23,14 +23,36 @@ The engine runs concurrent-safe tools in parallel via `tokio::spawn`, sequential
 
 Highlights:
 
-- **Modern terminal UI** — sidebar, command palette, model picker, session list, runtime theme switcher (rose-pine, catppuccin, tokyo-night, gruvbox), mouse + bracketed paste, `@`-file mentions, multi-line input, slash-command popover with descriptions, toast notifications, colorized diff renderer for file edits.
-- **Intern mode** — Claude as the senior, one or more cheaper OpenAI-compat models (DeepSeek, OpenRouter, OpenAI, custom) as interns. Each intern shows up as its own `delegate_to_<name>` tool the senior can pick from, or call directly via `/intern <name> <task>`.
+- **Modern terminal UI** — sidebar split into a live tool-stream pane (top) and a model/session-info pane (bottom), command palette, model picker, session list, runtime theme switcher (rose-pine, catppuccin, tokyo-night, gruvbox), mouse + bracketed paste, `@`-file mentions, multi-line input, slash-command popover with descriptions, toast notifications, colorized diff renderer for file edits, live tool output streaming in the sidebar.
+- **Intern mode** — Claude as the senior, one or more cheaper OpenAI-compat models (DeepSeek, OpenRouter, OpenAI, custom) as interns. Each intern shows up as its own `delegate_to_<name>` tool the senior can pick from, or call directly via `/intern <name> <task>`. Supports background mode (`background: true`) for long-running tasks, with `intern_status` / `intern_wait` / `intern_kill` for monitoring and control.
 - **Permission-first** — Normal / Auto-accept / Plan / Bypass modes, per-tool allow rules, in-TUI confirmation modal (no terminal mode-switching).
 - **Skills as slash commands** — drop a markdown file under `.claude/skills/` and it appears as `/your-skill`.
-- **Sessions** — automatic per-project persistence at `~/.stynx-code/projects/<slug>/session.json`.
+- **Sessions** — automatic per-project persistence at `~/.stynx/projects/<slug>/session.json`.
 - **Hooks** — `session-start`, `pre-tool-use`, `post-tool-use`, `stop` shell hooks for integrations.
 
 > **On `.claude/` vs `.stynx/` directories:** stynx-code reuses `.claude/` paths (`.claude/skills/`, `.claude/.credentials.json`) for Claude Code compatibility — you can run both tools side by side without conflict. stynx-specific data (settings, logs, sessions, benchmark results) lives under `.stynx/`.
+
+## Desktop (macOS)
+
+Native SwiftUI app powered by the same Rust engine as the TUI. The core is compiled into a static library and called in-process via [uniffi](https://github.com/mozilla/uniffi-rs) — one process, no sidecar.
+
+```
+SwiftUI app ──uniffi──▶ libstynx_code_ffi.a  (stynx-code-ffi → stynx-code-app → engine)
+```
+
+**Build:**
+
+```bash
+# 1. Build the Rust static lib + generate Swift bindings (run inside nix devshell)
+./desktop/scripts/build-rust.sh
+
+# 2. Build the SwiftUI app
+./desktop/scripts/build-app.sh
+```
+
+App lands at `desktop/build/Build/Products/Debug/Stynx.app`. Distributed as a notarized DMG (Hardened Runtime, sandbox off) — not via the Mac App Store, since full bash/filesystem tool access is incompatible with the sandbox.
+
+Requires macOS 14.0+. Same credential resolution as the TUI (`ANTHROPIC_API_KEY`, Claude OAuth, or any intern provider key).
 
 ## Install
 
@@ -62,6 +84,9 @@ echo "explain this file" | stynx
 
 # JSON output for scripting
 stynx --json -p "list files modified in the last commit"
+
+# pick a specific provider at launch (overrides main_provider in settings)
+stynx --provider deepseek
 ```
 
 ## Configuration
@@ -186,6 +211,7 @@ At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line p
 ```json
 {
   "model": "claude-sonnet-4-6",
+  "main_provider": "claude",
   "max_turns": 200,
   "max_tokens": 8192,
   "effort": "medium",
@@ -206,6 +232,8 @@ At launch you'll see one `· intern ready: <name> (<provider> / <model>)` line p
 ```
 
 `commit_attribution: false` (the default) tells the assistant to omit AI/assistant attribution from commits — no `Co-Authored-By:` trailers, no `🤖 Generated with …`. Set it to `true` if you want attribution back.
+
+`main_provider` selects which provider powers the senior agent. At startup, if multiple providers are available and none is set, you're prompted to pick one. You can also pass `--provider <name>` on the CLI to override.
 
 Run `/config` inside the session to see the merged view.
 
@@ -303,6 +331,25 @@ Direct invocation:
 ```
 
 When multiple interns are configured, the senior picks based on each tool's `description` — so write descriptions that say what each intern is good at (speed, cost, specialty). The intern's transcript is shown as a system message in the conversation, including any tool calls it made.
+
+### Background mode
+
+For long-running or uncertain tasks, the senior can delegate in the background:
+
+```jsonc
+// delegate without blocking — returns a handle immediately
+{"task": "refactor every println! to tracing", "background": true}
+// → {"handle": "intern-1", "intern": "qwen-coder", "status": "spawned"}
+
+// check progress (non-blocking)
+{"handle": "intern-1"}                 // intern_status
+
+// block until done (or timeout)
+{"handle": "intern-1", "max_wait_secs": 120}  // intern_wait
+
+// abort a runaway intern
+{"handle": "intern-1"}                 // intern_kill
+```
 
 ### Benchmarking interns
 
@@ -406,7 +453,7 @@ Every file write/edit is tracked on an undo stack. Use `/undo [n]` to restore th
 
 ## Architecture
 
-The project is a 17-crate Rust workspace. Most crates follow Clean Architecture with `domain/`, `application/`, and `infrastructure/` layers where it adds value.
+The project is a 19-crate Rust workspace. Most crates follow Clean Architecture with `domain/`, `application/`, and `infrastructure/` layers where it adds value.
 
 - `stynx-code-errors`: Common application error types and results.
 - `stynx-code-types`: Core traits and structs for tools, providers, messages, and permissions.
@@ -425,6 +472,8 @@ The project is a 17-crate Rust workspace. Most crates follow Clean Architecture 
 - `stynx-code-bridge`: External integration bridge (stdio, WebSocket, JWT).
 - `stynx-code-plugins`: Plugin lifecycle — subprocess plugins, builtins, config.
 - `stynx-code-tui`: `ratatui` terminal UI — state management, rendering, themes, widgets.
+- `stynx-code-app`: Application orchestration — agent tool registration, intern delegation (including background mode), system prompt assembly, main provider picker.
+- `stynx-code-ffi`: Foreign-function interface for embedding stynx-code in other runtimes.
 
 ## License
 
