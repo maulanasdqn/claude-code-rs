@@ -32,7 +32,7 @@ impl Tool for AskUserTool {
     }
 
     fn description(&self) -> &str {
-        "Ask the user a question and wait for their response. Use this when you need clarification or input from the user."
+        "Ask the user for input. For open-ended input use `question`. When you want the user to pick from choices, use `questions` (multiple-choice) — prefer this whenever you are offering options."
     }
 
     fn input_schema(&self) -> Value {
@@ -41,10 +41,33 @@ impl Tool for AskUserTool {
             "properties": {
                 "question": {
                     "type": "string",
-                    "description": "The question to ask the user"
+                    "description": "A single open-ended question (free-text answer)."
+                },
+                "questions": {
+                    "type": "array",
+                    "description": "One or more multiple-choice questions. Prefer this over `question` when offering choices.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "question": { "type": "string", "description": "The full question text." },
+                            "header": { "type": "string", "description": "Very short label (<=12 chars), e.g. 'Images'." },
+                            "multiSelect": { "type": "boolean", "description": "Allow selecting multiple options." },
+                            "options": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "label": { "type": "string" },
+                                        "description": { "type": "string" }
+                                    },
+                                    "required": ["label"]
+                                }
+                            }
+                        },
+                        "required": ["question", "header", "options"]
+                    }
                 }
-            },
-            "required": ["question"]
+            }
         })
     }
 
@@ -56,11 +79,16 @@ impl Tool for AskUserTool {
     fn requires_user_interaction(&self) -> bool { true }
 
     async fn execute(&self, input: Value) -> AppResult<String> {
-        let question = input
-            .get("question")
-            .and_then(|q| q.as_str())
-            .ok_or_else(|| AppError::Tool("missing 'question' field".into()))?
-            .to_string();
+        let question = if let Some(questions) = input.get("questions").filter(|q| q.is_array()) {
+            let envelope = json!({ "questions": questions });
+            format!("@@QA@@{}", serde_json::to_string(&envelope).unwrap_or_default())
+        } else {
+            input
+                .get("question")
+                .and_then(|q| q.as_str())
+                .ok_or_else(|| AppError::Tool("missing 'question' or 'questions' field".into()))?
+                .to_string()
+        };
 
         if let Some(bridge) = self.bridge.get() {
             return match bridge.ask(question).await {
