@@ -23,6 +23,10 @@ enum ImagePasteboard {
         return objects.compactMap { $0.pngData() }
     }
 
+    static func string() -> String? {
+        NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     static func png(from provider: NSItemProvider, completion: @escaping (Data) -> Void) {
         _ = provider.loadObject(ofClass: NSImage.self) { object, _ in
             guard let image = object as? NSImage, let png = image.pngData() else { return }

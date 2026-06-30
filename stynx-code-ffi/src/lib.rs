@@ -41,6 +41,7 @@ pub enum FfiEvent {
     Error { message: String },
     PermissionRequest { id: u64, tool_name: String, description: String },
     AskUserRequest { id: u64, question: String },
+    WorkspaceMessageRequest { id: u64, target: String, task: String },
     Idle,
 }
 
@@ -125,6 +126,7 @@ fn current_interns() -> Vec<FfiInternInfo> {
 type SharedListener = Arc<StdMutex<Option<Arc<dyn EventListener>>>>;
 type PromptResponders = Arc<StdMutex<HashMap<u64, oneshot::Sender<PromptChoice>>>>;
 type QuestionResponders = Arc<StdMutex<HashMap<u64, oneshot::Sender<Option<String>>>>>;
+type WorkspaceResponders = Arc<StdMutex<HashMap<u64, oneshot::Sender<String>>>>;
 
 #[derive(uniffi::Object)]
 pub struct StynxSession {
@@ -141,6 +143,7 @@ pub struct StynxSession {
     listener: SharedListener,
     prompt_responders: PromptResponders,
     question_responders: QuestionResponders,
+    workspace_responders: WorkspaceResponders,
     current_task: Arc<StdMutex<Option<tokio::task::AbortHandle>>>,
 }
 
@@ -184,6 +187,13 @@ impl StynxSession {
             "claude-opus-4-8".to_string(),
             "claude-sonnet-4-6".to_string(),
             "claude-haiku-4-5-20251001".to_string(),
+        ]
+    }
+
+    pub fn deepseek_models(&self) -> Vec<String> {
+        vec![
+            "deepseek-v4-pro".to_string(),
+            "deepseek-v4-flash".to_string(),
         ]
     }
 
@@ -232,7 +242,8 @@ impl StynxSession {
     }
 
     pub fn send_message(&self, text: String, listener: Box<dyn EventListener>) {
-        self.dispatch(Message::user(text), listener);
+        let content = stynx_code_commands::expand_message_content(&text);
+        self.dispatch(Message { role: Role::User, content }, listener);
     }
 
     pub fn send_message_with_images(
@@ -246,7 +257,7 @@ impl StynxSession {
             .map(|image| ContentBlock::Image { media_type: image.media_type, data: image.data })
             .collect();
         if !text.trim().is_empty() {
-            content.push(ContentBlock::Text { text });
+            content.extend(stynx_code_commands::expand_message_content(&text));
         }
         self.dispatch(Message { role: Role::User, content }, listener);
     }
@@ -314,6 +325,12 @@ impl StynxSession {
             let _ = responder.send(answer);
         }
     }
+
+    pub fn respond_workspace_message(&self, id: u64, reply: String) {
+        if let Some(responder) = self.workspace_responders.lock().unwrap().remove(&id) {
+            let _ = responder.send(reply);
+        }
+    }
 }
 
 impl StynxSession {
@@ -334,6 +351,7 @@ impl StynxSession {
         let listener: SharedListener = Arc::new(StdMutex::new(None));
         let prompt_responders: PromptResponders = Arc::new(StdMutex::new(HashMap::new()));
         let question_responders: QuestionResponders = Arc::new(StdMutex::new(HashMap::new()));
+        let workspace_responders: WorkspaceResponders = Arc::new(StdMutex::new(HashMap::new()));
         let next_id = Arc::new(AtomicU64::new(1));
 
         let (prompt_bridge, prompt_rx) = PromptBridge::new();
@@ -353,6 +371,16 @@ impl StynxSession {
             question_rx,
             listener.clone(),
             question_responders.clone(),
+            next_id.clone(),
+        );
+
+        let (workspace_bridge, workspace_rx) = stynx_code_app::WorkspaceBridge::new();
+        handles.workspace_bridge.set(workspace_bridge);
+        spawn_workspace_drain(
+            &runtime,
+            workspace_rx,
+            listener.clone(),
+            workspace_responders.clone(),
             next_id,
         );
 
@@ -381,6 +409,7 @@ impl StynxSession {
             listener,
             prompt_responders,
             question_responders,
+            workspace_responders,
             current_task: Arc::new(StdMutex::new(None)),
         }))
     }
@@ -429,6 +458,28 @@ impl StynxSession {
 
         *self.current_task.lock().unwrap() = Some(handle.abort_handle());
     }
+}
+
+fn spawn_workspace_drain(
+    runtime: &Runtime,
+    mut receiver: tokio::sync::mpsc::UnboundedReceiver<stynx_code_app::workspace_bridge::WorkspaceRequest>,
+    listener: SharedListener,
+    responders: WorkspaceResponders,
+    next_id: Arc<AtomicU64>,
+) {
+    runtime.spawn(async move {
+        while let Some(request) = receiver.recv().await {
+            let stynx_code_app::workspace_bridge::WorkspaceRequest { target, task, responder } = request;
+            let id = next_id.fetch_add(1, Ordering::Relaxed);
+            responders.lock().unwrap().insert(id, responder);
+            let delivered = emit(&listener, FfiEvent::WorkspaceMessageRequest { id, target, task });
+            if !delivered
+                && let Some(responder) = responders.lock().unwrap().remove(&id)
+            {
+                let _ = responder.send("(no UI connected to route the message)".to_string());
+            }
+        }
+    });
 }
 
 fn message_to_turn(message: &Message) -> Option<FfiTurn> {

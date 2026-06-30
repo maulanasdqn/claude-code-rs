@@ -50,6 +50,7 @@ pub struct AppHandles {
     pub system_prompt: String,
     pub model_id: String,
     pub provider_label: String,
+    pub workspace_bridge: crate::workspace_bridge::SharedWorkspaceBridge,
     pub config: Settings,
 }
 
@@ -83,6 +84,12 @@ pub async fn build_app(options: AppOptions) -> Result<AppHandles, String> {
     ));
 
     register_agents_and_interns(&mut registry, &provider, &permission, &mode_flag, &config);
+
+    let workspace_bridge: crate::workspace_bridge::SharedWorkspaceBridge =
+        std::sync::Arc::new(crate::workspace_bridge::OptionalWorkspaceBridge::new());
+    registry.register(std::sync::Arc::new(crate::workspace_bridge::MessageWorkspaceTool::new(
+        workspace_bridge.clone(),
+    )));
 
     let tool_names = registry.tool_names();
     let registry = Arc::new(registry);
@@ -123,6 +130,7 @@ pub async fn build_app(options: AppOptions) -> Result<AppHandles, String> {
         system_prompt,
         model_id,
         provider_label,
+        workspace_bridge,
         config,
     })
 }

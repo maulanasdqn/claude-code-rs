@@ -1,5 +1,60 @@
 import SwiftUI
 
+struct SelectableDiffLineRow: View {
+    let line: DiffLine
+    let ext: String
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 10))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.4))
+                    .frame(width: 14)
+                Text(sign)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(signColor)
+                    .frame(width: 12, alignment: .center)
+                Text(highlight(line.text, ext: ext))
+                    .font(.system(.callout, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 1)
+            .background(rowBackground)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var sign: String {
+        switch line.kind {
+        case .added:   return "+"
+        case .removed: return "-"
+        case .context: return ""
+        }
+    }
+
+    private var signColor: Color {
+        switch line.kind {
+        case .added:   return .green
+        case .removed: return .red
+        case .context: return .clear
+        }
+    }
+
+    private var rowBackground: Color {
+        if isSelected { return Color.accentColor.opacity(0.18) }
+        switch line.kind {
+        case .added:   return Color.green.opacity(0.12)
+        case .removed: return Color.red.opacity(0.12)
+        case .context: return .clear
+        }
+    }
+}
+
 struct DiffLineRow: View {
     let line: DiffLine
     let ext: String

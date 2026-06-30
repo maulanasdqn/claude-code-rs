@@ -199,7 +199,7 @@ fn legacy_deepseek_intern() -> Option<ResolvedIntern> {
     let model = std::env::var("INTERN_MODEL")
         .or_else(|_| std::env::var("DEEPSEEK_MODEL"))
         .ok().filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| "deepseek-chat".to_string());
+        .unwrap_or_else(|| "deepseek-v4-pro".to_string());
     Some(ResolvedIntern {
         name: "deepseek".to_string(),
         provider_label: "deepseek".to_string(),

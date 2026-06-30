@@ -5,12 +5,14 @@ enum FeedRole {
     case assistant
     case thinking
     case tool
+    case compact
 }
 
 struct ToolItem {
     var toolId: String
     var name: String
     var title: String = ""
+    var subtitle: String?
     var detail: String = ""
     var stat: String?
     var badge: String?
@@ -31,6 +33,7 @@ struct FeedItem: Identifiable {
     static func assistant(_ text: String) -> FeedItem { FeedItem(role: .assistant, text: text) }
     static func thinking(_ text: String) -> FeedItem { FeedItem(role: .thinking, text: text) }
     static func tool(_ tool: ToolItem) -> FeedItem { FeedItem(role: .tool, tool: tool) }
+    static func compact(originalTurns: Int) -> FeedItem { FeedItem(role: .compact, text: "\(originalTurns)") }
 }
 
 func toolBadge(for name: String) -> (symbol: String, accent: Bool) {

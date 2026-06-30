@@ -44,13 +44,13 @@ SwiftUI app ──uniffi──▶ libstynx_code_ffi.a  (stynx-code-ffi → stynx
 
 ```bash
 # 1. Build the Rust static lib + generate Swift bindings (run inside nix devshell)
-./desktop/scripts/build-rust.sh
+./stynx-desktop/scripts/build-rust.sh
 
 # 2. Build the SwiftUI app
-./desktop/scripts/build-app.sh
+./stynx-desktop/scripts/build-app.sh
 ```
 
-App lands at `desktop/build/Build/Products/Debug/Stynx.app`. Distributed as a notarized DMG (Hardened Runtime, sandbox off) — not via the Mac App Store, since full bash/filesystem tool access is incompatible with the sandbox.
+App lands at `stynx-desktop/build/Build/Products/Debug/Stynx.app`. Distributed as a notarized DMG (Hardened Runtime, sandbox off) — not via the Mac App Store, since full bash/filesystem tool access is incompatible with the sandbox.
 
 Requires macOS 14.0+. Same credential resolution as the TUI (`ANTHROPIC_API_KEY`, Claude OAuth, or any intern provider key).
 

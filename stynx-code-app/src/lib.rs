@@ -8,6 +8,7 @@ pub mod keys;
 pub mod prompt_sections;
 pub mod provider;
 pub mod system_prompt;
+pub mod workspace_bridge;
 
 pub use build::{AppHandles, AppOptions, build_app};
 pub use git::{git_branch, git_status_snapshot, is_git_repo};
@@ -18,3 +19,4 @@ pub use provider::{
     resolve_provider,
 };
 pub use system_prompt::{build_env_info, make_system_prompt};
+pub use workspace_bridge::{MessageWorkspaceTool, SharedWorkspaceBridge, WorkspaceBridge};

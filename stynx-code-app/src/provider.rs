@@ -208,7 +208,7 @@ fn build_openai_provider(cfg: &InternConfig) -> Result<Arc<dyn Provider>, String
 
 fn legacy_env_interns() -> Vec<InternConfig> {
     [
-        ("deepseek", "deepseek-chat"),
+        ("deepseek", "deepseek-v4-pro"),
         ("qwen", "qwen-plus"),
         ("mimo", "mimo-v2.5-pro"),
         ("openrouter", "openrouter/auto"),

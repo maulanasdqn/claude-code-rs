@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 struct PermissionPrompt: Identifiable {
     let id: UInt64
@@ -10,6 +11,18 @@ struct UserQuestion: Identifiable {
     let id: UInt64
     let question: String
     var qa: [QAQuestion]?
+}
+
+struct QueuedMessage: Identifiable {
+    let id: UUID
+    let text: String
+    let images: [PastedImage]
+
+    init(text: String, images: [PastedImage]) {
+        self.id = UUID()
+        self.text = text
+        self.images = images
+    }
 }
 
 @MainActor
@@ -29,9 +42,20 @@ final class SessionViewModel: ObservableObject {
     @Published var interns: [FfiInternInfo] = []
     @Published var projectName: String = ""
     @Published var projectPath: String = ""
+
+    @Published var handlingExternal = false
+    @Published var messageQueue: [QueuedMessage] = []
+
+    var onWorkspaceMessage: ((_ target: String, _ task: String, _ id: UInt64) -> Void)?
+    private var externalCompletion: ((String) -> Void)?
+
+    init(path: String) {
+        boot(path: path)
+    }
     @Published var thinkingEnabled = true
     @Published var claudeAvailable = false
     @Published var claudeModels: [String] = []
+    @Published var deepseekModels: [String] = []
     @Published var currentProvider = ""
     @Published var mainProviders: [String] = []
     @Published var fileTreeReloadToken = UUID()
@@ -46,6 +70,52 @@ final class SessionViewModel: ObservableObject {
     private var toolInputBuffers: [String: String] = [:]
     private var promptHistory: [String] = []
     private var historyCursor: Int?
+    private var fileIndex: [String] = []
+
+    func currentMention(in text: String) -> String? {
+        guard let atRange = text.range(of: "@", options: .backwards) else { return nil }
+        let after = text[atRange.upperBound...]
+        if after.contains(" ") || after.contains("\n") { return nil }
+        if atRange.lowerBound != text.startIndex {
+            let before = text[text.index(before: atRange.lowerBound)]
+            if !before.isWhitespace { return nil }
+        }
+        return String(after)
+    }
+
+    func mentionSuggestions(_ query: String) -> [String] {
+        let matches = query.isEmpty
+            ? fileIndex
+            : fileIndex.filter { $0.localizedCaseInsensitiveContains(query) }
+        return Array(matches.prefix(8))
+    }
+
+    func applyMention(_ path: String) {
+        guard let atRange = input.range(of: "@", options: .backwards) else { return }
+        input = String(input[..<atRange.lowerBound]) + "@\(path) "
+    }
+
+    private func buildFileIndex() {
+        fileIndex = []
+        guard !projectPath.isEmpty else { return }
+        let base = URL(fileURLWithPath: projectPath)
+        let ignored = ["/node_modules/", "/target/", "/.git/", "/build/", "/DerivedData/", "/dist/", "/.next/"]
+        guard let walker = FileManager.default.enumerator(
+            at: base,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else { return }
+
+        var out: [String] = []
+        for case let url as URL in walker {
+            if out.count >= 3000 { break }
+            let path = url.path
+            if ignored.contains(where: { path.contains($0) }) { continue }
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+            out.append(path.replacingOccurrences(of: base.path + "/", with: ""))
+        }
+        fileIndex = out
+    }
 
     func historyUp() -> Bool {
         guard !promptHistory.isEmpty else { return false }
@@ -70,31 +140,6 @@ final class SessionViewModel: ObservableObject {
             input = promptHistory[next]
         }
         return true
-    }
-
-    private let lastProjectKey = "stynx.lastProjectPath"
-
-    func start() {
-        guard session == nil else { return }
-        let saved = UserDefaults.standard.string(forKey: lastProjectKey)
-        let cwd = FileManager.default.currentDirectoryPath
-        let path: String
-        if let saved, FileManager.default.fileExists(atPath: saved) {
-            path = saved
-            FileManager.default.changeCurrentDirectoryPath(saved)
-        } else {
-            path = cwd
-        }
-        boot(path: path)
-    }
-
-    func openProject(path: String) {
-        guard !isStreaming else { return }
-        FileManager.default.changeCurrentDirectoryPath(path)
-        UserDefaults.standard.set(path, forKey: lastProjectKey)
-        session = nil
-        resetTransient()
-        boot(path: path)
     }
 
     func switchProvider(_ label: String) {
@@ -122,12 +167,15 @@ final class SessionViewModel: ObservableObject {
             self.interns = session.listInterns()
             self.claudeAvailable = session.claudeAvailable()
             self.claudeModels = session.claudeModels()
+            self.deepseekModels = session.deepseekModels()
             self.currentProvider = session.currentProvider()
             self.mainProviders = session.mainProviders()
             self.projectPath = path
             self.projectName = (path as NSString).lastPathComponent
             self.thinkingEnabled = session.thinkingEnabled()
             self.status = "Ready"
+            buildFileIndex()
+            loadReferences()
             refreshSessions()
         } catch {
             self.status = "Init failed"
@@ -206,28 +254,135 @@ final class SessionViewModel: ObservableObject {
         let doc = ReferenceExtractor.load(url)
         referenceDocs.append(doc)
         referencesDirty = true
+        saveReferences()
     }
 
     func removeReference(_ id: UUID) {
         referenceDocs.removeAll { $0.id == id }
         referencesDirty = true
+        saveReferences()
+    }
+
+    func addReferenceFromURL(_ link: String, persist: Bool = true) {
+        guard let url = URL(string: link), url.scheme?.hasPrefix("http") == true else { return }
+        let name = url.lastPathComponent.isEmpty ? (url.host ?? link) : url.lastPathComponent
+        status = "Fetching \(name)…"
+        Task { [weak self] in
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                let mime = response.mimeType ?? ""
+                await MainActor.run {
+                    guard let self else { return }
+                    if mime.hasPrefix("image/"), let image = NSImage(data: data), let png = image.pngData() {
+                        self.addImage(png)
+                    } else {
+                        let raw = String(data: data, encoding: .utf8) ?? ""
+                        let text = mime.contains("html") ? stripHTML(raw) : raw
+                        let doc = ReferenceDoc(name: name, path: link, text: String(text.prefix(60_000)))
+                        self.referenceDocs.append(doc)
+                        self.referencesDirty = true
+                        if persist { self.saveReferences() }
+                    }
+                    if self.status.hasPrefix("Fetching") { self.status = "Ready" }
+                }
+            } catch {
+                await MainActor.run { self?.status = "Fetch failed" }
+            }
+        }
+    }
+
+    private func saveReferences() {
+        guard !projectPath.isEmpty else { return }
+        ReferenceStore.save(project: projectPath, paths: referenceDocs.map(\.path))
+    }
+
+    private func loadReferences() {
+        guard !projectPath.isEmpty else { return }
+        let paths = ReferenceStore.load(project: projectPath)
+        referenceDocs = paths
+            .filter { !$0.hasPrefix("http") && FileManager.default.fileExists(atPath: $0) }
+            .map { ReferenceExtractor.load(URL(fileURLWithPath: $0)) }
+        referencesDirty = !referenceDocs.isEmpty
+        for link in paths where link.hasPrefix("http") {
+            addReferenceFromURL(link, persist: false)
+        }
     }
 
     func removeImage(_ id: UUID) {
         pendingImages.removeAll { $0.id == id }
     }
 
+    func respondWorkspaceMessage(id: UInt64, reply: String) {
+        session?.respondWorkspaceMessage(id: id, reply: reply)
+    }
+
+    func runExternalTask(_ task: String, completion: @escaping (String) -> Void) {
+        guard let session, !isStreaming else {
+            completion("(workspace '\(projectName)' is busy)")
+            return
+        }
+        externalCompletion = completion
+        handlingExternal = true
+        var incoming = FeedItem(role: .tool, tool: ToolItem(
+            toolId: "incoming-\(UUID().uuidString)",
+            name: "incoming_workspace",
+            title: task,
+            running: false
+        ))
+        incoming.tool?.subtitle = task
+        feed.append(incoming)
+        currentStreamKind = nil
+        isStreaming = true
+        status = "Thinking…"
+        let bridge = EventBridge { [weak self] event in
+            Task { @MainActor in self?.handle(event) }
+        }
+        session.sendMessage(text: task, listener: bridge)
+    }
+
     func send() {
         guard let session else { return }
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let images = pendingImages
-        guard (!trimmed.isEmpty || !images.isEmpty), !isStreaming else { return }
+        guard !trimmed.isEmpty || !images.isEmpty else { return }
 
         input = ""
         pendingImages = []
-        if promptHistory.last != trimmed { promptHistory.append(trimmed) }
+
+        if isStreaming {
+            messageQueue.append(QueuedMessage(text: trimmed, images: images))
+            return
+        }
+
+        dispatchMessage(text: trimmed, images: images)
+    }
+
+    func appendDiffQuote(filePath: String, lines: [DiffLine]) {
+        let name = (filePath as NSString).lastPathComponent
+        let body = lines.map { line in
+            switch line.kind {
+            case .added:   return "+\(line.text)"
+            case .removed: return "-\(line.text)"
+            case .context: return " \(line.text)"
+            }
+        }.joined(separator: "\n")
+        let block = "[diff: \(name)]\n```diff\n\(body)\n```\n"
+        if input.isEmpty {
+            input = block
+        } else {
+            input += "\n\(block)"
+        }
+    }
+
+    func dequeueMessage(_ id: UUID) {
+        messageQueue.removeAll { $0.id == id }
+    }
+
+    private func dispatchMessage(text: String, images: [PastedImage]) {
+        guard let session else { return }
+        if promptHistory.last != text { promptHistory.append(text) }
         historyCursor = nil
-        var userItem = FeedItem.user(trimmed)
+        var userItem = FeedItem.user(text)
         userItem.images = images.map(\.data)
         userItem.referenceCount = (referencesDirty && !referenceDocs.isEmpty) ? referenceDocs.count : 0
         feed.append(userItem)
@@ -238,7 +393,7 @@ final class SessionViewModel: ObservableObject {
         let bridge = EventBridge { [weak self] event in
             Task { @MainActor in self?.handle(event) }
         }
-        let payload = messagePayload(trimmed)
+        let payload = messagePayload(text)
         if images.isEmpty {
             session.sendMessage(text: payload, listener: bridge)
         } else {
@@ -320,15 +475,30 @@ final class SessionViewModel: ObservableObject {
             permissionPrompt = PermissionPrompt(id: id, toolName: toolName, description: description)
         case .askUserRequest(let id, let question):
             userQuestion = UserQuestion(id: id, question: question, qa: parseQA(question))
+        case .workspaceMessageRequest(let id, let target, let task):
+            onWorkspaceMessage?(target, task, id)
         case .error(let message):
             currentStreamKind = nil
             feed.append(.assistant("⚠️ \(message)"))
+        case .compacted(let originalTurns):
+            currentStreamKind = nil
+            feed.append(.compact(originalTurns: Int(originalTurns)))
         case .idle:
             isStreaming = false
             currentStreamKind = nil
             if status == "Thinking…" { status = "Ready" }
             fileTreeReloadToken = UUID()
             refreshSessions()
+            if let completion = externalCompletion {
+                externalCompletion = nil
+                handlingExternal = false
+                let reply = feed.last(where: { $0.role == .assistant })?.text ?? "(no reply)"
+                completion(reply)
+            }
+            if !messageQueue.isEmpty {
+                let next = messageQueue.removeFirst()
+                dispatchMessage(text: next.text, images: next.images)
+            }
         default:
             break
         }
@@ -349,6 +519,15 @@ final class SessionViewModel: ObservableObject {
         toolInputBuffers[currentToolId] = buffer
         guard let index = feed.lastIndex(where: { $0.tool?.toolId == currentToolId }) else { return }
         let name = feed[index].tool?.name ?? ""
+        if name == "message_workspace" {
+            if let target = toolInputField(buffer, keys: ["target"]) {
+                feed[index].tool?.title = target
+            }
+            if let task = toolInputField(buffer, keys: ["task"]) {
+                feed[index].tool?.subtitle = task
+            }
+            return
+        }
         if let title = title(for: name, input: buffer) {
             feed[index].tool?.title = title
         }

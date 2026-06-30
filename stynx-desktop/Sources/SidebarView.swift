@@ -8,15 +8,27 @@ struct KeyEntry: Identifiable {
 }
 
 struct SidebarView: View {
+    @ObservedObject var app: AppModel
     @ObservedObject var model: SessionViewModel
     @State private var keyEntry: KeyEntry?
     @State private var keyDraft = ""
 
     var body: some View {
         List {
-            Section("Project") {
-                LabeledContent("Folder", value: model.projectName.isEmpty ? "—" : model.projectName)
-                    .help(model.projectPath)
+            Section("Workspace") {
+                ForEach(app.recentProjects, id: \.self) { path in
+                    WorkspaceRow(
+                        path: path,
+                        isCurrent: path == model.projectPath,
+                        isRunning: app.isOpen(path),
+                        onOpen: { app.switchTo(path) }
+                    )
+                }
+
+                Button(action: openProjectPanel) {
+                    Label("Add workspace", systemImage: "plus.rectangle.on.folder")
+                }
+                .buttonStyle(.plain)
             }
 
             Section {
@@ -57,6 +69,13 @@ struct SidebarView: View {
                 if model.currentProvider == "claude" {
                     Picker("Claude model", selection: modelBinding) {
                         ForEach(model.claudeModels, id: \.self) { id in
+                            Text(id).tag(id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } else if model.currentProvider == "deepseek" {
+                    Picker("DeepSeek model", selection: modelBinding) {
+                        ForEach(model.deepseekModels, id: \.self) { id in
                             Text(id).tag(id)
                         }
                     }
@@ -141,6 +160,17 @@ struct SidebarView: View {
         Binding(get: { model.modelId }, set: { model.setModel($0) })
     }
 
+    private func openProjectPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Open"
+        panel.message = "Choose a project folder"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        app.switchTo(url.path)
+    }
+
     private func addReference() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -170,6 +200,36 @@ private struct ModelEditor: View {
         .onAppear { draft = model.modelId }
         .onChange(of: model.modelId) { draft = model.modelId }
         .onChange(of: model.currentProvider) { draft = model.modelId }
+    }
+}
+
+private struct WorkspaceRow: View {
+    let path: String
+    let isCurrent: Bool
+    let isRunning: Bool
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 8) {
+                Image(systemName: isCurrent ? "folder.fill" : "folder")
+                    .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                    .font(.caption)
+                Text((path as NSString).lastPathComponent)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .fontWeight(isCurrent ? .semibold : .regular)
+                Spacer(minLength: 0)
+                if isCurrent {
+                    Circle().fill(Color.accentColor).frame(width: 7, height: 7)
+                } else if isRunning {
+                    Circle().fill(.green).frame(width: 6, height: 6)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(isRunning ? "\(path) · running" : path)
     }
 }
 

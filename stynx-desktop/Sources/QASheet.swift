@@ -49,7 +49,13 @@ struct QASheet: View {
             }
             .padding(14)
         }
-        .frame(width: 540)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.05))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var allAnswered: Bool {

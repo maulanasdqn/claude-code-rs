@@ -2414,6 +2414,7 @@ name = "stynx-code-ffi"
 version = "0.33.17"
 dependencies = [
  "stynx-code-app",
+ "stynx-code-commands",
  "stynx-code-engine",
  "stynx-code-memory",
  "stynx-code-permission",
