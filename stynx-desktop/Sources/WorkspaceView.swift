@@ -61,8 +61,8 @@ struct WorkspaceView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 10)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
     }

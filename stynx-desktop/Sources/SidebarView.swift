@@ -21,7 +21,8 @@ struct SidebarView: View {
                         path: path,
                         isCurrent: path == model.projectPath,
                         isRunning: app.isOpen(path),
-                        onOpen: { app.switchTo(path) }
+                        onOpen: { app.switchTo(path) },
+                        onDelete: { app.removeFromRecents(path) }
                     )
                 }
 
@@ -208,6 +209,9 @@ private struct WorkspaceRow: View {
     let isCurrent: Bool
     let isRunning: Bool
     let onOpen: () -> Void
+    let onDelete: () -> Void
+
+    @State private var confirmingDelete = false
 
     var body: some View {
         Button(action: onOpen) {
@@ -230,6 +234,20 @@ private struct WorkspaceRow: View {
         }
         .buttonStyle(.plain)
         .help(isRunning ? "\(path) · running" : path)
+        .contextMenu {
+            Button("Open", action: onOpen)
+            Button("Remove from list", role: .destructive) { confirmingDelete = true }
+        }
+        .confirmationDialog(
+            "Remove \"\((path as NSString).lastPathComponent)\" from workspace list?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive, action: onDelete)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This only removes it from the list. The folder on disk is not deleted.")
+        }
     }
 }
 

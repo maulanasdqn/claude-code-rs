@@ -37,6 +37,15 @@ final class AppModel: ObservableObject {
 
     func isOpen(_ path: String) -> Bool { runtimes[path] != nil }
 
+    func removeFromRecents(_ path: String) {
+        runtimes.removeValue(forKey: path)
+        recentProjects.removeAll { $0 == path }
+        UserDefaults.standard.set(recentProjects, forKey: recentProjectsKey)
+        if current.projectPath == path, let next = recentProjects.first {
+            switchTo(next)
+        }
+    }
+
     private func runtime(for path: String) -> SessionViewModel {
         if let existing = runtimes[path] { return existing }
         let runtime = SessionViewModel(path: path)
