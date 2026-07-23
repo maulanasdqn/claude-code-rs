@@ -45,21 +45,21 @@ sha2 = "0.10"
 ratatui = "0.29"
 unicode-width = "0.2"
 
-stynx-code-errors = { version = "0.33.17", path = "stynx-code-errors" }
-stynx-code-types = { version = "0.33.17", path = "stynx-code-types" }
-stynx-code-tools = { version = "0.33.17", path = "stynx-code-tools" }
-stynx-code-provider = { version = "0.33.17", path = "stynx-code-provider" }
-stynx-code-engine = { version = "0.33.17", path = "stynx-code-engine" }
-stynx-code-server = { version = "0.33.17", path = "stynx-code-server" }
-stynx-code = { version = "0.33.17", path = "stynx-code" }
-stynx-code-auth = { version = "0.33.17", path = "stynx-code-auth" }
-stynx-code-permission = { version = "0.33.17", path = "stynx-code-permission" }
-stynx-code-commands = { version = "0.33.17", path = "stynx-code-commands" }
-stynx-code-memory = { version = "0.33.17", path = "stynx-code-memory" }
-stynx-code-config = { version = "0.33.17", path = "stynx-code-config" }
-stynx-code-services = { version = "0.33.17", path = "stynx-code-services" }
-stynx-code-compact = { version = "0.33.17", path = "stynx-code-compact" }
-stynx-code-bridge = { version = "0.33.17", path = "stynx-code-bridge" }
-stynx-code-plugins = { version = "0.33.17", path = "stynx-code-plugins" }
-stynx-code-tui = { version = "0.33.17", path = "stynx-code-tui" }
-stynx-code-app = { version = "0.33.17", path = "stynx-code-app" }
+stynx-code-errors = { version = "0.33.18", path = "stynx-code-errors" }
+stynx-code-types = { version = "0.33.18", path = "stynx-code-types" }
+stynx-code-tools = { version = "0.33.18", path = "stynx-code-tools" }
+stynx-code-provider = { version = "0.33.18", path = "stynx-code-provider" }
+stynx-code-engine = { version = "0.33.18", path = "stynx-code-engine" }
+stynx-code-server = { version = "0.33.18", path = "stynx-code-server" }
+stynx-code = { version = "0.33.18", path = "stynx-code" }
+stynx-code-auth = { version = "0.33.18", path = "stynx-code-auth" }
+stynx-code-permission = { version = "0.33.18", path = "stynx-code-permission" }
+stynx-code-commands = { version = "0.33.18", path = "stynx-code-commands" }
+stynx-code-memory = { version = "0.33.18", path = "stynx-code-memory" }
+stynx-code-config = { version = "0.33.18", path = "stynx-code-config" }
+stynx-code-services = { version = "0.33.18", path = "stynx-code-services" }
+stynx-code-compact = { version = "0.33.18", path = "stynx-code-compact" }
+stynx-code-bridge = { version = "0.33.18", path = "stynx-code-bridge" }
+stynx-code-plugins = { version = "0.33.18", path = "stynx-code-plugins" }
+stynx-code-tui = { version = "0.33.18", path = "stynx-code-tui" }
+stynx-code-app = { version = "0.33.18", path = "stynx-code-app" }

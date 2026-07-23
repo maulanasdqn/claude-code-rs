@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-permission"
-version = "0.33.17"
+version = "0.33.18"
 edition = "2024"
 description = "Interactive terminal permission checker"
 license = "MIT"

@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-ffi"
-version = "0.33.17"
+version = "0.33.18"
 edition = "2024"
 description = "uniffi bindings exposing the stynx engine to Swift"
 license = "MIT"

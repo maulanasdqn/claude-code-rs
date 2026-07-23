@@ -1,6 +1,6 @@
 [package]
 name = "stynx-code-memory"
-version = "0.33.17"
+version = "0.33.18"
 edition = "2024"
 description = "Session persistence with JSON file storage"
 license = "MIT"

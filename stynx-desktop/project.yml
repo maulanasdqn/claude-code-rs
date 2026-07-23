@@ -20,7 +20,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.stynx.desktop
         PRODUCT_NAME: Stynx
-        MARKETING_VERSION: "0.33.17"
+        MARKETING_VERSION: "0.33.18"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_DEBUG_DYLIB: NO
