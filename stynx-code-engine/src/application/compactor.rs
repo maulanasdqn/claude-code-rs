@@ -72,14 +72,25 @@ where
     let tools: Vec<serde_json::Value> = vec![];
     let mut summary_text = String::new();
 
+    // Guard every read with an idle timeout, mirroring `read_stream`. Compaction
+    // fires precisely when the context is large, so a stalled summary stream here
+    // would otherwise hang the whole engine (the classic "context is big → stuck"
+    // freeze). On a stall, fall back to a cheap local compaction instead.
+    let idle_timeout = std::time::Duration::from_secs(180);
     match provider.stream(&summary_conv, &tools).await {
-        Ok(mut stream) => {
-            while let Some(event) = stream.next().await {
-                if let StreamEvent::ContentDelta { text } = event {
-                    summary_text.push_str(&text);
+        Ok(mut stream) => loop {
+            match tokio::time::timeout(idle_timeout, stream.next()).await {
+                Ok(Some(StreamEvent::ContentDelta { text })) => summary_text.push_str(&text),
+                Ok(Some(_)) => {}
+                Ok(None) => break,
+                Err(_) => {
+                    on_event(EngineEvent::Error(
+                        "compact stream idle for 180s — using local fallback".to_string(),
+                    ));
+                    return Ok(fallback_compact(conversation));
                 }
             }
-        }
+        },
         Err(e) => {
             on_event(EngineEvent::Error(format!("compact failed: {e}")));
             return Ok(fallback_compact(conversation));

@@ -15,6 +15,28 @@ use super::hook_runner::{run_post_tool_use, run_pre_tool_use, run_stop_hooks};
 use super::stream_reader::read_stream;
 use super::tool_executor::{execute_tool, is_overloaded, retry_after_ms};
 
+/// Wraps a spawned concurrent-tool task so that, if the turn future is dropped —
+/// e.g. the user interrupts (Esc / Ctrl-C), which drops the whole `run` future —
+/// the task is `abort()`ed instead of being detached and left running against
+/// the shared provider. Without this, an interrupt leaves orphaned sub-agent
+/// streams alive and the session appears stuck.
+struct AbortOnDrop<T>(tokio::task::JoinHandle<T>);
+
+impl<T> Drop for AbortOnDrop<T> {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+impl<T> AbortOnDrop<T> {
+    /// Await the task to completion. On normal completion `self` drops and the
+    /// trailing `abort()` is a no-op; if this future is dropped first, the task
+    /// is aborted.
+    async fn join(mut self) -> Result<T, tokio::task::JoinError> {
+        (&mut self.0).await
+    }
+}
+
 pub struct QueryEngine {
     provider: Arc<dyn Provider>,
     registry: Arc<ToolRegistry>,
@@ -152,7 +174,7 @@ impl QueryEngine {
             let mut exec_results: Vec<Result<Result<String, AppError>, tokio::task::JoinError>> =
                 Vec::with_capacity(tool_uses.len());
 
-            let mut parallel_handles: Vec<(usize, tokio::task::JoinHandle<Result<String, AppError>>)> = Vec::new();
+            let mut parallel_handles: Vec<(usize, AbortOnDrop<Result<String, AppError>>)> = Vec::new();
             for (i, ((_, name, input), pre)) in tool_uses.iter().zip(pre_outs.iter()).enumerate() {
                 if pre.blocked {
                     continue;
@@ -165,14 +187,14 @@ impl QueryEngine {
                     let ud = undo.clone();
                     let n = name.clone();
                     let inp = input.clone();
-                    parallel_handles.push((i, tokio::spawn(async move {
+                    parallel_handles.push((i, AbortOnDrop(tokio::spawn(async move {
                         execute_tool(&reg, &perm, &n, &inp, &ud).await
-                    })));
+                    }))));
                 }
             }
 
             let parallel_results: Vec<_> = futures::future::join_all(
-                parallel_handles.into_iter().map(|(i, h)| async move { (i, h.await) })
+                parallel_handles.into_iter().map(|(i, h)| async move { (i, h.join().await) })
             ).await;
             let mut result_map: std::collections::HashMap<usize, Result<Result<String, AppError>, tokio::task::JoinError>> =
                 parallel_results.into_iter().collect();
@@ -264,5 +286,37 @@ impl QueryEngine {
         }
 
         Err(AppError::MaxTurnsExceeded(self.max_turns))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AbortOnDrop;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[tokio::test]
+    async fn abort_on_drop_cancels_a_running_task() {
+        let completed = Arc::new(AtomicBool::new(false));
+        let flag = completed.clone();
+        let guard = AbortOnDrop(tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            flag.store(true, Ordering::SeqCst);
+        }));
+
+        // Simulate the turn future being dropped by an interrupt.
+        drop(guard);
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        assert!(
+            !completed.load(Ordering::SeqCst),
+            "dropped task must be aborted, not left running to completion",
+        );
+    }
+
+    #[tokio::test]
+    async fn join_yields_the_value_on_normal_completion() {
+        let guard = AbortOnDrop(tokio::spawn(async { 42u8 }));
+        assert_eq!(guard.join().await.unwrap(), 42);
     }
 }

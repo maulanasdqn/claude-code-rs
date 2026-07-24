@@ -57,6 +57,6 @@ impl Tool for AgentTool {
     async fn execute(&self, input: Value) -> AppResult<String> {
         let task = input["task"].as_str().unwrap_or("").to_string();
         let system = input["system_prompt"].as_str().unwrap_or(AGENT_SYSTEM);
-        self.0.run("agent", system, &task, None).await
+        self.0.run_bounded("agent", system, &task, None).await
     }
 }

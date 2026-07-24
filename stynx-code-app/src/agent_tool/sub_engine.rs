@@ -31,7 +31,48 @@ struct Activity {
 /// tool, so a background runner (e.g. the intern manager) can surface live status.
 pub(super) type ActionReporter = Arc<dyn Fn(String) + Send + Sync>;
 
+/// Wall-clock budget for a single nested sub-agent run. A nested
+/// `QueryEngine::run` has no built-in bound — it can loop up to `max_turns`, and
+/// a slowly-trickling provider stream never trips the per-read idle timeout — so
+/// every sub-agent (explore / agent / intern) funnels through `run_bounded`.
+/// This is what stops one stuck sub-agent from hanging the engine's concurrent
+/// `join_all` when several run at once.
+fn sub_agent_timeout() -> std::time::Duration {
+    let secs = std::env::var("STYNX_SUBAGENT_TIMEOUT_SECS")
+        .or_else(|_| std::env::var("INTERN_TIMEOUT_SECS"))
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(600);
+    std::time::Duration::from_secs(secs)
+}
+
 impl SubEngine {
+    /// Run the nested engine with the sub-agent wall-clock cap. On timeout the
+    /// inner future is dropped (which cancels the nested `QueryEngine::run`, since
+    /// it is awaited inline rather than spawned), the sub-agent progress row is
+    /// cleared, and an `Ok` timeout marker is returned so the caller resolves and
+    /// the mentor can auto-recover instead of the session freezing.
+    pub(super) async fn run_bounded(
+        &self,
+        label: &str,
+        system: &str,
+        task: &str,
+        reporter: Option<ActionReporter>,
+    ) -> AppResult<String> {
+        let dur = sub_agent_timeout();
+        match tokio::time::timeout(dur, self.run(label, system, task, reporter)).await {
+            Ok(r) => r,
+            Err(_) => {
+                tracing::warn!(sub_agent = %label, secs = dur.as_secs(), "sub-agent timed out");
+                sub_agent_sink::send(EngineEvent::SubAgentDone { label: label.to_string() });
+                Ok(format!(
+                    "[TIMEOUT] sub-agent '{label}' did not finish in {}s — aborted. AUTO-RECOVER NOW (do not ask the user): retry with a narrower task, delegate to a different agent, or do the work inline yourself.",
+                    dur.as_secs()
+                ))
+            }
+        }
+    }
+
     pub(super) async fn run(
         &self,
         label: &str,

@@ -77,7 +77,7 @@ impl InternTool {
     pub fn label(&self) -> &str { &self.label }
 
     pub async fn run_task(&self, task: &str) -> AppResult<String> {
-        self.inner.run(&self.label, INTERN_SYSTEM, task, None).await
+        self.inner.run_bounded(&self.label, INTERN_SYSTEM, task, None).await
     }
 }
 
@@ -136,7 +136,7 @@ impl Tool for InternTool {
                 std::sync::Arc::new(move |action| reporter_mgr.update_last_action(&reporter_id, action));
             let handle = tokio::spawn(async move {
                 let fut = async {
-                    let result = inner.run(&label, INTERN_SYSTEM, &task, Some(reporter)).await
+                    let result = inner.run_bounded(&label, INTERN_SYSTEM, &task, Some(reporter)).await
                         .map(|out| format!("[{label} intern]\n{out}"))
                         .map_err(|e| e.to_string());
                     let _ = tx.send(result);
@@ -156,22 +156,7 @@ impl Tool for InternTool {
         }
 
         tracing::info!(intern = %self.label, task_len = task.len(), "delegating to intern");
-        let timeout_secs = std::env::var("INTERN_TIMEOUT_SECS")
-            .ok()
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(600);
-        let fut = self.inner.run(&self.label, INTERN_SYSTEM, &task, None);
-        let timed = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), fut).await;
-        let result = match timed {
-            Ok(r) => r?,
-            Err(_) => {
-                tracing::warn!(intern = %self.label, secs = timeout_secs, "intern timed out");
-                return Ok(format!(
-                    "[{label} intern]\n[TIMEOUT] intern did not finish in {timeout_secs}s — task aborted. AUTO-RECOVER NOW (do not ask the user): re-delegate this task with sharper criteria, switch to a different intern, or do it yourself. See the Auto-recovery rules in your system prompt.",
-                    label = self.label,
-                ));
-            }
-        };
+        let result = self.inner.run_bounded(&self.label, INTERN_SYSTEM, &task, None).await?;
         Ok(format!("[{label} intern]\n{result}", label = self.label))
     }
 }

@@ -57,6 +57,6 @@ impl Tool for ExploreAgentTool {
 
     async fn execute(&self, input: Value) -> AppResult<String> {
         let task = input["task"].as_str().unwrap_or("").to_string();
-        self.0.run("explore", EXPLORE_SYSTEM, &task, None).await
+        self.0.run_bounded("explore", EXPLORE_SYSTEM, &task, None).await
     }
 }
