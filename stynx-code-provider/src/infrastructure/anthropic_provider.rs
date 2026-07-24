@@ -44,9 +44,21 @@ pub(crate) const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20,interleaved-thinkin
 pub(crate) const EFFORT_BETA_HEADER: &str = "effort-2025-11-24";
 pub(crate) const BILLING_HEADER_LINE: &str = "x-anthropic-billing-header: cc_version=2.1.87.d34; cc_entrypoint=cli;";
 
+/// Re-resolve (and thus refresh) an OAuth access token once it is within this
+/// window of expiring, so a long-lived session does not get "logged out"
+/// mid-request when its cached token lapses.
+const OAUTH_REFRESH_MARGIN_MS: u64 = 5 * 60 * 1000;
+
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 pub struct AnthropicProvider {
     client: Client,
-    credential: Credential,
+    credential: std::sync::RwLock<Credential>,
     model: std::sync::Mutex<String>,
     mode: Arc<AtomicU8>,
     thinking: Arc<AtomicBool>,
@@ -74,12 +86,54 @@ impl AnthropicProvider {
         Self {
             client,
             model: std::sync::Mutex::new(default_model.to_string()),
-            credential,
+            credential: std::sync::RwLock::new(credential),
             mode,
             thinking: Arc::new(AtomicBool::new(false)),
             max_tokens: AtomicU32::new(MAX_TOKENS),
             thinking_budget: std::sync::Mutex::new(None),
             effort: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// A cheap clone of the currently held credential.
+    fn credential_snapshot(&self) -> Credential {
+        self.credential
+            .read()
+            .expect("credential lock poisoned")
+            .clone()
+    }
+
+    /// Return a usable credential, re-resolving (and refreshing) the stored OAuth
+    /// token first if it is at or near expiry. Any refresh failure is logged and
+    /// the current credential is returned unchanged, so a transient refresh error
+    /// never hard-fails an otherwise-valid request.
+    async fn active_credential(&self) -> Credential {
+        let current = self.credential_snapshot();
+        let near_expiry = matches!(
+            &current,
+            Credential::ClaudeCodeOAuth { expires_at, .. }
+                if *expires_at > 0 && now_millis().saturating_add(OAUTH_REFRESH_MARGIN_MS) >= *expires_at
+        );
+        if !near_expiry {
+            return current;
+        }
+
+        match tokio::task::spawn_blocking(stynx_code_auth::resolve_credential).await {
+            Ok(Ok(fresh)) if fresh.is_oauth() => {
+                if let Ok(mut guard) = self.credential.write() {
+                    *guard = fresh.clone();
+                }
+                fresh
+            }
+            Ok(Ok(_)) => current,
+            Ok(Err(e)) => {
+                tracing::warn!("in-session OAuth token refresh failed: {e}");
+                current
+            }
+            Err(e) => {
+                tracing::warn!("in-session OAuth token refresh task failed: {e}");
+                current
+            }
         }
     }
 
@@ -127,11 +181,12 @@ impl AnthropicProvider {
     }
 
     pub fn is_oauth(&self) -> bool {
-        self.credential.is_oauth()
+        self.credential_snapshot().is_oauth()
     }
 
     pub async fn fetch_usage(&self) -> AppResult<Utilization> {
-        let access_token = match &self.credential {
+        let credential = self.active_credential().await;
+        let access_token = match &credential {
             Credential::ClaudeCodeOAuth { access_token, .. } => access_token.clone(),
             _ => {
                 return Err(AppError::Provider(
@@ -140,7 +195,7 @@ impl AnthropicProvider {
             }
         };
 
-        let url = format!("{}/api/oauth/usage", self.credential.base_url());
+        let url = format!("{}/api/oauth/usage", credential.base_url());
         let response = self
             .client
             .get(&url)
@@ -171,7 +226,7 @@ impl AnthropicProvider {
             "opusplan" => {
                 if PermissionMode::load(&self.mode) == PermissionMode::Plan {
                     OPUS_MODEL.to_string()
-                } else if self.credential.is_oauth() {
+                } else if self.credential_snapshot().is_oauth() {
                     OAUTH_DEFAULT_MODEL.to_string()
                 } else {
                     DEFAULT_MODEL.to_string()
@@ -198,15 +253,16 @@ impl Provider for AnthropicProvider {
         conversation: &Conversation,
         tools: &[Value],
     ) -> AppResult<BoxStream<'static, StreamEvent>> {
-        let base_url = self.credential.base_url();
+        let credential = self.active_credential().await;
+        let base_url = credential.base_url();
         let model_display = self.effective_model();
         let thinking = self.thinking.load(Ordering::Relaxed);
         let max_tokens = self.max_tokens.load(Ordering::Relaxed);
         let thinking_budget = *self.thinking_budget.lock().unwrap();
         let effort = self.effort.lock().unwrap().clone();
-        let body = build_request_body(&self.credential, &model_display, conversation, tools, thinking, max_tokens, thinking_budget, effort.as_deref());
+        let body = build_request_body(&credential, &model_display, conversation, tools, thinking, max_tokens, thinking_budget, effort.as_deref());
 
-        let request = match &self.credential {
+        let request = match &credential {
             Credential::ClaudeCodeOAuth { access_token, .. } | Credential::AuthToken { token: access_token, .. } => {
                 let url = format!("{base_url}/v1/messages?beta=true");
                 tracing::debug!(model = %model_display, url = %url, "sending OAuth request");

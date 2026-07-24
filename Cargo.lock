@@ -1866,6 +1866,7 @@ dependencies = [
  "base64",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -2322,6 +2323,7 @@ version = "0.33.18"
 dependencies = [
  "base64",
  "getrandom 0.2.17",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",

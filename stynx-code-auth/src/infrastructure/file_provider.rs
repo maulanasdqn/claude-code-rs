@@ -1,6 +1,10 @@
 use stynx_code_errors::{AppError, AppResult};
 
 use crate::domain::Credential;
+use crate::infrastructure::oauth::refresh::{
+    apply_to_document, persist_to_stynx_cache, refresh_access_token, write_credentials_file,
+    OAuthState, RefreshedTokens,
+};
 
 pub fn resolve_file_oauth() -> AppResult<Credential> {
     let home = std::env::var("HOME")
@@ -38,15 +42,41 @@ pub fn resolve_file_oauth() -> AppResult<Credential> {
         .ok_or_else(|| AppError::Provider("no accessToken in OAuth data".to_string()))?
         .to_string();
 
+    let refresh_token = oauth
+        .get("refreshToken")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
     let expires_at = oauth.get("expiresAt").and_then(|v| v.as_u64()).unwrap_or(0);
 
-    if expires_at > 0 {
-        let now_ms = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
+    let state = OAuthState {
+        access_token,
+        refresh_token,
+        expires_at_ms: expires_at,
+    };
 
-        if now_ms > expires_at {
+    if state.needs_refresh() {
+        if let Some(rt) = state.refresh_token.as_deref() {
+            match refresh_access_token(rt) {
+                Ok(fresh) => {
+                    persist_file(path, &parsed, &fresh);
+                    return Ok(Credential::ClaudeCodeOAuth {
+                        access_token: fresh.access_token,
+                        expires_at: fresh.expires_at_ms,
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!("file OAuth token refresh failed: {e}");
+                    if state.is_expired() {
+                        return Err(AppError::Provider(
+                            "Claude Code OAuth token expired and refresh failed. Run `claude` to refresh your session."
+                                .to_string(),
+                        ));
+                    }
+                    // Not yet expired — fall through and use the existing token.
+                }
+            }
+        } else if state.is_expired() {
             return Err(AppError::Provider(
                 "Claude Code OAuth token expired. Run `claude` to refresh your session."
                     .to_string(),
@@ -55,9 +85,24 @@ pub fn resolve_file_oauth() -> AppResult<Credential> {
     }
 
     Ok(Credential::ClaudeCodeOAuth {
-        access_token,
-        expires_at,
+        access_token: state.access_token,
+        expires_at: state.expires_at_ms,
     })
+}
+
+/// Persist refreshed tokens back to the credentials file they came from, keeping
+/// every other field intact. Falls back to Stynx's own cache on failure.
+fn persist_file(path: &std::path::Path, document: &serde_json::Value, fresh: &RefreshedTokens) {
+    let updated = apply_to_document(document, fresh);
+    match write_credentials_file(path, &updated) {
+        Ok(()) => {
+            tracing::info!("refreshed Claude Code OAuth token and updated {}", path.display());
+        }
+        Err(e) => {
+            tracing::warn!("failed to update {}: {e}", path.display());
+            persist_to_stynx_cache(document, fresh);
+        }
+    }
 }
 
 pub fn resolve_settings_json() -> AppResult<Credential> {
