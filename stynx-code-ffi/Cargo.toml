@@ -22,6 +22,7 @@ stynx-code-types = { workspace = true }
 stynx-code-permission = { workspace = true }
 stynx-code-tools = { workspace = true }
 stynx-code-memory = { workspace = true }
+stynx-code-truncus = { workspace = true }
 stynx-code-provider = { workspace = true }
 stynx-code-commands = { workspace = true }
 tokio = { workspace = true }

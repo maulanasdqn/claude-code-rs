@@ -1,0 +1,19 @@
+[package]
+name = "stynx-code-truncus"
+version = "0.33.18"
+edition = "2024"
+description = "Truncus memory integration: session capture, recall, and search tools"
+license = "MIT"
+repository = "https://github.com/maulanasdqn/stynx-code"
+readme = "../README.md"
+
+[dependencies]
+stynx-code-types = { workspace = true }
+stynx-code-errors = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+dirs = "6"
+toml = "0.9"

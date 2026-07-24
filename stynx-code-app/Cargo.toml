@@ -16,6 +16,7 @@ stynx-code-tools = { workspace = true }
 stynx-code-permission = { workspace = true }
 stynx-code-engine = { workspace = true }
 stynx-code-memory = { workspace = true }
+stynx-code-truncus = { workspace = true }
 stynx-code-errors = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

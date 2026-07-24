@@ -137,6 +137,7 @@ pub struct StynxSession {
     provider: Arc<dyn Provider>,
     provider_label: String,
     system_prompt: String,
+    workspace_path: String,
     anthropic: Option<Arc<AnthropicProvider>>,
     session_repo: Arc<dyn SessionRepository>,
     current_session_id: Arc<StdMutex<Option<String>>>,
@@ -342,7 +343,7 @@ impl StynxSession {
             message: format!("failed to start async runtime: {error}"),
         })?;
 
-        let mut options = AppOptions::new(workspace_path);
+        let mut options = AppOptions::new(workspace_path.clone());
         options.provider_override = provider_override;
         let handles = runtime
             .block_on(build_app(options))
@@ -403,6 +404,7 @@ impl StynxSession {
             provider: handles.provider,
             provider_label: handles.provider_label,
             system_prompt,
+            workspace_path,
             anthropic,
             session_repo: handles.session_repo,
             current_session_id: Arc::new(StdMutex::new(None)),
@@ -422,6 +424,7 @@ impl StynxSession {
         let conversation = self.conversation.clone();
         let session_repo = self.session_repo.clone();
         let current_session_id = self.current_session_id.clone();
+        let workspace_path = self.workspace_path.clone();
         let sink = listener.clone();
 
         let handle = self.runtime.spawn(async move {
@@ -446,6 +449,9 @@ impl StynxSession {
                         Ok(id) => *current_session_id.lock().unwrap() = Some(id),
                         Err(error) => tracing::warn!("session save failed: {error}"),
                     }
+                    // Capture into Truncus memory (throttled; no-op if unconfigured).
+                    let captured_id = current_session_id.lock().unwrap().clone();
+                    stynx_code_truncus::capture(captured_id.as_deref(), &workspace_path, &updated, false).await;
                     *guard = updated;
                     listener.on_event(FfiEvent::Idle);
                 }

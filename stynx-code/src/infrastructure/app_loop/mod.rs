@@ -155,6 +155,8 @@ pub async fn run_loop(
                     Ok(Ok(updated)) => {
                         conversation = updated;
                         save_session(&session_repo, &conversation).await;
+                        let sid = session_repo.current().await.ok().flatten();
+                        stynx_code_truncus::capture(sid.as_deref(), &cwd, &conversation, false).await;
                         tui.state.toasts.success(format!(
                             "done · {} · {} in / {} out",
                             fmt_elapsed(elapsed),
@@ -559,6 +561,8 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
     }
 
     save_session(&session_repo, &conversation).await;
+    let sid = session_repo.current().await.ok().flatten();
+    stynx_code_truncus::capture(sid.as_deref(), &cwd, &conversation, true).await;
     stynx_code_tui::persistence::save(&stynx_code_tui::persistence::snapshot(&tui.state));
 }
 

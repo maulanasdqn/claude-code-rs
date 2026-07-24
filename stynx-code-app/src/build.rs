@@ -103,10 +103,17 @@ pub async fn build_app(options: AppOptions) -> Result<AppHandles, String> {
     ));
 
     let model_id = provider.model_name();
-    let system_prompt = options.system_override.clone().unwrap_or_else(|| {
+    let mut system_prompt = options.system_override.clone().unwrap_or_else(|| {
         let env = build_env_info(options.cwd.clone(), model_id.clone());
         make_system_prompt(&env, &tool_names, &[], config.commit_attribution)
     });
+
+    // Recall distilled memory of past sessions for this project and fold it into
+    // the system prompt. No-op (and near-instant) when Truncus is not configured.
+    if let Some(section) = stynx_code_truncus::recall_section(&options.cwd).await {
+        system_prompt.push_str("\n\n");
+        system_prompt.push_str(&section);
+    }
 
     let session_repo: Arc<dyn SessionRepository> = match FileSessionRepository::new(&options.cwd) {
         Ok(repo) => Arc::new(repo),
@@ -237,6 +244,12 @@ async fn build_registry(cwd: &str, pause_flag: &Arc<AtomicBool>) -> BuiltRegistr
     registry.register(Arc::new(TodoReadTool));
 
     for tool in stynx_code_tools::load_mcp_tools(cwd).await {
+        registry.register(tool);
+    }
+
+    // Truncus memory search tools (memory_search, recent_sessions, get_session,
+    // lessons, knowledge_search). Empty unless Truncus is configured.
+    for tool in stynx_code_truncus::memory_tools(cwd) {
         registry.register(tool);
     }
 
