@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-func isPasteableURL(_ text: String) -> Bool {
+private func isPasteableURL(_ text: String) -> Bool {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.contains(" "), !trimmed.contains("\n") else { return false }
     return trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
@@ -43,7 +43,7 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onAppear {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     proxy.scrollTo(Self.bottomAnchor, anchor: .bottom)
                 }
             }
@@ -132,7 +132,8 @@ struct ChatView: View {
         .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
     }
 
-    private var showTyping: Bool {        guard model.isStreaming else { return false }
+    private var showTyping: Bool {
+        guard model.isStreaming else { return false }
         if let last = model.feed.last,
            last.role == .assistant || last.role == .thinking,
            !last.text.isEmpty {
@@ -360,7 +361,7 @@ struct FeedItemView: View {
                 }
             }
         case .compact:
-            CompactDivider(originalTurns: Int(item.text) ?? 0)
+            CompactDivider(originalTurns: item.originalTurns)
         }
     }
 

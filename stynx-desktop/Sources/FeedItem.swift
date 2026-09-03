@@ -28,12 +28,13 @@ struct FeedItem: Identifiable {
     var tool: ToolItem?
     var images: [Data] = []
     var referenceCount = 0
+    var originalTurns = 0
 
     static func user(_ text: String) -> FeedItem { FeedItem(role: .user, text: text) }
     static func assistant(_ text: String) -> FeedItem { FeedItem(role: .assistant, text: text) }
     static func thinking(_ text: String) -> FeedItem { FeedItem(role: .thinking, text: text) }
     static func tool(_ tool: ToolItem) -> FeedItem { FeedItem(role: .tool, tool: tool) }
-    static func compact(originalTurns: Int) -> FeedItem { FeedItem(role: .compact, text: "\(originalTurns)") }
+    static func compact(originalTurns: Int) -> FeedItem { FeedItem(role: .compact, originalTurns: originalTurns) }
 }
 
 func toolBadge(for name: String) -> (symbol: String, accent: Bool) {

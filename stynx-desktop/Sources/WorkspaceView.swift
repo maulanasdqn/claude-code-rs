@@ -53,7 +53,7 @@ struct WorkspaceView: View {
                     .frame(width: 10, height: 10)
             } else {
                 Circle()
-                    .fill(model.status.hasPrefix("Init failed") ? Color.red : Color.green)
+                    .fill(model.isInitFailed ? Color.red : Color.green)
                     .frame(width: 6, height: 6)
             }
             Text(model.status)
