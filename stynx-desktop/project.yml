@@ -13,6 +13,18 @@ targets:
       - path: Sources
       - path: Generated/stynx_code_ffi.swift
         group: Generated
+      - path: Resources
+        buildPhase: resources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleIconFile: AppIcon
+        CFBundleShortVersionString: "0.33.18"
+        LSMinimumSystemVersion: "14.0"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHumanReadableCopyright: "MIT"
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
     dependencies:
       - framework: Frameworks/StynxCoreFFI.xcframework
         embed: false
@@ -22,14 +34,11 @@ targets:
         PRODUCT_NAME: Stynx
         MARKETING_VERSION: "0.33.18"
         CURRENT_PROJECT_VERSION: "1"
-        GENERATE_INFOPLIST_FILE: YES
         ENABLE_DEBUG_DYLIB: NO
         SWIFT_VERSION: "5.0"
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        INFOPLIST_KEY_NSHumanReadableCopyright: "MIT"
         OTHER_LDFLAGS:
           - "-framework"
           - "SystemConfiguration"
