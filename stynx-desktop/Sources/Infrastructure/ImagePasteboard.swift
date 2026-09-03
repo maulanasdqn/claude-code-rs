@@ -1,11 +1,5 @@
 import AppKit
 
-struct PastedImage: Identifiable {
-    let id = UUID()
-    let data: Data
-    let mediaType: String
-}
-
 extension NSImage {
     func pngData() -> Data? {
         guard let tiff = tiffRepresentation,

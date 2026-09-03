@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// SF Symbol + accent flag for a tool row — a presentation mapping, so it
+/// lives with the card that renders it rather than in the domain model.
+func toolBadge(for name: String) -> (symbol: String, accent: Bool) {
+    switch name {
+    case "file_write": return ("doc.badge.plus", true)
+    case "file_edit": return ("pencil", true)
+    case "read": return ("doc.text", false)
+    case "bash": return ("terminal", false)
+    case "glob": return ("magnifyingglass", false)
+    case "grep": return ("text.magnifyingglass", false)
+    case "web_fetch", "web_search": return ("globe", false)
+    case "todo_write", "todo_read": return ("checklist", false)
+    default:
+        if name.hasPrefix("delegate_to_") { return ("person.2", true) }
+        return ("gearshape", false)
+    }
+}
+
 struct ActionCard: View {
     let tool: ToolItem
     let onOpenFile: (String) -> Void

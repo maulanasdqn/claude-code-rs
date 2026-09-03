@@ -37,22 +37,6 @@ struct FeedItem: Identifiable {
     static func compact(originalTurns: Int) -> FeedItem { FeedItem(role: .compact, originalTurns: originalTurns) }
 }
 
-func toolBadge(for name: String) -> (symbol: String, accent: Bool) {
-    switch name {
-    case "file_write": return ("doc.badge.plus", true)
-    case "file_edit": return ("pencil", true)
-    case "read": return ("doc.text", false)
-    case "bash": return ("terminal", false)
-    case "glob": return ("magnifyingglass", false)
-    case "grep": return ("text.magnifyingglass", false)
-    case "web_fetch", "web_search": return ("globe", false)
-    case "todo_write", "todo_read": return ("checklist", false)
-    default:
-        if name.hasPrefix("delegate_to_") { return ("person.2", true) }
-        return ("gearshape", false)
-    }
-}
-
 func toolInputField(_ json: String, keys: [String]) -> String? {
     for key in keys {
         guard let range = json.range(of: "\"\(key)\"") else { continue }

@@ -1,15 +1,6 @@
 import Foundation
 import PDFKit
 
-struct ReferenceDoc: Identifiable {
-    let id = UUID()
-    let name: String
-    let path: String
-    let text: String
-
-    var hasText: Bool { !text.isEmpty }
-}
-
 enum ReferenceStore {
     private static var fileURL: URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
