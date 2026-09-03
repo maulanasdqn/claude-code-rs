@@ -1,10 +1,7 @@
 import Foundation
 import AppKit
 
-// MARK: - Reference documents, pasted images, and @-mentions
-
 extension SessionViewModel {
-    // MARK: Images
 
     func addImage(_ data: Data) {
         pendingImages.append(PastedImage(data: data, mediaType: "image/png"))
@@ -13,8 +10,6 @@ extension SessionViewModel {
     func removeImage(_ id: UUID) {
         pendingImages.removeAll { $0.id == id }
     }
-
-    // MARK: References
 
     func addReference(_ url: URL) {
         let doc = ReferenceExtractor.load(url)
@@ -72,8 +67,6 @@ extension SessionViewModel {
         }
     }
 
-    // MARK: @-mentions
-
     func currentMention(in text: String) -> String? {
         guard let atRange = text.range(of: "@", options: .backwards) else { return nil }
         let after = text[atRange.upperBound...]
@@ -97,8 +90,6 @@ extension SessionViewModel {
         input = String(input[..<atRange.lowerBound]) + "@\(path) "
     }
 
-    /// Walks the project tree off the main actor — indexing a large repository
-    /// must never block the UI — and publishes the result back on it.
     func rebuildFileIndex() {
         fileIndex = []
         let root = projectPath

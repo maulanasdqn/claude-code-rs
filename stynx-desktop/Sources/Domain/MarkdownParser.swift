@@ -11,8 +11,6 @@ enum MarkdownBlock {
     case blank
 }
 
-/// Line-oriented markdown block parser; inline styling is handled by the
-/// presentation layer via `AttributedString(markdown:)`.
 enum MarkdownParser {
     static func blocks(_ raw: String) -> [MarkdownBlock] {
         let lines = raw.components(separatedBy: "\n")

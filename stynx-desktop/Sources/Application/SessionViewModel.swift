@@ -19,10 +19,6 @@ struct QueuedMessage: Identifiable {
     let images: [PastedImage]
 }
 
-/// Drives one workspace session: owns the FFI session, the feed shown in the
-/// chat transcript, and every user-adjustable setting. Split across focused
-/// files: messaging (`+Messaging`), FFI event handling (`+Events`), and
-/// references/mentions/images (`+References`).
 @MainActor
 final class SessionViewModel: ObservableObject {
     enum Status {
@@ -44,8 +40,6 @@ final class SessionViewModel: ObservableObject {
         static let toolTitleChars = 80
         static let referenceChars = 60_000
     }
-
-    // MARK: - Published state
 
     @Published var feed: [FeedItem] = []
     @Published var input: String = ""
@@ -79,8 +73,6 @@ final class SessionViewModel: ObservableObject {
 
     var isInitFailed: Bool { status == Status.initFailed }
 
-    // MARK: - Internal state (shared with same-module extensions)
-
     var session: StynxSession?
     var currentStreamKind: FeedRole?
     var currentToolId = ""
@@ -90,8 +82,6 @@ final class SessionViewModel: ObservableObject {
     var fileIndex: [String] = []
     var referencesDirty = false
     var externalCompletion: ((String) -> Void)?
-
-    // MARK: - Lifecycle
 
     init(path: String) {
         boot(path: path)
@@ -145,8 +135,6 @@ final class SessionViewModel: ObservableObject {
         fileTreeReloadToken = UUID()
     }
 
-    // MARK: - Sessions
-
     func refreshSessions() {
         guard let session else { return }
         sessions = session.listSessions()
@@ -172,8 +160,6 @@ final class SessionViewModel: ObservableObject {
         session.deleteSession(id: id)
         refreshSessions()
     }
-
-    // MARK: - Settings
 
     func setModel(_ model: String) {
         session?.setModel(model: model)

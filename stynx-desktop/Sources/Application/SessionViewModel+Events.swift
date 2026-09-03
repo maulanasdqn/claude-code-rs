@@ -1,10 +1,7 @@
 import Foundation
 
-// MARK: - FFI event stream → feed updates
-
 extension SessionViewModel {
     func handle(_ event: FfiEvent) {
-        // Any event other than a retry notice means the stream is alive again.
         if case .retryNotice = event {} else if status.hasPrefix(Status.overloadedPrefix) {
             status = Status.thinking
         }

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// SF Symbol + accent flag for a tool row — a presentation mapping, so it
-/// lives with the card that renders it rather than in the domain model.
 func toolBadge(for name: String) -> (symbol: String, accent: Bool) {
     switch name {
     case "file_write": return ("doc.badge.plus", true)

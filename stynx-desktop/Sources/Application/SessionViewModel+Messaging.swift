@@ -1,7 +1,5 @@
 import Foundation
 
-// MARK: - Sending, queueing, prompt history, and bridge responses
-
 extension SessionViewModel {
     func send() {
         guard session != nil else { return }
@@ -24,8 +22,6 @@ extension SessionViewModel {
         messageQueue.removeAll { $0.id == id }
     }
 
-    /// Runs a task sent from another workspace, reporting the final assistant
-    /// reply back through `completion` once the engine goes idle.
     func runExternalTask(_ task: String, completion: @escaping (String) -> Void) {
         guard let session, !isStreaming else {
             completion("(workspace '\(projectName)' is busy)")
@@ -77,7 +73,6 @@ extension SessionViewModel {
         }
     }
 
-    /// Prepends any not-yet-sent reference documents to the outgoing message.
     private func messagePayload(_ text: String) -> String {
         guard !referenceDocs.isEmpty, referencesDirty else { return text }
         referencesDirty = false
@@ -89,8 +84,6 @@ extension SessionViewModel {
         let intro = "The user attached the following reference document(s). Treat their content as authoritative context for this and following requests."
         return "\(intro)\n\n<reference_documents>\n\(refs)\n</reference_documents>\n\n\(text)"
     }
-
-    // MARK: - Prompt history
 
     func historyUp() -> Bool {
         guard !promptHistory.isEmpty else { return false }
@@ -119,8 +112,6 @@ extension SessionViewModel {
         return true
     }
 
-    // MARK: - Composer helpers
-
     func appendDiffQuote(filePath: String, lines: [DiffLine]) {
         let name = (filePath as NSString).lastPathComponent
         let body = lines.map { line in
@@ -137,8 +128,6 @@ extension SessionViewModel {
             input += "\n\(block)"
         }
     }
-
-    // MARK: - Bridge responses
 
     func respondWorkspaceMessage(id: UInt64, reply: String) {
         session?.respondWorkspaceMessage(id: id, reply: reply)
