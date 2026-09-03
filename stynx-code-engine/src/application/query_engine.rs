@@ -13,7 +13,8 @@ use crate::domain::EngineEvent;
 use super::compactor::compact;
 use super::hook_runner::{run_post_tool_use, run_pre_tool_use, run_stop_hooks};
 use super::stream_reader::read_stream;
-use super::tool_executor::{execute_tool, is_overloaded, retry_after_ms};
+use super::retry::{MAX_ATTEMPTS, is_retryable, retry_delay, short_error};
+use super::tool_executor::execute_tool;
 
 /// Wraps a spawned concurrent-tool task so that, if the turn future is dropped —
 /// e.g. the user interrupts (Esc / Ctrl-C), which drops the whole `run` future —
@@ -107,12 +108,17 @@ impl QueryEngine {
             let (assistant_blocks, stop_reason) = loop {
                 let mut stream = match self.provider.stream(&conversation, &tools).await {
                     Ok(s) => s,
-                    Err(e) if attempts < 3 && is_overloaded(&e.to_string()) => {
+                    Err(e) if attempts < MAX_ATTEMPTS && is_retryable(&e.to_string()) => {
                         attempts += 1;
-                        let delay = retry_after_ms(&e.to_string())
-                            .map(std::time::Duration::from_millis)
-                            .unwrap_or_else(|| std::time::Duration::from_secs(2u64.pow(attempts)));
+                        let msg = e.to_string();
+                        let delay = retry_delay(attempts, &msg);
                         tracing::warn!(?delay, attempt = attempts, "provider overloaded, retrying");
+                        on_event(EngineEvent::RetryNotice {
+                            attempt: attempts,
+                            max_attempts: MAX_ATTEMPTS,
+                            delay_ms: delay.as_millis() as u64,
+                            message: short_error(&msg),
+                        });
                         tokio::time::sleep(delay).await;
                         continue;
                     }
@@ -127,12 +133,16 @@ impl QueryEngine {
                 }
 
                 if let Some(err_msg) = stream_error {
-                    if attempts < 3 && is_overloaded(&err_msg) {
+                    if attempts < MAX_ATTEMPTS && is_retryable(&err_msg) {
                         attempts += 1;
-                        let delay = retry_after_ms(&err_msg)
-                            .map(std::time::Duration::from_millis)
-                            .unwrap_or_else(|| std::time::Duration::from_secs(2u64.pow(attempts)));
+                        let delay = retry_delay(attempts, &err_msg);
                         tracing::warn!(?delay, attempt = attempts, "stream error, retrying");
+                        on_event(EngineEvent::RetryNotice {
+                            attempt: attempts,
+                            max_attempts: MAX_ATTEMPTS,
+                            delay_ms: delay.as_millis() as u64,
+                            message: short_error(&err_msg),
+                        });
                         tokio::time::sleep(delay).await;
                         continue;
                     }

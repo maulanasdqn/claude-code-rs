@@ -76,5 +76,13 @@ pub fn render_stream_event(event: &EngineEvent, json_mode: bool) {
                 eprintln!("  {DIM}↪ {label}: done{RESET}");
             }
         }
+        EngineEvent::RetryNotice { attempt, max_attempts, delay_ms, message } => {
+            if !json_mode {
+                eprintln!(
+                    "  {YELLOW}⟳ provider busy ({message}) — retry {attempt}/{max_attempts} in {}s{RESET}",
+                    delay_ms / 1000
+                );
+            }
+        }
     }
 }

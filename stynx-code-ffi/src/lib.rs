@@ -38,6 +38,7 @@ pub enum FfiEvent {
     HookOutput { source: String, output: String },
     SubAgentProgress { label: String, summary: String },
     SubAgentDone { label: String },
+    RetryNotice { attempt: u32, max_attempts: u32, delay_ms: u64, message: String },
     Error { message: String },
     PermissionRequest { id: u64, tool_name: String, description: String },
     AskUserRequest { id: u64, question: String },
@@ -69,6 +70,9 @@ impl From<EngineEvent> for FfiEvent {
                 FfiEvent::SubAgentProgress { label, summary }
             }
             EngineEvent::SubAgentDone { label } => FfiEvent::SubAgentDone { label },
+            EngineEvent::RetryNotice { attempt, max_attempts, delay_ms, message } => {
+                FfiEvent::RetryNotice { attempt, max_attempts, delay_ms, message }
+            }
             EngineEvent::Error(message) => FfiEvent::Error { message },
         }
     }

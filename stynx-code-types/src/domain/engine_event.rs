@@ -16,5 +16,8 @@ pub enum EngineEvent {
     HookOutput { source: String, output: String },
     SubAgentProgress { label: String, summary: String },
     SubAgentDone { label: String },
+    /// A transient provider failure (overloaded / rate-limited) is being retried
+    /// after a backoff delay; the turn is still alive.
+    RetryNotice { attempt: u32, max_attempts: u32, delay_ms: u64, message: String },
     Error(String),
 }

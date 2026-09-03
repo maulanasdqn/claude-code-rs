@@ -395,6 +395,12 @@ impl AppState {
                 };
                 self.toasts.success(msg);
             }
+            EngineEvent::RetryNotice { attempt, max_attempts, delay_ms, message } => {
+                self.toasts.warn(format!(
+                    "provider busy ({message}) — retry {attempt}/{max_attempts} in {}s",
+                    delay_ms / 1000
+                ));
+            }
             _ => {}
         }
     }

@@ -36,15 +36,3 @@ pub async fn execute_tool(
 
     tool.execute(input.clone()).await
 }
-
-pub fn retry_after_ms(msg: &str) -> Option<u64> {
-    let start = msg.find("[retry_after_ms=")?;
-    let rest = &msg[start + "[retry_after_ms=".len()..];
-    let end = rest.find(']')?;
-    rest[..end].parse::<u64>().ok()
-}
-
-pub fn is_overloaded(msg: &str) -> bool {
-    let lower = msg.to_lowercase();
-    lower.contains("overloaded") || lower.contains("529") || lower.contains("rate")
-}

@@ -451,6 +451,10 @@ final class SessionViewModel: ObservableObject {
     }
 
     private func handle(_ event: FfiEvent) {
+        // Any event other than a retry notice means the stream is alive again.
+        if case .retryNotice = event {} else if status.hasPrefix("Overloaded") {
+            status = "Thinking…"
+        }
         switch event {
         case .textDelta(let text):
             appendDelta(role: .assistant, delta: text)
@@ -477,6 +481,8 @@ final class SessionViewModel: ObservableObject {
             userQuestion = UserQuestion(id: id, question: question, qa: parseQA(question))
         case .workspaceMessageRequest(let id, let target, let task):
             onWorkspaceMessage?(target, task, id)
+        case .retryNotice(let attempt, let maxAttempts, let delayMs, _):
+            status = "Overloaded — retry \(attempt)/\(maxAttempts) in \(delayMs / 1000)s"
         case .error(let message):
             currentStreamKind = nil
             feed.append(.assistant("⚠️ \(message)"))
