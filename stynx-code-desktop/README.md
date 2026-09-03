@@ -8,11 +8,17 @@ a single `engine-event` Tauri event, tagged by `type`.
 
 ## Layout
 
-- `src-tauri/` — Rust backend: session bootstrap (`init_session`), messaging,
-  sessions, settings, and the permission / ask-user / workspace bridges as
-  Tauri commands (workspace member `stynx-code-desktop`).
-- `src/` — Svelte UI: `lib/` (invoke wrappers, engine-event reducer, stores),
-  `components/` (sidebar, chat, tool cards, permission and question cards).
+- `src-tauri/src/` — Rust backend (workspace member `stynx-code-desktop`),
+  layered like the rest of the workspace:
+  - `domain/` — UI event enum and serializable models; no Tauri types.
+  - `application/` — session state and the engine dispatch loop; takes an
+    event-sink closure, so it never touches Tauri directly.
+  - `infrastructure/` — the Tauri adapters: event emitter, engine bridge
+    drains, and the `#[tauri::command]` surface (session, messaging,
+    settings, history).
+- `src/` — Svelte UI: `lib/` holds the logic (invoke wrappers, engine-event
+  reducer, messaging queue, session actions, markdown parser), `components/`
+  holds presentation only; all files kebab-case and under 200 lines.
 
 ## Develop
 
