@@ -1,0 +1,61 @@
+:root {
+  --bg: #14121f;
+  --bg-panel: #1b1828;
+  --bg-card: #242033;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #ececf4;
+  --text-dim: #9a95ad;
+  --accent: #8252fa;
+  --accent-soft: rgba(130, 82, 250, 0.18);
+  --danger: #f26d6d;
+  --ok: #5fd58a;
+  font-family: -apple-system, "Segoe UI", Ubuntu, Cantarell, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 9px;
+  outline: none;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}

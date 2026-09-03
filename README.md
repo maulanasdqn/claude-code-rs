@@ -44,15 +44,26 @@ SwiftUI app ──uniffi──▶ libstynx_code_ffi.a  (stynx-code-ffi → stynx
 
 ```bash
 # 1. Build the Rust static lib + generate Swift bindings (run inside nix devshell)
-./stynx-desktop/scripts/build-rust.sh
+./stynx-code-mac/scripts/build-rust.sh
 
 # 2. Build the SwiftUI app
-./stynx-desktop/scripts/build-app.sh
+./stynx-code-mac/scripts/build-app.sh
 ```
 
-App lands at `stynx-desktop/build/Build/Products/Debug/Stynx.app`. Distributed as a notarized DMG (Hardened Runtime, sandbox off) — not via the Mac App Store, since full bash/filesystem tool access is incompatible with the sandbox.
+App lands at `stynx-code-mac/build/Build/Products/Debug/Stynx.app`. Distributed as a notarized DMG (Hardened Runtime, sandbox off) — not via the Mac App Store, since full bash/filesystem tool access is incompatible with the sandbox.
 
 Requires macOS 14.0+. Same credential resolution as the TUI (`ANTHROPIC_API_KEY`, Claude OAuth, or any intern provider key).
+
+## Desktop (cross-platform)
+
+Tauri v2 + Svelte app in `stynx-code-desktop/`, targeting macOS, Windows, and Linux from one codebase. Its Rust backend links `stynx-code-app` directly (no uniffi) and mirrors the same command surface the SwiftUI app uses.
+
+```bash
+cd stynx-code-desktop
+npm install
+npm run tauri dev     # develop
+npm run tauri build   # .dmg / .msi / .deb / .AppImage per host OS
+```
 
 ## Install
 

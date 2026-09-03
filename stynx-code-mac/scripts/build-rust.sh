@@ -5,7 +5,7 @@ set -euo pipefail
 # assembles an XCFramework consumed by the SwiftUI app.
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DESKTOP_DIR="$REPO_ROOT/stynx-desktop"
+DESKTOP_DIR="$REPO_ROOT/stynx-code-mac"
 GENERATED_DIR="$DESKTOP_DIR/Generated"
 XCFRAMEWORK_DIR="$DESKTOP_DIR/Frameworks"
 TARGET="aarch64-apple-darwin"
