@@ -153,6 +153,17 @@ pub async fn run_loop(
                 let out_delta = total_output.load(Ordering::Relaxed).saturating_sub(start_out);
                 match task.await {
                     Ok(Ok(updated)) => {
+                        if updated.messages.len() <= conversation.messages.len() {
+                            // Mid-run compaction rewrote history: archive the full
+                            // transcript under the current session id, then continue
+                            // in a fresh session so the original is never lost.
+                            save_session(&session_repo, &conversation).await;
+                            if let Ok(id) = session_repo.new_session_id().await {
+                                let _ = session_repo.set_current(&id).await;
+                                tui.state.sidebar.session_id = id;
+                            }
+                            refresh_sidebar_sessions(&session_repo, &mut tui).await;
+                        }
                         conversation = updated;
                         save_session(&session_repo, &conversation).await;
                         let sid = session_repo.current().await.ok().flatten();
@@ -446,19 +457,23 @@ or set DEEPSEEK_API_KEY / OPENROUTER_API_KEY in .env and restart.",
                         "session.compact" => {
                             tui.state.push_system_message("compacting…");
                             let provider_dyn: Arc<dyn stynx_code_types::Provider> = provider.clone();
-                            let mut on_event = |_ev: stynx_code_engine::EngineEvent| {};
-                            match stynx_code_engine::application::compactor::compact(
-                                &provider_dyn,
-                                conversation.clone(),
-                                &mut on_event,
-                            )
-                            .await
+                            match stynx_code_compact::FullCompactor::new()
+                                .compact(&conversation, provider_dyn.as_ref())
+                                .await
                             {
                                 Ok(compacted) => {
+                                    // Archive the full transcript under the current
+                                    // session, then continue in a fresh one.
+                                    save_session(&session_repo, &conversation).await;
+                                    if let Ok(id) = session_repo.new_session_id().await {
+                                        let _ = session_repo.set_current(&id).await;
+                                        tui.state.sidebar.session_id = id;
+                                    }
                                     let new_count = compacted.messages.len();
                                     tui.state.conversation.messages = conv_to_tui(&compacted);
                                     conversation = compacted;
                                     save_session(&session_repo, &conversation).await;
+                                    refresh_sidebar_sessions(&session_repo, &mut tui).await;
                                     tui.state.push_system_message(format!(
                                         "compacted → {new_count} messages"
                                     ));

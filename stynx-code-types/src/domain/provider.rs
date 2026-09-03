@@ -47,6 +47,8 @@ pub trait Provider: Send + Sync {
     ) -> AppResult<BoxStream<'static, StreamEvent>>;
 
     fn model_name(&self) -> String { "unknown".into() }
+    /// Context window of the active model in tokens; drives compaction thresholds.
+    fn context_window(&self) -> u64 { 128_000 }
     fn set_model(&self, _model: &str) {}
     fn set_max_tokens(&self, _n: u32) {}
     fn set_thinking_budget(&self, _budget: u32) {}

@@ -8,9 +8,10 @@ use stynx_code_types::{
 };
 use stynx_code_tools::ToolRegistry;
 
+use stynx_code_compact::{FullCompactor, MicroCompactor, estimate_conversation_tokens};
+
 use crate::application::undo::UndoStack;
 use crate::domain::EngineEvent;
-use super::compactor::compact;
 use super::hook_runner::{run_post_tool_use, run_pre_tool_use, run_stop_hooks};
 use super::stream_reader::read_stream;
 use super::retry::{MAX_ATTEMPTS, is_retryable, retry_delay, short_error};
@@ -44,7 +45,6 @@ pub struct QueryEngine {
     permission: Arc<dyn PermissionChecker>,
     hooks: HooksConfig,
     max_turns: usize,
-    context_limit: u64,
     mode: Arc<AtomicU8>,
     undo_stack: Arc<UndoStack>,
 }
@@ -59,7 +59,7 @@ impl QueryEngine {
     ) -> Self {
         Self {
             provider, registry, permission, hooks, mode,
-            max_turns: 200, context_limit: 80_000,
+            max_turns: 200,
             undo_stack: Arc::new(UndoStack::default()),
         }
     }
@@ -95,13 +95,29 @@ impl QueryEngine {
                 })
             };
 
-            if last_input_tokens > 0
-                && last_input_tokens > self.context_limit * 60 / 100
-                && conversation.messages.len() > 2
-            {
-                let original_turns = conversation.messages.len();
-                conversation = compact(&self.provider, conversation, &mut on_event).await?;
-                on_event(EngineEvent::Compacted { original_turns });
+            // Staged, model-aware compaction. Real usage from the last request
+            // when available; a local ~4-chars/token estimate otherwise (so the
+            // first call of a run with an already-huge history still compacts).
+            let limit = self.provider.context_window();
+            let mut estimated = if last_input_tokens > 0 {
+                last_input_tokens
+            } else {
+                estimate_conversation_tokens(&conversation)
+            };
+            if estimated > limit * 70 / 100 && conversation.messages.len() > 2 {
+                // Stage 1 (cheap, local): truncate old tool results, keep the
+                // recent exchanges verbatim.
+                conversation = MicroCompactor::default().compact_conversation(&conversation);
+                estimated = estimate_conversation_tokens(&conversation);
+                // Stage 2 (lossy, last resort): summarize via the provider.
+                if estimated > limit * 85 / 100 {
+                    let original_turns = conversation.messages.len();
+                    conversation = FullCompactor::new()
+                        .compact(&conversation, self.provider.as_ref())
+                        .await?;
+                    on_event(EngineEvent::Compacted { original_turns });
+                }
+                last_input_tokens = 0;
             }
 
             let mut attempts = 0u32;

@@ -8,6 +8,7 @@ repository = "https://github.com/maulanasdqn/stynx-code"
 readme = "../README.md"
 
 [dependencies]
+stynx-code-compact = { workspace = true }
 stynx-code-config = { workspace = true }
 stynx-code-errors = { workspace = true }
 stynx-code-types = { workspace = true }

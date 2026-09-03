@@ -73,6 +73,17 @@ fn has_tool_result(blocks: &[ContentBlock]) -> bool {
     blocks.iter().any(|b| matches!(b, ContentBlock::ToolResult { .. }))
 }
 
+/// Rough local token estimate (~4 chars per token) for a whole conversation,
+/// for deciding when to compact without waiting for real provider usage data.
+pub fn estimate_conversation_tokens(conversation: &stynx_code_types::Conversation) -> u64 {
+    conversation
+        .messages
+        .iter()
+        .map(|m| estimate_tokens(&m.content))
+        .sum::<u64>()
+        + conversation.system.as_ref().map_or(0, |s| s.len() as u64 / 4)
+}
+
 fn estimate_tokens(blocks: &[ContentBlock]) -> u64 {
     let chars: usize = blocks
         .iter()

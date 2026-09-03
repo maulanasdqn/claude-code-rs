@@ -1,4 +1,3 @@
-pub mod compactor;
 pub mod hook_runner;
 mod query_engine;
 pub mod retry;

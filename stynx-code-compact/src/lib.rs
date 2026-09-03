@@ -4,12 +4,14 @@ pub mod grouping;
 pub mod micro_compact;
 pub mod prompt;
 pub mod session_memory_compact;
+pub mod text;
 
 pub use auto_compact::AutoCompactor;
 pub use full_compact::FullCompactor;
-pub use grouping::MessageGroup;
+pub use grouping::{MessageGroup, estimate_conversation_tokens};
 pub use micro_compact::MicroCompactor;
 pub use session_memory_compact::SessionMemoryCompactor;
+pub use text::safe_truncate;
 
 use stynx_code_errors::AppResult;
 use stynx_code_types::{Conversation, Provider};

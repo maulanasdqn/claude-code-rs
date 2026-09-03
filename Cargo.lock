@@ -2338,6 +2338,7 @@ dependencies = [
  "stynx-code-app",
  "stynx-code-auth",
  "stynx-code-commands",
+ "stynx-code-compact",
  "stynx-code-config",
  "stynx-code-engine",
  "stynx-code-errors",
@@ -2449,6 +2450,7 @@ version = "0.33.18"
 dependencies = [
  "futures",
  "serde_json",
+ "stynx-code-compact",
  "stynx-code-config",
  "stynx-code-errors",
  "stynx-code-tools",

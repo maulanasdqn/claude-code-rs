@@ -444,10 +444,21 @@ impl StynxSession {
 
             match result {
                 Ok(updated) => {
+                    // A normal run strictly appends to the conversation; a shorter
+                    // (or equal) result means mid-run compaction rewrote history.
+                    // Archive the full transcript under the old session id and
+                    // continue in a fresh session so the original is never lost.
+                    let compacted_mid_run = updated.messages.len() <= guard.messages.len();
                     let existing = current_session_id.lock().unwrap().clone();
+                    if compacted_mid_run
+                        && let Some(old_id) = &existing
+                        && let Err(error) = session_repo.save(Some(old_id), &guard).await
+                    {
+                        tracing::warn!("transcript archive before compact failed: {error}");
+                    }
                     let target = match existing {
-                        Some(id) => Some(id),
-                        None => session_repo.new_session_id().await.ok(),
+                        Some(id) if !compacted_mid_run => Some(id),
+                        _ => session_repo.new_session_id().await.ok(),
                     };
                     match session_repo.save(target.as_deref(), &updated).await {
                         Ok(id) => *current_session_id.lock().unwrap() = Some(id),

@@ -18,6 +18,7 @@ stynx-code-types = { workspace = true }
 stynx-code-tools = { workspace = true }
 stynx-code-provider = { workspace = true }
 stynx-code-engine = { workspace = true }
+stynx-code-compact = { workspace = true }
 stynx-code-config = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

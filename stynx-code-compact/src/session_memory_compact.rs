@@ -1,6 +1,8 @@
 use stynx_code_types::{ContentBlock, Conversation};
 use regex::Regex;
 
+use crate::text::safe_truncate;
+
 pub struct SessionMemoryCompactor;
 
 impl Default for SessionMemoryCompactor {
@@ -30,7 +32,7 @@ impl SessionMemoryCompactor {
 
                         if *is_error == Some(true) {
                             let preview = if content.len() > 200 {
-                                format!("{}...", &content[..200])
+                                format!("{}...", safe_truncate(content, 200))
                             } else {
                                 content.clone()
                             };
@@ -67,7 +69,7 @@ impl SessionMemoryCompactor {
             for pattern in &decision_patterns {
                 if trimmed.contains(pattern) {
                     let memory = if trimmed.len() > 200 {
-                        format!("{}...", &trimmed[..200])
+                        format!("{}...", safe_truncate(trimmed, 200))
                     } else {
                         trimmed.to_string()
                     };

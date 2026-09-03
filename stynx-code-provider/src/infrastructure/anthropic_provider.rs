@@ -240,6 +240,9 @@ impl AnthropicProvider {
 #[async_trait::async_trait]
 impl Provider for AnthropicProvider {
     fn model_name(&self) -> String { self.effective_model() }
+    // Every current Claude model ships a 200k context window; 1M-beta models
+    // still accept 200k, so this stays the safe floor.
+    fn context_window(&self) -> u64 { 200_000 }
     fn set_model(&self, model: &str) { AnthropicProvider::set_model(self, model); }
     fn set_max_tokens(&self, n: u32) { AnthropicProvider::set_max_tokens(self, n); }
     fn set_thinking_budget(&self, budget: u32) { AnthropicProvider::set_thinking_budget(self, budget); }
