@@ -19,3 +19,6 @@ export const respondPermission = (id, choice) =>
 export const respondAskUser = (id, answer) => invoke("respond_ask_user", { id, answer });
 export const respondWorkspaceMessage = (id, reply) =>
   invoke("respond_workspace_message", { id, reply });
+export const readFile = (path) => invoke("read_file", { path });
+export const fetchReference = (url) => invoke("fetch_reference", { url });
+export const listProjectFiles = (root) => invoke("list_project_files", { root });

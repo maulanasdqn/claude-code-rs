@@ -2,9 +2,11 @@
   import { onMount } from "svelte";
   import Sidebar from "./components/sidebar.svelte";
   import Chat from "./components/chat.svelte";
+  import TopBar from "./components/top-bar.svelte";
+  import FilesPanel from "./components/files-panel.svelte";
   import { attachEngineEvents } from "./lib/engine-events.js";
   import { openWorkspace } from "./lib/session-actions.js";
-  import { status } from "./lib/stores.js";
+  import { status, showFiles } from "./lib/stores.js";
 
   let bootError = "";
 
@@ -27,10 +29,16 @@
 <div class="layout">
   <Sidebar onOpenWorkspace={open} />
   <main>
+    <TopBar />
     {#if bootError}
       <div class="boot-error">Could not start the engine: {bootError}</div>
     {/if}
-    <Chat />
+    <div class="content">
+      <Chat />
+      {#if $showFiles}
+        <FilesPanel />
+      {/if}
+    </div>
   </main>
 </div>
 
@@ -45,6 +53,12 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+
+  .content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
   }
 
   .boot-error {

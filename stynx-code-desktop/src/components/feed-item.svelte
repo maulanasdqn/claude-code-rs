@@ -1,13 +1,28 @@
 <script>
   import Markdown from "./markdown.svelte";
   import ToolCard from "./tool-card.svelte";
+  import { dataUrl } from "../lib/images.js";
 
   export let item;
 </script>
 
 {#if item.role === "user"}
   <div class="user-row">
-    <div class="user-bubble">{item.text}</div>
+    <div class="user-stack">
+      {#if item.images?.length}
+        <div class="user-images">
+          {#each item.images as image}
+            <img src={dataUrl(image)} alt="attachment" />
+          {/each}
+        </div>
+      {/if}
+      {#if item.text}
+        <div class="user-bubble">{item.text}</div>
+      {/if}
+      {#if item.referenceCount}
+        <div class="ref-note">📄 {item.referenceCount} reference{item.referenceCount === 1 ? "" : "s"}</div>
+      {/if}
+    </div>
   </div>
 {:else if item.role === "assistant"}
   <div class="assistant">
@@ -35,8 +50,34 @@
     justify-content: flex-end;
   }
 
-  .user-bubble {
+  .user-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
     max-width: 70%;
+  }
+
+  .user-images {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .user-images img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+
+  .ref-note {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .user-bubble {
     background: var(--accent);
     color: white;
     padding: 9px 14px;

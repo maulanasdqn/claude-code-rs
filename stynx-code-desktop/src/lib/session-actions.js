@@ -22,12 +22,20 @@ import {
   setModel,
   setProviderKey,
 } from "./api.js";
+import { rememberWorkspace } from "./workspaces.js";
+import { rebuildFileIndex } from "./mentions.js";
 
 export async function openWorkspace(path, provider) {
   status.set("Starting…");
   const result = await initSession(path, provider);
+  const previous = get(info);
+  if (previous && previous.workspacePath !== result.workspacePath) {
+    resetTranscript();
+  }
   info.set(result);
   interns.set(result.interns);
+  rememberWorkspace(result.workspacePath);
+  rebuildFileIndex(result.workspacePath);
   status.set("Ready");
   sessions.set(await listSessions());
 }

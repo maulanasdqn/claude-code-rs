@@ -13,6 +13,7 @@ import {
 import { parseQA } from "./qa.js";
 import { listSessions, respondWorkspaceMessage } from "./api.js";
 import { drainQueue } from "./messaging.js";
+import { recordFileChange } from "./changes.js";
 import { titleFor, toolInputField } from "./tool-title.js";
 
 const TOOL_DETAIL_CHARS = 2000;
@@ -47,16 +48,22 @@ function reduce(event) {
         tool.detail = (tool.detail + event.chunk).slice(-TOOL_DETAIL_CHARS);
       });
       break;
-    case "toolResult":
+    case "toolResult": {
+      let completedToolId = null;
       updateTool(event.name, (tool) => {
         tool.running = false;
         tool.isError = event.isError;
         if (!tool.detail) tool.detail = event.output.slice(0, TOOL_DETAIL_CHARS);
         if (tool.name === "file_write") tool.badge = "A";
         if (tool.name === "file_edit") tool.badge = "M";
+        completedToolId = tool.toolId;
       });
+      if (!event.isError && ["file_write", "file_edit"].includes(event.name) && completedToolId) {
+        recordFileChange(event.name, toolInputBuffers.get(completedToolId) ?? "");
+      }
       currentStreamKind = null;
       break;
+    }
     case "usage":
       tokens.set({ input: event.inputTokens, output: event.outputTokens });
       break;

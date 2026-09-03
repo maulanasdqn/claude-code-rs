@@ -5,7 +5,7 @@ mod domain;
 mod infrastructure;
 
 use application::session::SessionSlot;
-use infrastructure::commands::{history, messaging, session, settings};
+use infrastructure::commands::{files, history, messaging, session, settings};
 
 fn main() {
     tauri::Builder::default()
@@ -26,6 +26,9 @@ fn main() {
             history::load_session,
             history::new_session,
             history::delete_session,
+            files::read_file,
+            files::fetch_reference,
+            files::list_project_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running stynx desktop");

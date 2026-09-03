@@ -3,6 +3,7 @@
   import SessionsSection from "./sidebar/sessions-section.svelte";
   import ModelSection from "./sidebar/model-section.svelte";
   import PermissionSection from "./sidebar/permission-section.svelte";
+  import ReferencesSection from "./sidebar/references-section.svelte";
   import InternsSection from "./sidebar/interns-section.svelte";
 
   export let onOpenWorkspace;
@@ -13,6 +14,7 @@
   <SessionsSection />
   <ModelSection {onOpenWorkspace} />
   <PermissionSection />
+  <ReferencesSection />
   <InternsSection />
 </aside>
 

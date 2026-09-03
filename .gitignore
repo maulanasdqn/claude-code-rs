@@ -4,5 +4,6 @@
 .env
 .env.local
 .env.*.local
+.envrc
 .direnv
 .DS_Store

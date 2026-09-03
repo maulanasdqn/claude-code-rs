@@ -12,6 +12,11 @@ export const tokens = writable({ input: 0, output: 0 });
 export const mode = writable("normal");
 export const thinking = writable(true);
 export const messageQueue = writable([]);
+export const pendingImages = writable([]);
+export const composerDraft = writable("");
+export const changes = writable([]);
+export const showFiles = writable(false);
+export const references = writable([]);
 
 let counter = 0;
 export const nextId = () => `item-${++counter}`;
@@ -21,4 +26,5 @@ export function resetTranscript() {
   tokens.set({ input: 0, output: 0 });
   permissionPrompt.set(null);
   question.set(null);
+  changes.set([]);
 }
