@@ -1,37 +1,31 @@
 <script>
   import { onMount } from "svelte";
-  import Sidebar from "./components/Sidebar.svelte";
-  import Chat from "./components/Chat.svelte";
-  import { initSession, listSessions } from "./lib/api.js";
-  import { attachEngineEvents } from "./lib/events.js";
-  import { info, status, sessions, interns } from "./lib/stores.js";
+  import Sidebar from "./components/sidebar.svelte";
+  import Chat from "./components/chat.svelte";
+  import { attachEngineEvents } from "./lib/engine-events.js";
+  import { openWorkspace } from "./lib/session-actions.js";
+  import { status } from "./lib/stores.js";
 
   let bootError = "";
 
   onMount(async () => {
     await attachEngineEvents();
-    await openWorkspace(null, null);
+    await open(null, null);
   });
 
-  async function openWorkspace(path, provider) {
+  async function open(path, provider) {
     bootError = "";
-    $status = "Starting…";
     try {
-      const result = await initSession(path, provider);
-      $info = result;
-      $interns = result.interns;
-      $status = "Ready";
-      $sessions = await listSessions();
+      await openWorkspace(path, provider);
     } catch (error) {
       bootError = String(error);
       $status = "Init failed";
     }
   }
-
 </script>
 
 <div class="layout">
-  <Sidebar {openWorkspace} />
+  <Sidebar onOpenWorkspace={open} />
   <main>
     {#if bootError}
       <div class="boot-error">Could not start the engine: {bootError}</div>

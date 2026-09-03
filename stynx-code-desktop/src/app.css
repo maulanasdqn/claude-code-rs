@@ -59,3 +59,55 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
 }
+
+.side-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.side-dim {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.side-mono {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.side-row {
+  display: flex;
+  gap: 6px;
+}
+
+.side-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.btn-ghost {
+  text-align: left;
+  color: var(--text);
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 8px;
+}
+
+.btn-ghost:hover {
+  background: var(--accent-soft);
+}

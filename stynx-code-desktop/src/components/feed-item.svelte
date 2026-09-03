@@ -1,6 +1,6 @@
 <script>
-  import Markdown from "./Markdown.svelte";
-  import ToolCard from "./ToolCard.svelte";
+  import Markdown from "./markdown.svelte";
+  import ToolCard from "./tool-card.svelte";
 
   export let item;
 </script>

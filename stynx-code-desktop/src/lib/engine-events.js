@@ -8,14 +8,14 @@ import {
   permissionPrompt,
   question,
   tokens,
-  messageQueue,
   nextId,
 } from "./stores.js";
 import { parseQA } from "./qa.js";
-import { listSessions, sendMessage, respondWorkspaceMessage } from "./api.js";
+import { listSessions, respondWorkspaceMessage } from "./api.js";
+import { drainQueue } from "./messaging.js";
+import { titleFor, toolInputField } from "./tool-title.js";
 
 const TOOL_DETAIL_CHARS = 2000;
-const TOOL_TITLE_CHARS = 80;
 
 let currentStreamKind = null;
 let currentToolId = "";
@@ -37,26 +37,7 @@ function reduce(event) {
       appendDelta("thinking", event.text);
       break;
     case "toolStart":
-      currentStreamKind = null;
-      currentToolId = event.id;
-      toolInputBuffers.set(event.id, "");
-      feed.update((items) => [
-        ...items,
-        {
-          id: nextId(),
-          role: "tool",
-          tool: {
-            toolId: event.id,
-            name: event.name,
-            title: event.name,
-            subtitle: null,
-            detail: "",
-            running: true,
-            isError: false,
-            badge: null,
-          },
-        },
-      ]);
+      startTool(event.name, event.id);
       break;
     case "toolInput":
       accumulateToolInput(event.jsonChunk);
@@ -129,40 +110,7 @@ function handleIdle() {
   listSessions()
     .then((list) => sessions.set(list))
     .catch(() => {});
-  const queue = get(messageQueue);
-  if (queue.length > 0) {
-    const [next, ...rest] = queue;
-    messageQueue.set(rest);
-    dispatch(next.text, next.images);
-  }
-}
-
-export function dispatch(text, images) {
-  feed.update((items) => [
-    ...items,
-    { id: nextId(), role: "user", text, images: images ?? [] },
-  ]);
-  currentStreamKind = null;
-  isStreaming.set(true);
-  status.set("Thinking…");
-  sendMessage(text, images && images.length > 0 ? images : null).catch((error) => {
-    isStreaming.set(false);
-    status.set("Ready");
-    feed.update((items) => [
-      ...items,
-      { id: nextId(), role: "assistant", text: `⚠️ ${error}` },
-    ]);
-  });
-}
-
-export function send(text, images) {
-  const trimmed = text.trim();
-  if (!trimmed && (!images || images.length === 0)) return;
-  if (get(isStreaming)) {
-    messageQueue.update((queue) => [...queue, { text: trimmed, images }]);
-    return;
-  }
-  dispatch(trimmed, images);
+  drainQueue();
 }
 
 function appendDelta(role, delta) {
@@ -176,6 +124,29 @@ function appendDelta(role, delta) {
     currentStreamKind = role;
     return [...items, { id: nextId(), role, text: delta }];
   });
+}
+
+function startTool(name, id) {
+  currentStreamKind = null;
+  currentToolId = id;
+  toolInputBuffers.set(id, "");
+  feed.update((items) => [
+    ...items,
+    {
+      id: nextId(),
+      role: "tool",
+      tool: {
+        toolId: id,
+        name,
+        title: name,
+        subtitle: null,
+        detail: "",
+        running: true,
+        isError: false,
+        badge: null,
+      },
+    },
+  ]);
 }
 
 function accumulateToolInput(chunk) {
@@ -213,49 +184,4 @@ function updateTool(name, mutate) {
     merged[index] = { ...merged[index], tool };
     return merged;
   });
-}
-
-function titleFor(name, input) {
-  switch (name) {
-    case "bash":
-      return truncate(toolInputField(input, ["command"]), TOOL_TITLE_CHARS);
-    case "file_write":
-    case "file_edit":
-    case "read": {
-      const path = toolInputField(input, ["path", "file_path"]);
-      return path ? path.split("/").pop() : null;
-    }
-    case "glob":
-    case "grep":
-      return toolInputField(input, ["pattern", "query"]);
-    case "web_fetch":
-    case "web_search":
-      return toolInputField(input, ["url", "query"]);
-    default:
-      if (name.startsWith("delegate_to_")) {
-        return truncate(toolInputField(input, ["task"]), TOOL_TITLE_CHARS);
-      }
-      return null;
-  }
-}
-
-function truncate(value, max) {
-  if (!value) return null;
-  return value.length > max ? value.slice(0, max) : value;
-}
-
-function toolInputField(json, keys) {
-  for (const key of keys) {
-    const marker = `"${key}"`;
-    const at = json.indexOf(marker);
-    if (at < 0) continue;
-    const colon = json.indexOf(":", at + marker.length);
-    if (colon < 0) continue;
-    const open = json.indexOf('"', colon + 1);
-    if (open < 0) continue;
-    const close = json.indexOf('"', open + 1);
-    if (close < 0) continue;
-    return json.slice(open + 1, close);
-  }
-  return null;
 }

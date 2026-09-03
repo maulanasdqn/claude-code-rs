@@ -1,6 +1,6 @@
 <script>
   import { isStreaming } from "../lib/stores.js";
-  import { send } from "../lib/events.js";
+  import { send } from "../lib/messaging.js";
   import { cancel } from "../lib/api.js";
 
   let draft = "";
